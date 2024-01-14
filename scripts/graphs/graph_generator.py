@@ -23,9 +23,13 @@ summary = {
     'Average Response Time 75% (ms)': data['75%'].mean(),
     'Average Response Time 99% (ms)': data['99%'].mean(),
 }
+# Adding calculation for average response time
+data['Response Time'] = data[['50%', '75%', '99%']].mean(axis=1)
+summary['Average Response Time (ms)'] = data['Response Time'].mean()
 
-# Create a DataFrame for the summary
+# Updating the DataFrame for the summary with the new metric
 summary_df = pd.DataFrame([summary])
+
 
 # Plotting with a vertical summary table with adjusted width
 fig, axs = plt.subplots(5, 1, figsize=(15, 25))

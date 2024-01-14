@@ -8,6 +8,6 @@ cd ../scripts/graphs
 docker build -t graph_generator_image .
 
 # Run the Docker container with the necessary volume mount
-docker run -v "$(pwd)/../../django-python/tests/results:/mnt/data" graph_generator_image python graph_generator.py
+docker run -rm -v "$(pwd)/../../django-python/tests/results:/mnt/data" graph_generator_image python graph_generator.py
 
 echo "Graph generation completed."
