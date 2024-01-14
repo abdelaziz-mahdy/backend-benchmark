@@ -1,0 +1,47 @@
+version: "1.1"
+name: Performance
+env:
+  host: host.docker.internal:8000
+config:
+  loadTest:
+    phases:
+      - duration: 2
+        arrivalRate: 1
+      - duration: 2
+        arrivalRate: 10
+      - duration: 20
+        arrivalRate: 100
+tests:
+          
+  write_note:
+    # repeat: 500
+    steps:
+      - name: POST Note
+        http:
+          url: http://${{env.host}}/api/notes/
+          method: POST
+          headers:
+            Content-Type: application/json
+          json:
+            title: "Sample Note"
+            content: "This is a note content."
+          # check:
+          #   performance:
+          #     firstByte:
+          #       - lte: 200
+          #     total:
+          #       - lte: 500
+
+  read_notes:
+    # repeat: 500
+    steps:
+      - name: GET Notes
+        http:
+          url: http://${{env.host}}/api/notes/
+          method: GET
+          # check:
+          #   performance:
+          #     firstByte:
+          #       - lte: 200
+          #     total:
+          #       - lte: 500
