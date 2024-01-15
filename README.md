@@ -8,12 +8,15 @@
     - Django Sync
     - Django Async
   - Testing Tool: Locust
+- Dart
+  - Framework: Serverpod
+  - Testing Tool: Locust
 
 ## Pending Benchmarks
 1. **Go**
 2. **Rust**
-3. **Dart**
-4. **JavaScript/TypeScript**
+3. **JavaScript/TypeScript**
+
 
 ## Benchmark Results
 
@@ -28,3 +31,9 @@ This graph represents the performance metrics for the Django asynchronous backen
 ![Django Sync Backend Benchmark Graph](/backends/python/django-sync/tests/results/graph.png)
 
 This graph represents the performance metrics for the Django synchronous backend.
+
+### Dart Serverpod Backend
+
+![Dart Serverpod Backend Benchmark Graph](/backends/dart/server-pod/benchmark/tests/results/graph.png)
+
+This graph represents the performance metrics for the Dart backend using Serverpod.

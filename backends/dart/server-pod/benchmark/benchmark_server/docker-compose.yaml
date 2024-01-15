@@ -1,0 +1,59 @@
+version: '3.7'
+
+services:
+  postgres:
+    image: postgres:14.1
+    # ports:
+    #   - '8090:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: benchmark
+      POSTGRES_PASSWORD: "tCOmMYFl3g-3fub7-JP78o8fBB5kkXJY"
+    volumes:
+      - benchmark_data:/var/lib/postgresql/data
+  redis:
+    image: redis:6.2.6
+    # ports:
+    #   - '8091:6379'
+    command: redis-server --requirepass "7W8rZScp3Df0KooszKNbRQe4b-HdSgjr"
+    environment:
+      - REDIS_REPLICATION_MODE=master
+  benchmark:
+    restart: always
+    build: 
+      context: ./
+      dockerfile: ./Dockerfile
+    volumes:
+      - ./:/app
+
+    ports:
+      - "${PORT:-8080}:8080"
+
+    # environment:
+    #   - DATABASE_NAME=postgres
+    #   - DATABASE_USER=postgres
+    #   - DATABASE_PASSWORD=postgres
+    #   - DATABASE_HOST=db
+    healthcheck:
+      test: "curl --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://127.0.0.1:8080/"
+      start_period: 30s
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+
+  tester:
+    image: locustio/locust
+    volumes:
+      - ./tests:/mnt/locust
+      - ./tests/results:/home/locust/
+    command: -f /mnt/locust/locustfile.py --csv benchmark --run-time 200  --headless --users 1000 --spawn-rate 10 -H http://benchmark:8080
+    # ports:
+    #   - 8089:8089
+    depends_on:
+      benchmark:
+        condition: service_healthy
+volumes:
+  benchmark_data:

@@ -1,0 +1,7 @@
+example:
+  - hello:
+  - createNote:
+  - getAllNotes:
+note:
+  - createNote:
+  - getAllNotes:
