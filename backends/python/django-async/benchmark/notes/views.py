@@ -12,7 +12,7 @@ class AsyncNoteViewSet(ViewSet):
         return Note.objects.all()
 
     async def list(self, request):
-        queryset = await self.get_queryset()
+        queryset = (await self.get_queryset())[:100]
         serializer = NoteSerializer(queryset, many=True)
         return Response(await serializer.adata,)
 

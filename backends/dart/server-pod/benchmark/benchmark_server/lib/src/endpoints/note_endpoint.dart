@@ -26,6 +26,7 @@ class NoteEndpoint extends Endpoint {
     // and not in the order they were updated.
     return await Note.db.find(
       session,
+      limit: 100
     );
   }
 }
