@@ -8,3 +8,6 @@ find . -name 'docker_build_and_run.sh' | while read script; do
     bash "$script"
     echo "Finished running: $script"
 done
+
+cd scripts/graphs
+bash create_graphs.sh
