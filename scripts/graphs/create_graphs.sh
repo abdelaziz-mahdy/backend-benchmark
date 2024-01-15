@@ -6,6 +6,6 @@ echo "Building and running graph generator Docker image..."
 docker build -t graph_generator_image .
 
 # Run the Docker container with the necessary volume mount
-docker run --rm -v "$(pwd)/../:/mnt/data" graph_generator_image python graph_generator.py
+docker run --rm -v "$(pwd)/../../:/mnt/data" graph_generator_image python graph_generator.py
 
 echo "Graph generation completed."

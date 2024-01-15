@@ -91,4 +91,5 @@ file_paths = glob.glob('/mnt/data/**/benchmark_stats_history.csv', recursive=Tru
 
 # Process and plot each file
 for file_path in file_paths:
+    print(f"Processing file: {file_path}")
     process_and_plot(file_path)
