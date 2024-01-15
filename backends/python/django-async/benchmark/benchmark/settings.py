@@ -37,9 +37,12 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    "daphne",
     'django.contrib.staticfiles',
     'rest_framework',
     'notes',
+
+
 ]
 
 MIDDLEWARE = [
@@ -70,8 +73,9 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'benchmark.wsgi.application'
+# WSGI_APPLICATION = 'benchmark.wsgi.application'
 
+ASGI_APPLICATION = "benchmark.asgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases

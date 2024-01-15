@@ -2,6 +2,9 @@
 cd "${0%/*}"
 
 # Build and start services for Django-Python
+# cd benchmark
+# bash update_requirements.sh
+# cd ..
 docker compose build
 docker compose up -d
 
@@ -21,5 +24,4 @@ else
     echo "Tester service did not run or has not completed. No action taken."
 fi
 
-bash create_graph.sh
 

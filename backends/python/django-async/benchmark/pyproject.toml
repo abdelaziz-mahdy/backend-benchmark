@@ -9,7 +9,8 @@ python = "^3.12"
 django = "*"
 djangorestframework = "*"
 psycopg2 = "*"
-
+daphne = "*"
+adrf = "*"
 [tool.poetry.dev-dependencies]
 
 [build-system]
