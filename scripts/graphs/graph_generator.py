@@ -4,7 +4,6 @@ import glob
 import os
 # Function to process and plot data from a single file
 def process_and_plot(file_path):
-
     # Load the data from the provided file
     data = pd.read_csv(file_path)
 
@@ -30,12 +29,9 @@ def process_and_plot(file_path):
     data['Response Time'] = data[['50%', '75%', '99%']].mean(axis=1)
     summary['Average Response Time (ms)'] = data['Response Time'].mean()
 
-    # Updating the DataFrame for the summary with the new metric
-    summary_df = pd.DataFrame([summary])
-
-
     # Plotting with a vertical summary table with adjusted width
-    fig, axs = plt.subplots(5, 1, figsize=(15, 25))
+    fig, axs = plt.subplots(10, 1, figsize=(15, 50))  # Reduced subplot count by 1
+
 
     # Plotting the graphs
     # Requests/s vs. Timestamp
@@ -69,18 +65,59 @@ def process_and_plot(file_path):
     axs[3].set_ylabel('Responses/s')
     axs[3].grid(True)
 
-    # Adding the vertical summary table with reduced width
+    # Cumulative Requests and Failures Over Time
+    axs[4].plot(data['Timestamp'], data['Total Request Count'], label='Cumulative Requests', color='blue')
+    axs[4].plot(data['Timestamp'], data['Total Failure Count'], label='Cumulative Failures', color='red')
+    axs[4].set_title('Cumulative Requests and Failures Over Time')
+    axs[4].set_xlabel('Time (seconds)')
+    axs[4].set_ylabel('Count')
+    axs[4].legend()
+    axs[4].grid(True)
+
+    # Response Time Distribution (Histogram)
+    axs[5].hist(data['Total Average Response Time'].dropna(), bins=30, color='purple', alpha=0.7)
+    axs[5].set_title('Response Time Distribution')
+    axs[5].set_xlabel('Response Time (ms)')
+    axs[5].set_ylabel('Frequency')
+    axs[5].grid(True)
+
+    # Load (User Count) vs Response Time
+    axs[6].scatter(data['User Count'], data['Total Average Response Time'], color='green', alpha=0.5)
+    axs[6].set_title('Load vs Response Time')
+    axs[6].set_xlabel('User Count')
+    axs[6].set_ylabel('Average Response Time (ms)')
+    axs[6].grid(True)
+
+    # User Count vs Various Metrics
+    axs[7].plot(data['Timestamp'], data['User Count'], label='User Count', color='orange')
+    axs[7].set_title('User Count Over Time')
+    axs[7].set_xlabel('Time (seconds)')
+    axs[7].set_ylabel('User Count')
+    axs[7].grid(True)
+
+    # Total Average Content Size Over Time
+    axs[8].plot(data['Timestamp'], data['Total Average Content Size'], label='Average Content Size', color='brown')
+    axs[8].set_title('Average Content Size Over Time')
+    axs[8].set_xlabel('Time (seconds)')
+    axs[8].set_ylabel('Size')
+    axs[8].grid(True)
+
+    # Comprehensive Summary Table at the end
+    summary_df = pd.DataFrame([summary])
     cell_text = [[f"{value:.2f}"] for value in summary_df.values[0]]
     row_labels = summary_df.columns
-    table = axs[4].table(cellText=cell_text, rowLabels=row_labels, loc='center', colWidths=[0.2, 0.1])
+    table = axs[9].table(cellText=cell_text, rowLabels=row_labels, loc='center', colWidths=[0.2, 0.1])
     table.auto_set_font_size(False)
     table.set_fontsize(10)
     table.scale(1, 2)
-    axs[4].axis('tight')
-    axs[4].axis('off')
+    axs[9].axis('tight')
+    axs[9].axis('off')
+
+
 
     # Adjust layout
     plt.tight_layout()
+
 
     # Save plot
     plt.savefig(file_path.replace("benchmark_stats_history.csv","graph.png"))

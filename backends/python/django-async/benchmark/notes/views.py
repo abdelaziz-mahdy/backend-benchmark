@@ -9,14 +9,15 @@ class AsyncNoteViewSet(ViewSet):
 
     # @sync_to_async
     async def get_queryset(self):
-        return Note.objects.all()
+        return Note.objects.all()[:100]
 
     async def list(self, request):
-        queryset = (await self.get_queryset())[:100]
+        queryset = (await self.get_queryset())
         serializer = NoteSerializer(queryset, many=True)
         return Response(await serializer.adata,)
 
     async def retrieve(self, request, pk=None):
+        print("retrieving")
         queryset = await self.get_queryset()
         note = await queryset.aget(pk=pk)
         serializer = NoteSerializer(note)
