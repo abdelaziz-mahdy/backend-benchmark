@@ -29,7 +29,7 @@ This repository serves as a comprehensive resource for comparing backend technol
 
 Testing Tool: Locust 
   - Configuration: Which can be changed from `scripts/start_tests.sh`
-    - Users: 1000
+    - Users: 5000
     - Spawn Rate: 10 users/second
     - Test Duration: 500 seconds
 
@@ -42,10 +42,11 @@ Tests consist of write and read requests. Write operations involve writing a sin
 
 ## Benchmark Results
 
-| Backend              | Benchmark Graph |
-|----------------------|-----------------|
-| Django Async Backend | ![Django Async Backend Benchmark Graph](/backends/python/django-async/tests/results/graph.png) |
-| Django Sync Backend  | ![Django Sync Backend Benchmark Graph](/backends/python/django-sync/tests/results/graph.png) |
-| Dart Serverpod Backend | ![Dart Serverpod Backend Benchmark Graph](/backends/dart/server-pod/benchmark/tests/results/graph.png) |
+
+| Attribute            | Django Async Backend | Django Sync Backend | Dart Serverpod Backend |
+|----------------------|----------------------|---------------------|------------------------|
+| Benchmark Graph      | ![Django Async Backend Benchmark Graph](/backends/python/django-async/tests/results/graph.png) | ![Django Sync Backend Benchmark Graph](/backends/python/django-sync/tests/results/graph.png) | ![Dart Serverpod Backend Benchmark Graph](/backends/dart/server-pod/benchmark/tests/results/graph.png) |
+
+
 
 These benchmarks provide valuable insights into the performance of various backend technologies. By analyzing these results, users can make informed decisions based on the specific requirements of their applications, such as speed and capacity to handle loads.

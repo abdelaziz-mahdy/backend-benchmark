@@ -25,7 +25,7 @@ services:
       - POOL_MODE=transaction
       - ADMIN_USERS=postgres,dbuser
       - AUTH_TYPE=scram-sha-256
-      - MAX_CLIENT_CONN=1000
+      - MAX_CLIENT_CONN=100000
     # ports:
     #   - "5432:5432"
     depends_on:
