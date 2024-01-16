@@ -49,7 +49,14 @@ services:
     volumes:
       - ./tests:/mnt/locust
       - ./tests/results:/home/locust/
-    command: -f /mnt/locust/locustfile.py --csv benchmark --run-time 200  --headless --users 1000 --spawn-rate 10 -H http://benchmark:8080
+    command: >
+      -f /mnt/locust/locustfile.py 
+      --csv benchmark 
+      --run-time ${LOCUST_RUNTIME} 
+      --headless 
+      --users ${LOCUST_USERS} 
+      --spawn-rate ${LOCUST_SPAWN_RATE} 
+      -H http://benchmark:8080
     # ports:
     #   - 8089:8089
     depends_on:
