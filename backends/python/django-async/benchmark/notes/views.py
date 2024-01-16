@@ -17,7 +17,6 @@ class AsyncNoteViewSet(ViewSet):
         return Response(await serializer.adata,)
 
     async def retrieve(self, request, pk=None):
-        print("retrieving")
         queryset = await self.get_queryset()
         note = await queryset.aget(pk=pk)
         serializer = NoteSerializer(note)
