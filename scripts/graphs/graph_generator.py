@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import glob
 import os
+import numpy as np
 # Function to process and plot data from a single file
 def process_and_plot(file_path):
     # Load the data from the provided file
@@ -123,22 +124,12 @@ def process_and_plot(file_path):
     plt.savefig(file_path.replace("benchmark_stats_history.csv","graph.png"))
 
     return summary
-# Function to validate and convert summary values to numeric
-def validate_and_convert_to_numeric(summary):
-    numeric_summary = {}
-    for key, value in summary.items():
-        try:
-            numeric_summary[key] = float(value)
-        except ValueError:
-            print(f"Warning: Non-numeric value encountered for {key}")
-    return numeric_summary
 
-# New function to plot summary of all files
 def plot_summary_of_all(summaries, file_paths):
     # Ensure summaries are numeric
     numeric_summaries = {path: validate_and_convert_to_numeric(summary) for path, summary in summaries.items()}
 
-    # Split metrics into 'lower is better' and 'higher is better'
+    # Define metrics categories
     lower_is_better_metrics = ['Average Failures/s', 'Average Response Time 50% (ms)', 
                                'Average Response Time 75% (ms)', 'Average Response Time 99% (ms)',
                                'Average Response Time (ms)']
@@ -149,20 +140,94 @@ def plot_summary_of_all(summaries, file_paths):
         filtered_summaries = {path: {metric: summary[metric] for metric in metric_set if metric in summary}
                               for path, summary in numeric_summaries.items()}
 
-        # Creating DataFrame and plotting
+        # Create DataFrame from summaries
         summary_df = pd.DataFrame(filtered_summaries).T
+
         if not summary_df.empty:
-            summary_df.plot(kind='bar', figsize=(12, 8))
+            # Sorting and calculating percentage differences
+            for metric in metric_set:
+                if metric in summary_df.columns:
+                    ascending = metric in lower_is_better_metrics
+                    summary_df.sort_values(by=metric, ascending=ascending, inplace=True)
+                    min_val = summary_df[metric].min() if ascending else summary_df[metric].max()
+                    summary_df[f'% Diff {metric}'] = ((summary_df[metric] - min_val) / min_val) * 100
+
+            # Plotting bar charts without color coding
+            fig, ax = plt.subplots(figsize=(15, 8))
+            summary_df[metric_set].plot(kind='bar', ax=ax)
             plt.title(title)
             plt.xlabel('File Path')
             plt.ylabel('Values')
             plt.xticks(rotation=45, ha='right')
+            plt.legend(metric_set)
             plt.tight_layout()
             plt.savefig(f'/mnt/data/summary_{title.replace(" ", "_").lower()}.png')
 
-    # # Creating a comprehensive comparison table
-    # full_summary_df = pd.DataFrame(numeric_summaries).T
-    # full_summary_df.to_csv('/mnt/data/full_summary_comparison.csv')
+    # Combine all metrics into one set for table headers
+    all_metrics = lower_is_better_metrics + higher_is_better_metrics
+
+    # Transpose summaries for table orientation
+    transposed_summaries = {metric: {} for metric in all_metrics}
+    for path, summary in numeric_summaries.items():
+        for metric in all_metrics:
+            transposed_summaries[metric][path] = summary.get(metric, 'N/A')
+
+    # Initialize table data
+    table_data = []
+
+    # Prepare data for table
+    for metric in all_metrics:
+        row = [metric]
+        for path in file_paths:
+            val = transposed_summaries[metric].get(path, 'N/A')
+            if val != 'N/A':
+                base_val = min(numeric_summaries[path].get(metric, float('inf')) for path in file_paths)
+                diff = ((val - base_val) / base_val) * 100 if base_val != 0 else 0
+                is_better = (diff <= 0 and metric in lower_is_better_metrics) or \
+                            (diff >= 0 and metric in higher_is_better_metrics)
+                color = 'green' if is_better else 'red'
+                formatted_val = f"{val} ({diff:.2f}%)"
+            else:
+                color = 'black'
+                formatted_val = val
+            row.append((formatted_val, color))
+        table_data.append(row)
+
+    # Create a separate image for the table
+    fig, ax = plt.subplots(figsize=(15, 8))
+    ax.axis('tight')
+    ax.axis('off')
+
+    # Column labels with 'Metric' as the first column, then file paths
+    col_labels = ['Metric'] + file_paths
+
+    # Creating the table
+    table = ax.table(cellText=np.array(table_data, dtype=object), colLabels=col_labels, loc='center')
+
+    # Adjusting cell properties
+    for i, row in enumerate(table_data):
+        for j, cell in enumerate(row):
+            if isinstance(cell, tuple) and len(cell) == 2:
+                text, color = cell
+            else:
+                text = str(cell)  # Convert cell to string if it's not a tuple
+                color = 'black'   # Default color for unexpected cell format
+            table[i, j].get_text().set_color(color)
+            table[i, j].get_text().set_fontsize(min(10, 500 / max(len(text), 1)))  # Adjust font size
+
+    table.auto_set_font_size(True)
+    table.scale(1, 2)
+    plt.title('Results and Percentage Differences for All Metrics', pad=20)
+    plt.savefig('/mnt/data/results_percentage_differences_all_metrics.png')
+# Function to validate and convert summary values to numeric
+def validate_and_convert_to_numeric(summary):
+    numeric_summary = {}
+    for key, value in summary.items():
+        try:
+            numeric_summary[key] = float(value)
+        except ValueError:
+            print(f"Warning: Non-numeric value encountered for {key}")
+    return numeric_summary
 # Adjusted file path naming
 def get_adjusted_file_name(file_path):
     ignored_parts = {'results', 'tests', 'backends','','mnt','data',"benchmark",'benchmark_stats_history.csv'}
