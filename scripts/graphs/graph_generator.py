@@ -193,9 +193,10 @@ def plot_summary_of_all(summaries, file_paths):
             val = transposed_summaries[metric].get(path, 'N/A')
             if val != 'N/A' and base_values[metric] is not None:
                 base_val = base_values[metric]
-                diff = ((val - base_val) / base_val) * 100 if base_val != 0 else 0
-                is_better = (diff <= 0 and metric in lower_is_better_metrics) or \
-                            (diff >= 0 and metric in higher_is_better_metrics)
+                diff_in_raw= val - base_val
+                diff = ((diff_in_raw) / base_val) * 100 if base_val != 0 else 0
+                is_better = (diff_in_raw <= 0 and metric in lower_is_better_metrics) or \
+                            (diff_in_raw >= 0 and metric in higher_is_better_metrics)
                 color = 'green' if is_better else 'red'
                 formatted_val = f"{val} ({diff:.2f}%)"
             else:
@@ -231,7 +232,6 @@ def plot_summary_of_all(summaries, file_paths):
         # Set color based on the tuple in the original data
         if isinstance(original_cell, tuple) and len(original_cell) == 2:
             color = original_cell[1]
-        print("for cell", original_cell, "color is", color)
         # Set the color of the cell text
         cell.get_text().set_color(color)
 

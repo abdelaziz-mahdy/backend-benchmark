@@ -43,6 +43,28 @@ Testing Tool: Locust
 
 Tests consist of write and read requests. Write operations involve writing a single note, while read operations involve retrieving 100 notes.
 
+## Benchmark Visualization
+
+Before delving into the detailed benchmark results, let's visualize the performance differences across the various backend technologies. These visual representations offer an immediate understanding of the comparative performance in terms of speed and load handling capabilities. Below are the benchmark graphs for different metrics.
+
+### Higher is Better Metrics
+This graph represents metrics where higher values indicate better performance. It includes attributes like requests per second, throughput, etc.
+
+![Higher is Better Metrics](summary_higher_is_better_metrics.png)
+
+### Lower is Better Metrics
+In contrast, this graph showcases metrics where lower values are preferable. These typically involve response times, error rates, and similar attributes.
+
+![Lower is Better Metrics](summary_lower_is_better_metrics.png)
+
+### Percentage Differences Across All Metrics
+This composite graph illustrates the percentage differences across all metrics for a holistic view of performance contrasts between the tested backends.
+
+![Percentage Differences Across All Metrics](results_percentage_differences_all_metrics.png)
+
+These visual aids serve as a precursor to the more detailed benchmark results that follow, providing a quick overview of the performance landscape.
+
+
 ## Benchmark Results
 
 
