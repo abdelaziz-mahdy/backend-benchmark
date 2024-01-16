@@ -58,11 +58,10 @@ In contrast, this graph showcases metrics where lower values are preferable. The
 ![Lower is Better Metrics](summary_lower_is_better_metrics.png)
 
 ### Percentage Differences Across All Metrics
-This composite graph illustrates the percentage differences across all metrics for a holistic view of performance contrasts between the tested backends.
+This composite table illustrates the percentage differences across all metrics for a holistic view of performance contrasts between the tested backends.
 
 ![Percentage Differences Across All Metrics](results_percentage_differences_all_metrics.png)
 
-These visual aids serve as a precursor to the more detailed benchmark results that follow, providing a quick overview of the performance landscape.
 
 
 ## Benchmark Results
