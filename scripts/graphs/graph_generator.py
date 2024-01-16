@@ -172,16 +172,27 @@ def plot_summary_of_all(summaries, file_paths):
         for metric in all_metrics:
             transposed_summaries[metric][path] = summary.get(metric, 'N/A')
 
+    # Sort file paths for each metric and calculate base values
+    sorted_file_paths = {}
+    base_values = {}
+    for metric in all_metrics:
+        is_lower_better = metric in lower_is_better_metrics
+        metric_values = {path: transposed_summaries[metric].get(path, float('inf') if is_lower_better else float('-inf')) 
+                        for path in file_paths}
+        sorted_paths = sorted(metric_values, key=metric_values.get, reverse=not is_lower_better)
+        sorted_file_paths[metric] = sorted_paths
+        base_values[metric] = metric_values[sorted_paths[0]] if sorted_paths else None
+
     # Initialize table data
     table_data = []
 
     # Prepare data for table
     for metric in all_metrics:
         row = [metric]
-        for path in file_paths:
+        for path in sorted_file_paths[metric]:
             val = transposed_summaries[metric].get(path, 'N/A')
-            if val != 'N/A':
-                base_val = min(numeric_summaries[path].get(metric, float('inf')) for path in file_paths)
+            if val != 'N/A' and base_values[metric] is not None:
+                base_val = base_values[metric]
                 diff = ((val - base_val) / base_val) * 100 if base_val != 0 else 0
                 is_better = (diff <= 0 and metric in lower_is_better_metrics) or \
                             (diff >= 0 and metric in higher_is_better_metrics)
@@ -198,26 +209,38 @@ def plot_summary_of_all(summaries, file_paths):
     ax.axis('tight')
     ax.axis('off')
 
-    # Column labels with 'Metric' as the first column, then file paths
-    col_labels = ['Metric'] + file_paths
+    # Column labels with 'Metric' as the first column, then sorted file paths
+    col_labels = ['Metric'] + list(sorted_file_paths[all_metrics[0]])
 
     # Creating the table
-    table = ax.table(cellText=np.array(table_data, dtype=object), colLabels=col_labels, loc='center')
+    # Creating the table with only the text part of each cell
+    # Adjust the cellText to extract only the first element of each tuple
+    extracted_cell_text = [[cell[0] if isinstance(cell, tuple) else cell for cell in row] for row in table_data]
+    table = ax.table(cellText=np.array(extracted_cell_text, dtype=object), colLabels=col_labels, loc='center')
 
-    # Adjusting cell properties
-    for i, row in enumerate(table_data):
-        for j, cell in enumerate(row):
-            if isinstance(cell, tuple) and len(cell) == 2:
-                text, color = cell
-            else:
-                text = str(cell)  # Convert cell to string if it's not a tuple
-                color = 'black'   # Default color for unexpected cell format
-            table[i, j].get_text().set_color(color)
-            table[i, j].get_text().set_fontsize(min(10, 500 / max(len(text), 1)))  # Adjust font size
+    for (i, j), cell in table.get_celld().items():
+        if i == 0 or j == 0:
+            # Skip header or index cells
+            continue
+
+        # Extract the data from your original data structure
+        original_cell = table_data[i-1][j]  # Adjust indices for headers
+        
+        color = 'black'
+
+        # Set color based on the tuple in the original data
+        if isinstance(original_cell, tuple) and len(original_cell) == 2:
+            color = original_cell[1]
+        print("for cell", original_cell, "color is", color)
+        # Set the color of the cell text
+        cell.get_text().set_color(color)
+
 
     table.auto_set_font_size(True)
     table.scale(1, 2)
     plt.title('Results and Percentage Differences for All Metrics', pad=20)
+    plt.tight_layout()
+    # plt.draw()
     plt.savefig('/mnt/data/results_percentage_differences_all_metrics.png')
 # Function to validate and convert summary values to numeric
 def validate_and_convert_to_numeric(summary):
