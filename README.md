@@ -16,10 +16,13 @@ This repository serves as a comprehensive resource for comparing backend technol
       - Test Types:
         - Write: POST request (writes one note)
         - Read: GET request (reads 100 notes)
+      - Connection Pooling (pgbouncer): PgBouncer used to manage database connections and reduce connection limit errors.
+
     - Django Async
       - Test Types:
         - Write: POST request (writes one note)
         - Read: GET request (reads 100 notes)
+      - Connection Pooling (pgbouncer): PgBouncer used to manage database connections and reduce connection limit errors.
 
 - Dart
   - Framework: Serverpod

@@ -1,3 +1,2 @@
 Method,Name,Error,Occurrences
-POST,/api/notes/,HTTPError('500 Server Error: Internal Server Error for url: /api/notes/'),3611
-GET,/api/notes/,HTTPError('500 Server Error: Internal Server Error for url: /api/notes/'),3704
+POST,/api/notes/,"ConnectionResetError(104, 'Connection reset by peer')",7
