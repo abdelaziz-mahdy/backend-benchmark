@@ -122,11 +122,70 @@ def process_and_plot(file_path):
     # Save plot
     plt.savefig(file_path.replace("benchmark_stats_history.csv","graph.png"))
 
+    return summary
+# Function to validate and convert summary values to numeric
+def validate_and_convert_to_numeric(summary):
+    numeric_summary = {}
+    for key, value in summary.items():
+        try:
+            numeric_summary[key] = float(value)
+        except ValueError:
+            print(f"Warning: Non-numeric value encountered for {key}")
+    return numeric_summary
+
+# New function to plot summary of all files
+def plot_summary_of_all(summaries, file_paths):
+    # Ensure summaries are numeric
+    numeric_summaries = {path: validate_and_convert_to_numeric(summary) for path, summary in summaries.items()}
+
+    # Split metrics into 'lower is better' and 'higher is better'
+    lower_is_better_metrics = ['Average Failures/s', 'Average Response Time 50% (ms)', 
+                               'Average Response Time 75% (ms)', 'Average Response Time 99% (ms)',
+                               'Average Response Time (ms)']
+    higher_is_better_metrics = ['Average Requests/s', 'Average Responses/s']
+
+    for metric_set, title in [(lower_is_better_metrics, 'Lower is Better Metrics'), 
+                              (higher_is_better_metrics, 'Higher is Better Metrics')]:
+        filtered_summaries = {path: {metric: summary[metric] for metric in metric_set if metric in summary}
+                              for path, summary in numeric_summaries.items()}
+
+        # Creating DataFrame and plotting
+        summary_df = pd.DataFrame(filtered_summaries).T
+        if not summary_df.empty:
+            summary_df.plot(kind='bar', figsize=(12, 8))
+            plt.title(title)
+            plt.xlabel('File Path')
+            plt.ylabel('Values')
+            plt.xticks(rotation=45, ha='right')
+            plt.tight_layout()
+            plt.savefig(f'/mnt/data/summary_{title.replace(" ", "_").lower()}.png')
+
+    # # Creating a comprehensive comparison table
+    # full_summary_df = pd.DataFrame(numeric_summaries).T
+    # full_summary_df.to_csv('/mnt/data/full_summary_comparison.csv')
+# Adjusted file path naming
+def get_adjusted_file_name(file_path):
+    ignored_parts = {'results', 'tests', 'backends','','mnt','data',"benchmark",'benchmark_stats_history.csv'}
+    parts = file_path.split(os.sep)
+    # Filter out the ignored parts
+    relevant_parts = [part for part in parts if part not in ignored_parts]
+    # Join the remaining parts, typically the technology and project names
+
+    # print(relevant_parts)
+    return (' '.join(relevant_parts)).replace("-"," ")
+
+# Initialize a dictionary to store summaries
+all_summaries = {}
 
 # Find all benchmark_stats_history.csv files in /data directory
 file_paths = glob.glob('/mnt/data/**/benchmark_stats_history.csv', recursive=True)
 
-# Process and plot each file
+# Process and plot each file and collect summaries
 for file_path in file_paths:
     print(f"Processing file: {file_path}")
-    process_and_plot(file_path)
+    summary = process_and_plot(file_path)
+    adjusted_file_name = get_adjusted_file_name(file_path)
+    all_summaries[adjusted_file_name] = summary
+
+# Plot and save summary of all files
+plot_summary_of_all(all_summaries, list(all_summaries.keys()))
