@@ -3,8 +3,9 @@ import matplotlib.pyplot as plt
 import glob
 import os
 import numpy as np
-# Function to process and plot data from a single file
-def process_and_plot(file_path):
+
+ 
+def process_file(file_path):
     # Load the data from the provided file
     data = pd.read_csv(file_path)
 
@@ -16,6 +17,7 @@ def process_and_plot(file_path):
     data['Time Difference'] = data['Timestamp'].diff().fillna(0)
     data['Responses/s'] = data['Total Request Count'].diff().fillna(0) / data['Time Difference']
     data['Responses/s'] = data['Responses/s'].replace([float('inf'), -float('inf')], 0)  # Replace infinities with 0
+    data['Response Time'] = data[['50%', '75%', '99%']].mean(axis=1)
 
     # Calculate summary statistics for key metrics
     summary = {
@@ -26,10 +28,107 @@ def process_and_plot(file_path):
         'Average Response Time 75% (ms)': data['75%'].mean(),
         'Average Response Time 99% (ms)': data['99%'].mean(),
     }
-    # Adding calculation for average response time
-    data['Response Time'] = data[['50%', '75%', '99%']].mean(axis=1)
     summary['Average Response Time (ms)'] = data['Response Time'].mean()
 
+    return data,summary
+def _create_summary_table(all_summaries, axs):
+    # Convert summaries to numeric and process data for table
+    numeric_summaries = {path: validate_and_convert_to_numeric(summary) for path, summary in all_summaries.items()}
+    
+    # ... [rest of the plot_summary_of_all logic here, modified to fit within this function] ...
+    
+    # Creating the final summary table
+    extracted_cell_text = [[cell[0] if isinstance(cell, tuple) else cell for cell in row] for row in table_data]
+    table = axs.table(cellText=np.array(extracted_cell_text, dtype=object), colLabels=col_labels, loc='center')
+
+    for (i, j), cell in table.get_celld().items():
+        if i == 0 or j == 0:
+            continue
+        original_cell = table_data[i-1][j]
+        color = 'black'
+        if isinstance(original_cell, tuple) and len(original_cell) == 2:
+            color = original_cell[1]
+        cell.get_text().set_color(color)
+
+    table.auto_set_font_size(True)
+    table.scale(1, 2)
+    axs.set_title('Results and Percentage Differences for All Metrics', pad=20)
+
+def compare_and_plot(all_data, all_summaries):
+    # Number of datasets
+    num_datasets = len(all_data)
+
+    # Plotting with a vertical summary table with adjusted width
+    fig, axs = plt.subplots(10, 1, figsize=(15, 50))
+
+    # Colors for different datasets
+    colors = ['green', 'red', 'blue', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
+
+    # Ensure there are enough colors for the datasets
+    if num_datasets > len(colors):
+        raise ValueError("Need more colors for plotting")
+
+    # Plotting the graphs for each dataset
+    for i, (file_name, data) in enumerate(all_data.items()):
+        color = colors[i]
+
+        # Requests/s vs. Timestamp
+        axs[0].plot(data['Timestamp'], data['Requests/s'], label=f'{file_name} - Requests/s', color=color)
+
+        # Failures/s vs. Timestamp
+        axs[1].plot(data['Timestamp'], data['Failures/s'], label=f'{file_name} - Failures/s', color=color)
+
+        # Response Time Percentiles vs. Timestamp
+        percentiles = ['50%', '75%', '99%']
+        for percentile in percentiles:
+            axs[2].plot(data['Timestamp'], data[percentile], label=f'{file_name} - {percentile} Response Time', color=color)
+
+        # Responses/s vs. Timestamp
+        axs[3].plot(data['Timestamp'], data['Responses/s'], label=f'{file_name} - Responses/s', color=color)
+
+        # Cumulative Requests and Failures Over Time
+        axs[4].plot(data['Timestamp'], data['Total Request Count'], label=f'{file_name} - Cumulative Requests', color=color)
+        axs[4].plot(data['Timestamp'], data['Total Failure Count'], label=f'{file_name} - Cumulative Failures', color=color)
+
+        # Response Time Distribution (Histogram)
+        axs[5].hist(data['Total Average Response Time'].dropna(), bins=30, color=color, alpha=0.7, label=f'{file_name}')
+
+        # Load (User Count) vs Response Time
+        axs[6].scatter(data['User Count'], data['Total Average Response Time'], color=color, alpha=0.5, label=f'{file_name}')
+
+        # User Count vs Various Metrics
+        axs[7].plot(data['Timestamp'], data['User Count'], label=f'{file_name} - User Count', color=color)
+
+        # Total Average Content Size Over Time
+        axs[8].plot(data['Timestamp'], data['Total Average Content Size'], label=f'{file_name} - Average Content Size', color=color)
+
+    # Setting titles, labels, and legends
+    titles = ['Requests per Second Over Time', 'Failures per Second Over Time', 'Response Time Percentiles Over Time',
+              'Responses per Second Over Time', 'Cumulative Requests and Failures Over Time', 'Response Time Distribution',
+              'Load vs Response Time', 'User Count Over Time', 'Average Content Size Over Time', 'Summary Table']
+
+    for ax, title in zip(axs, titles):
+        ax.set_title(title)
+        ax.set_xlabel('Time (seconds)')
+        ax.legend()
+        ax.grid(True)
+
+    # Comprehensive Summary Table at the end
+    summary_df = pd.DataFrame(all_summaries)
+    table = axs[9].table(cellText=summary_df.values, rowLabels=summary_df.index, colLabels=summary_df.columns, loc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1, 2)
+    axs[9].axis('tight')
+    axs[9].axis('off')
+
+    # Adjust layout
+    plt.tight_layout()
+    # Save plot
+    plt.savefig('/mnt/data/comparison_graph.png')
+# Function to process and plot data from a single file
+def process_and_plot(data,summary):
+    
     # Plotting with a vertical summary table with adjusted width
     fig, axs = plt.subplots(10, 1, figsize=(15, 50))  # Reduced subplot count by 1
 
@@ -123,7 +222,6 @@ def process_and_plot(file_path):
     # Save plot
     plt.savefig(file_path.replace("benchmark_stats_history.csv","graph.png"))
 
-    return summary
 
 def plot_summary_of_all(summaries, file_paths):
     # Ensure summaries are numeric
@@ -265,15 +363,20 @@ def get_adjusted_file_name(file_path):
 # Initialize a dictionary to store summaries
 all_summaries = {}
 
+all_data = {}
 # Find all benchmark_stats_history.csv files in /data directory
 file_paths = glob.glob('/mnt/data/**/benchmark_stats_history.csv', recursive=True)
 
 # Process and plot each file and collect summaries
 for file_path in file_paths:
     print(f"Processing file: {file_path}")
-    summary = process_and_plot(file_path)
+    data,summary = process_file(file_path)
+    process_and_plot(data,summary)
     adjusted_file_name = get_adjusted_file_name(file_path)
     all_summaries[adjusted_file_name] = summary
+    all_data[adjusted_file_name] = data
 
 # Plot and save summary of all files
 plot_summary_of_all(all_summaries, list(all_summaries.keys()))
+
+compare_and_plot(all_data, all_summaries)
