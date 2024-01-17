@@ -48,7 +48,7 @@ Tests consist of write and read requests. Write operations involve writing a sin
 Before delving into the detailed benchmark results, let's visualize the performance differences across the various backend technologies. These visual representations offer an immediate understanding of the comparative performance in terms of speed and load handling capabilities. Below are the benchmark graphs for different metrics.
 
 ## Comparison Graph
-![Comparison Graph](/mnt/data/comparison_graph.png)
+![Comparison Graph](comparison_graph.png)
 
 ## Benchmark Results
 
