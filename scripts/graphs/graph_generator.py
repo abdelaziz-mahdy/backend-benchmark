@@ -31,28 +31,6 @@ def process_file(file_path):
     summary['Average Response Time (ms)'] = data['Response Time'].mean()
 
     return data,summary
-def _create_summary_table(all_summaries, axs):
-    # Convert summaries to numeric and process data for table
-    numeric_summaries = {path: validate_and_convert_to_numeric(summary) for path, summary in all_summaries.items()}
-    
-    # ... [rest of the plot_summary_of_all logic here, modified to fit within this function] ...
-    
-    # Creating the final summary table
-    extracted_cell_text = [[cell[0] if isinstance(cell, tuple) else cell for cell in row] for row in table_data]
-    table = axs.table(cellText=np.array(extracted_cell_text, dtype=object), colLabels=col_labels, loc='center')
-
-    for (i, j), cell in table.get_celld().items():
-        if i == 0 or j == 0:
-            continue
-        original_cell = table_data[i-1][j]
-        color = 'black'
-        if isinstance(original_cell, tuple) and len(original_cell) == 2:
-            color = original_cell[1]
-        cell.get_text().set_color(color)
-
-    table.auto_set_font_size(True)
-    table.scale(1, 2)
-    axs.set_title('Results and Percentage Differences for All Metrics', pad=20)
 
 def compare_and_plot(all_data, all_summaries):
     # Number of datasets
@@ -113,14 +91,15 @@ def compare_and_plot(all_data, all_summaries):
         ax.legend()
         ax.grid(True)
 
-    # Comprehensive Summary Table at the end
-    summary_df = pd.DataFrame(all_summaries)
-    table = axs[9].table(cellText=summary_df.values, rowLabels=summary_df.index, colLabels=summary_df.columns, loc='center')
-    table.auto_set_font_size(False)
-    table.set_fontsize(10)
-    table.scale(1, 2)
-    axs[9].axis('tight')
-    axs[9].axis('off')
+    # # Comprehensive Summary Table at the end
+    # summary_df = pd.DataFrame(all_summaries)
+    # table = axs[9].table(cellText=summary_df.values, rowLabels=summary_df.index, colLabels=summary_df.columns, loc='center')
+    # table.auto_set_font_size(False)
+    # table.set_fontsize(10)
+    # table.scale(1, 2)
+    # axs[9].axis('tight')
+    # axs[9].axis('off')
+    plot_summary_of_all(all_summaries, list(all_summaries.keys()), axs[-1])
 
     # Adjust layout
     plt.tight_layout()
@@ -222,8 +201,9 @@ def process_and_plot(data,summary):
     # Save plot
     plt.savefig(file_path.replace("benchmark_stats_history.csv","graph.png"))
 
+import pandas as pd
 
-def plot_summary_of_all(summaries, file_paths):
+def plot_summary_of_all(summaries, file_paths, ax):
     # Ensure summaries are numeric
     numeric_summaries = {path: validate_and_convert_to_numeric(summary) for path, summary in summaries.items()}
 
@@ -232,34 +212,6 @@ def plot_summary_of_all(summaries, file_paths):
                                'Average Response Time 75% (ms)', 'Average Response Time 99% (ms)',
                                'Average Response Time (ms)']
     higher_is_better_metrics = ['Average Requests/s', 'Average Responses/s']
-
-    for metric_set, title in [(lower_is_better_metrics, 'Lower is Better Metrics'), 
-                              (higher_is_better_metrics, 'Higher is Better Metrics')]:
-        filtered_summaries = {path: {metric: summary[metric] for metric in metric_set if metric in summary}
-                              for path, summary in numeric_summaries.items()}
-
-        # Create DataFrame from summaries
-        summary_df = pd.DataFrame(filtered_summaries).T
-
-        if not summary_df.empty:
-            # Sorting and calculating percentage differences
-            for metric in metric_set:
-                if metric in summary_df.columns:
-                    ascending = metric in lower_is_better_metrics
-                    summary_df.sort_values(by=metric, ascending=ascending, inplace=True)
-                    min_val = summary_df[metric].min() if ascending else summary_df[metric].max()
-                    summary_df[f'% Diff {metric}'] = ((summary_df[metric] - min_val) / min_val) * 100
-
-            # Plotting bar charts without color coding
-            fig, ax = plt.subplots(figsize=(15, 8))
-            summary_df[metric_set].plot(kind='bar', ax=ax)
-            plt.title(title)
-            plt.xlabel('File Path')
-            plt.ylabel('Values')
-            plt.xticks(rotation=45, ha='right')
-            plt.legend(metric_set)
-            plt.tight_layout()
-            plt.savefig(f'/mnt/data/summary_{title.replace(" ", "_").lower()}.png')
 
     # Combine all metrics into one set for table headers
     all_metrics = lower_is_better_metrics + higher_is_better_metrics
@@ -270,31 +222,19 @@ def plot_summary_of_all(summaries, file_paths):
         for metric in all_metrics:
             transposed_summaries[metric][path] = summary.get(metric, 'N/A')
 
-    # Sort file paths for each metric and calculate base values
-    sorted_file_paths = {}
-    base_values = {}
-    for metric in all_metrics:
-        is_lower_better = metric in lower_is_better_metrics
-        metric_values = {path: transposed_summaries[metric].get(path, float('inf') if is_lower_better else float('-inf')) 
-                        for path in file_paths}
-        sorted_paths = sorted(metric_values, key=metric_values.get, reverse=not is_lower_better)
-        sorted_file_paths[metric] = sorted_paths
-        base_values[metric] = metric_values[sorted_paths[0]] if sorted_paths else None
-
     # Initialize table data
     table_data = []
 
     # Prepare data for table
     for metric in all_metrics:
         row = [metric]
-        for path in sorted_file_paths[metric]:
+        for path in file_paths:
             val = transposed_summaries[metric].get(path, 'N/A')
-            if val != 'N/A' and base_values[metric] is not None:
-                base_val = base_values[metric]
-                diff_in_raw= val - base_val
+            if val != 'N/A':
+                base_val = min(transposed_summaries[metric].values()) if metric in lower_is_better_metrics else max(transposed_summaries[metric].values())
+                diff_in_raw = val - base_val
                 diff = ((diff_in_raw) / base_val) * 100 if base_val != 0 else 0
-                is_better = (diff_in_raw <= 0 and metric in lower_is_better_metrics) or \
-                            (diff_in_raw >= 0 and metric in higher_is_better_metrics)
+                is_better = (diff_in_raw <= 0 and metric in lower_is_better_metrics) or (diff_in_raw >= 0 and metric in higher_is_better_metrics)
                 color = 'green' if is_better else 'red'
                 formatted_val = f"{val} ({diff:.2f}%)"
             else:
@@ -303,43 +243,24 @@ def plot_summary_of_all(summaries, file_paths):
             row.append((formatted_val, color))
         table_data.append(row)
 
-    # Create a separate image for the table
-    fig, ax = plt.subplots(figsize=(15, 8))
-    ax.axis('tight')
-    ax.axis('off')
-
-    # Column labels with 'Metric' as the first column, then sorted file paths
-    col_labels = ['Metric'] + list(sorted_file_paths[all_metrics[0]])
+    # Extracting only the text part of each cell
+    extracted_cell_text = [[cell[0] if isinstance(cell, tuple) else cell for cell in row] for row in table_data]
+    col_labels = ['Metric'] + file_paths
 
     # Creating the table
-    # Creating the table with only the text part of each cell
-    # Adjust the cellText to extract only the first element of each tuple
-    extracted_cell_text = [[cell[0] if isinstance(cell, tuple) else cell for cell in row] for row in table_data]
     table = ax.table(cellText=np.array(extracted_cell_text, dtype=object), colLabels=col_labels, loc='center')
-
     for (i, j), cell in table.get_celld().items():
         if i == 0 or j == 0:
-            # Skip header or index cells
             continue
-
-        # Extract the data from your original data structure
-        original_cell = table_data[i-1][j]  # Adjust indices for headers
-        
-        color = 'black'
-
-        # Set color based on the tuple in the original data
-        if isinstance(original_cell, tuple) and len(original_cell) == 2:
-            color = original_cell[1]
-        # Set the color of the cell text
+        original_cell = table_data[i-1][j]
+        color = original_cell[1] if isinstance(original_cell, tuple) else 'black'
         cell.get_text().set_color(color)
-
 
     table.auto_set_font_size(True)
     table.scale(1, 2)
-    plt.title('Results and Percentage Differences for All Metrics', pad=20)
-    plt.tight_layout()
-    # plt.draw()
-    plt.savefig('/mnt/data/results_percentage_differences_all_metrics.png')
+    ax.axis('off')
+    ax.set_title('Results and Percentage Differences for All Metrics')
+
 # Function to validate and convert summary values to numeric
 def validate_and_convert_to_numeric(summary):
     numeric_summary = {}
@@ -377,6 +298,6 @@ for file_path in file_paths:
     all_data[adjusted_file_name] = data
 
 # Plot and save summary of all files
-plot_summary_of_all(all_summaries, list(all_summaries.keys()))
+# plot_summary_of_all(all_summaries, list(all_summaries.keys()))
 
 compare_and_plot(all_data, all_summaries)
