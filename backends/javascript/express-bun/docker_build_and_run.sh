@@ -38,7 +38,7 @@ else
 fi
 
 # Rest of the script...
-
+# docker compose down
 docker compose build
 docker compose up -d
 

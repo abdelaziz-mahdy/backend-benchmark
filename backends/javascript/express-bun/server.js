@@ -58,7 +58,7 @@ app.post('/notes', async (req, res) => {
 
 const startServer = async () => {
   await runMigration();
-  app.listen(8000, () => console.log('Server running on port 8000'));
+  app.listen(8000,'0.0.0.0', () => console.log('Server running on port 8000'));
 };
 
 startServer();

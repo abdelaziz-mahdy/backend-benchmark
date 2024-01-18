@@ -10,6 +10,9 @@ COPY package.json ./
 # Install the app dependencies
 RUN bun install
 
+# Install curl
+RUN apt-get update && apt-get install -y curl
+
 
 COPY . .
 
