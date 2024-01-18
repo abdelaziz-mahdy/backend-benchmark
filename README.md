@@ -52,8 +52,8 @@ Before delving into the detailed benchmark results, let's visualize the performa
 
 ## Benchmark Results
 
-| Attribute            | Django Async Backend | Django Sync Backend | Dart Serverpod Backend |
-|----------------------|----------------------|---------------------|------------------------|
-| Benchmark Graph      | ![Django Async Backend Benchmark Graph](/backends/python/django-async/tests/results/graph.png) | ![Django Sync Backend Benchmark Graph](/backends/python/django-sync/tests/results/graph.png) | ![Dart Serverpod Backend Benchmark Graph](/backends/dart/server-pod/benchmark/tests/results/graph.png) |
+| Attribute            | Django Async Backend                                                                 | Django Sync Backend                                                                | Dart Serverpod Backend                                                              | Express Bun Backend                                                                 | Express Node Backend                                                                |
+|----------------------|--------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| Benchmark Graph      | ![Django Async Backend Benchmark Graph](/backends/python/django-async/tests/results/graph.png) | ![Django Sync Backend Benchmark Graph](/backends/python/django-sync/tests/results/graph.png) | ![Dart Serverpod Backend Benchmark Graph](/backends/dart/server-pod/benchmark/tests/results/graph.png) | ![Express Bun Backend Benchmark Graph](/backends/javascript/express-bun/tests/results/graph.png) | ![Express Node Backend Benchmark Graph](/backends/javascript/express-node/tests/results/graph.png) |
 
 These benchmarks provide valuable insights into the performance of various backend technologies. By analyzing these results, users can make informed decisions based on the specific requirements of their applications, such as speed and capacity to handle loads.
