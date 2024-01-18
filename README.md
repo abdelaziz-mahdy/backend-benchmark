@@ -30,6 +30,12 @@ This repository serves as a comprehensive resource for comparing backend technol
       - Write: POST request (writes one note)
       - Read: POST request (reads 100 notes)
 
+- JavaScript/TypeScript
+  - Framework: Express (Node and Bun)
+    - Test Types:
+      - Write: POST request (writes one note)
+      - Read: GET request (reads 100 notes)
+
 Testing Tool: Locust 
   - Configuration: Which can be changed from `scripts/start_tests.sh`
     - Users: 5000
@@ -39,7 +45,6 @@ Testing Tool: Locust
 ## Pending Benchmarks
 1. **Go**
 2. **Rust**
-3. **JavaScript/TypeScript**
 
 Tests consist of write and read requests. Write operations involve writing a single note, while read operations involve retrieving 100 notes.
 

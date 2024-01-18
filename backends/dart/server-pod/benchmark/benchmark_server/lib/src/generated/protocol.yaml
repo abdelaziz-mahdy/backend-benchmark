@@ -5,3 +5,5 @@ example:
 note:
   - createNote:
   - getAllNotes:
+  - noDbEndpoint:
+  - noDbEndpoint2:

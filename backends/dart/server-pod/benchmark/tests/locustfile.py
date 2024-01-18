@@ -14,3 +14,10 @@ class NoteUser(HttpUser):
     @task
     def read_notes(self):
         self.client.post("/note/getAllNotes/")
+
+    @task
+    def no_db_endpoint(self):
+        self.client.get("/note/no_db_endpoint/")
+    @task
+    def no_db_endpoint2(self):
+        self.client.get("/note/no_db_endpoint2/")

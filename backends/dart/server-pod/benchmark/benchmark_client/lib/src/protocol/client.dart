@@ -59,6 +59,18 @@ class EndpointNote extends _i1.EndpointRef {
         'getAllNotes',
         {},
       );
+
+  _i2.Future<String> noDbEndpoint() => caller.callServerEndpoint<String>(
+        'note',
+        'noDbEndpoint',
+        {},
+      );
+
+  _i2.Future<String> noDbEndpoint2() => caller.callServerEndpoint<String>(
+        'note',
+        'noDbEndpoint2',
+        {},
+      );
 }
 
 class Client extends _i1.ServerpodClient {

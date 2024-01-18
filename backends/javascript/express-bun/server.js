@@ -31,6 +31,12 @@ app.get('/', (req, res) => {
     }
   });
 
+app.get('/no_db_endpoint', async (req, res) => {
+  res.status(200).send('No db endpoint');
+});
+app.get('/no_db_endpoint2', async (req, res) => {
+  res.status(200).send('No db endpoint2');
+});
 app.get('/notes', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM note ORDER BY id DESC LIMIT 100');

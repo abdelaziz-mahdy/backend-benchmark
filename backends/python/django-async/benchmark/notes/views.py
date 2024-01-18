@@ -1,3 +1,4 @@
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from adrf.viewsets import ViewSet
 # from asgiref.sync import sync_to_async
@@ -43,3 +44,12 @@ class AsyncNoteViewSet(ViewSet):
         note = await queryset.aget(pk=pk)
         await note.adelete()
         return Response(status=204)
+
+    
+    @action(detail=False, methods=['get'])
+    async def no_db_endpoint(self, request):
+        return Response("no db endpoint", status=200)
+
+    @action(detail=False, methods=['get'])
+    async def no_db_endpoint2(self, request):
+        return Response("no db endpoint2", status=200)

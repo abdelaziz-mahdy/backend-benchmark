@@ -24,9 +24,14 @@ class NoteEndpoint extends Endpoint {
   Future<List<Note>> getAllNotes(Session session) async {
     // By ordering by the id column, we always get the notes in the same order
     // and not in the order they were updated.
-    return await Note.db.find(
-      session,
-      limit: 100
-    );
+    return await Note.db.find(session, limit: 100);
+  }
+
+  Future<String> noDbEndpoint(Session session) async {
+    return 'no db endpoint';
+  }
+
+  Future<String> noDbEndpoint2(Session session) async {
+    return 'no db endpoint2';
   }
 }

@@ -113,6 +113,24 @@ class Endpoints extends _i1.EndpointDispatch {
           ) async =>
               (endpoints['note'] as _i3.NoteEndpoint).getAllNotes(session),
         ),
+        'noDbEndpoint': _i1.MethodConnector(
+          name: 'noDbEndpoint',
+          params: {},
+          call: (
+            _i1.Session session,
+            Map<String, dynamic> params,
+          ) async =>
+              (endpoints['note'] as _i3.NoteEndpoint).noDbEndpoint(session),
+        ),
+        'noDbEndpoint2': _i1.MethodConnector(
+          name: 'noDbEndpoint2',
+          params: {},
+          call: (
+            _i1.Session session,
+            Map<String, dynamic> params,
+          ) async =>
+              (endpoints['note'] as _i3.NoteEndpoint).noDbEndpoint2(session),
+        ),
       },
     );
   }
