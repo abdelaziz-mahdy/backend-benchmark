@@ -1,7 +1,5 @@
 Method,Name,Error,Occurrences
-POST,/api/notes/,"ConnectionResetError(104, 'Connection reset by peer')",385
-GET,/api/notes/,"ConnectionResetError(104, 'Connection reset by peer')",31
-POST,/api/notes/,"ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x....>, 'Connection to benchmark timed out. (connect timeout=None)')",121
-POST,/api/notes/,HTTPError('500 Server Error: Internal Server Error for url: /api/notes/'),25
-GET,/api/notes/,HTTPError('500 Server Error: Internal Server Error for url: /api/notes/'),28
-GET,/api/notes/,"ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x....>, 'Connection to benchmark timed out. (connect timeout=None)')",128
+POST,/api/notes/,"ConnectionResetError(104, 'Connection reset by peer')",470
+GET,/api/notes/,"ConnectionResetError(104, 'Connection reset by peer')",79
+POST,/api/notes/,"ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x....>, 'Connection to benchmark timed out. (connect timeout=None)')",432
+GET,/api/notes/,"ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x....>, 'Connection to benchmark timed out. (connect timeout=None)')",422
