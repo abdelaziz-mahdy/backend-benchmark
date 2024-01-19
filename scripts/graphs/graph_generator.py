@@ -220,9 +220,39 @@ for file_path in file_paths:
 compare_and_plot(all_data, all_summaries)
 
 
-# summary of each service to one json incase the values are needed (for each path we should add a column of     # file_path = get_adjusted_file_name(file_path) then we save all of this data into json using to_json since its a dataframe)
-for path , data in all_data.items():
-    for key , value in all_summaries[path].items():
-        all_data[path][key]=value
+# Custom serializer function for JSON
+def data_json(all_summaries, all_data):
+    def custom_serializer(obj):
+        if isinstance(obj, pd.DataFrame):
+        # Convert DataFrame to a list of dictionaries
+            return obj.to_dict(orient='records')
+        raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
 
-print(all_data)
+# Assuming all_data and all_summaries are already defined dictionaries
+
+    for path, data in all_data.items():
+    # Fill NaN values with zero in the DataFrame
+        if isinstance(data, pd.DataFrame):
+            data.fillna(0, inplace=True)
+    
+        all_data[path] ={
+        'service': get_adjusted_file_name(path),
+        'summary': all_summaries[path],
+        'data': data
+    }
+
+
+
+
+
+# Using json.dumps with the custom serializer and writing to a file
+    try:
+        all_data_json = json.dumps(all_data, default=custom_serializer, indent=4)
+        with open('/mnt/data/results_data.json', 'w') as file:
+            file.write(all_data_json)
+        print("JSON data successfully written to file.")
+    except TypeError as e:
+        print(f"Serialization error: {e}")
+
+data_json( all_summaries, all_data)
+
