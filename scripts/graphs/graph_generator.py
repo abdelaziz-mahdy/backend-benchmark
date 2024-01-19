@@ -48,6 +48,7 @@ def compare_and_plot(all_data, all_summaries):
 
     # Plotting the graphs for each dataset
     for i, (file_name, data) in enumerate(all_data.items()):
+        file_name=get_adjusted_file_name(file_name)
         color = colors[i]
 
         # Requests/s vs. Timestamp
@@ -99,111 +100,25 @@ def compare_and_plot(all_data, all_summaries):
     # table.scale(1, 2)
     # axs[9].axis('tight')
     # axs[9].axis('off')
-    plot_summary_of_all(all_summaries, list(all_summaries.keys()), axs[-1])
+    plot_summary_of_all(all_summaries, axs[-1])
 
     # Adjust layout
     plt.tight_layout()
-    # Save plot
-    plt.savefig('/mnt/data/comparison_graph.png')
-# Function to process and plot data from a single file
-def process_and_plot(data,summary):
-    
-    # Plotting with a vertical summary table with adjusted width
-    fig, axs = plt.subplots(10, 1, figsize=(15, 50))  # Reduced subplot count by 1
+    if len(all_data) ==1:
+        file_location=list(all_summaries.keys())[0]
+        plt.savefig(file_location.replace("benchmark_stats_history.csv","graph.png"))
+    else:
+        # Save plot
+        plt.savefig('/mnt/data/comparison_graph.png')
 
 
-    # Plotting the graphs
-    # Requests/s vs. Timestamp
-    axs[0].plot(data['Timestamp'], data['Requests/s'], label='Requests/s', color='green')
-    axs[0].set_title('Requests per Second Over Time')
-    axs[0].set_xlabel('Time (seconds)')
-    axs[0].set_ylabel('Requests/s')
-    axs[0].grid(True)
-
-    # Failures/s vs. Timestamp
-    axs[1].plot(data['Timestamp'], data['Failures/s'], label='Failures/s', color='red')
-    axs[1].set_title('Failures per Second Over Time')
-    axs[1].set_xlabel('Time (seconds)')
-    axs[1].set_ylabel('Failures/s')
-    axs[1].grid(True)
-
-    # Response Time Percentiles vs. Timestamp
-    percentiles = ['50%', '75%', '99%']
-    for percentile in percentiles:
-        axs[2].plot(data['Timestamp'], data[percentile], label=f'{percentile} Response Time')
-    axs[2].set_title('Response Time Percentiles Over Time')
-    axs[2].set_xlabel('Time (seconds)')
-    axs[2].set_ylabel('Response Time (ms)')
-    axs[2].legend()
-    axs[2].grid(True)
-
-    # Responses/s vs. Timestamp
-    axs[3].plot(data['Timestamp'], data['Responses/s'], label='Responses/s', color='purple')
-    axs[3].set_title('Responses per Second Over Time')
-    axs[3].set_xlabel('Time (seconds)')
-    axs[3].set_ylabel('Responses/s')
-    axs[3].grid(True)
-
-    # Cumulative Requests and Failures Over Time
-    axs[4].plot(data['Timestamp'], data['Total Request Count'], label='Cumulative Requests', color='blue')
-    axs[4].plot(data['Timestamp'], data['Total Failure Count'], label='Cumulative Failures', color='red')
-    axs[4].set_title('Cumulative Requests and Failures Over Time')
-    axs[4].set_xlabel('Time (seconds)')
-    axs[4].set_ylabel('Count')
-    axs[4].legend()
-    axs[4].grid(True)
-
-    # Response Time Distribution (Histogram)
-    axs[5].hist(data['Total Average Response Time'].dropna(), bins=30, color='purple', alpha=0.7)
-    axs[5].set_title('Response Time Distribution')
-    axs[5].set_xlabel('Response Time (ms)')
-    axs[5].set_ylabel('Frequency')
-    axs[5].grid(True)
-
-    # Load (User Count) vs Response Time
-    axs[6].scatter(data['User Count'], data['Total Average Response Time'], color='green', alpha=0.5)
-    axs[6].set_title('Load vs Response Time')
-    axs[6].set_xlabel('User Count')
-    axs[6].set_ylabel('Average Response Time (ms)')
-    axs[6].grid(True)
-
-    # User Count vs Various Metrics
-    axs[7].plot(data['Timestamp'], data['User Count'], label='User Count', color='orange')
-    axs[7].set_title('User Count Over Time')
-    axs[7].set_xlabel('Time (seconds)')
-    axs[7].set_ylabel('User Count')
-    axs[7].grid(True)
-
-    # Total Average Content Size Over Time
-    axs[8].plot(data['Timestamp'], data['Total Average Content Size'], label='Average Content Size', color='brown')
-    axs[8].set_title('Average Content Size Over Time')
-    axs[8].set_xlabel('Time (seconds)')
-    axs[8].set_ylabel('Size')
-    axs[8].grid(True)
-
-    # Comprehensive Summary Table at the end
-    summary_df = pd.DataFrame([summary])
-    cell_text = [[f"{value:.2f}"] for value in summary_df.values[0]]
-    row_labels = summary_df.columns
-    table = axs[9].table(cellText=cell_text, rowLabels=row_labels, loc='center', colWidths=[0.2, 0.1])
-    table.auto_set_font_size(False)
-    table.set_fontsize(10)
-    table.scale(1, 2)
-    axs[9].axis('tight')
-    axs[9].axis('off')
-
-
-
-    # Adjust layout
-    plt.tight_layout()
-
-
-    # Save plot
-    plt.savefig(file_path.replace("benchmark_stats_history.csv","graph.png"))
-
-import pandas as pd
-
-def plot_summary_of_all(summaries, file_paths, ax):
+def plot_summary_of_all(summaries, ax):
+    adjusted_summaries = {}
+    for file_path, summary in summaries.items():
+        adjusted_name = get_adjusted_file_name(file_path)
+        adjusted_summaries[adjusted_name] = summary
+    summaries=adjusted_summaries
+    file_paths=  list(summaries.keys())
     # Ensure summaries are numeric
     numeric_summaries = {path: validate_and_convert_to_numeric(summary) for path, summary in summaries.items()}
 
@@ -230,7 +145,7 @@ def plot_summary_of_all(summaries, file_paths, ax):
         row = [metric]
         for path in file_paths:
             val = transposed_summaries[metric].get(path, 'N/A')
-            if val != 'N/A':
+            if val != 'N/A' and  len(summaries) != 1 :
                 base_val = min(transposed_summaries[metric].values()) if metric in lower_is_better_metrics else max(transposed_summaries[metric].values())
                 diff_in_raw = val - base_val
                 diff = ((diff_in_raw) / base_val) * 100 if base_val != 0 else 0
@@ -249,12 +164,13 @@ def plot_summary_of_all(summaries, file_paths, ax):
 
     # Creating the table
     table = ax.table(cellText=np.array(extracted_cell_text, dtype=object), colLabels=col_labels, loc='center')
-    for (i, j), cell in table.get_celld().items():
-        if i == 0 or j == 0:
-            continue
-        original_cell = table_data[i-1][j]
-        color = original_cell[1] if isinstance(original_cell, tuple) else 'black'
-        cell.get_text().set_color(color)
+    if len(summaries) != 1 :
+        for (i, j), cell in table.get_celld().items():
+            if i == 0 or j == 0:
+                continue
+            original_cell = table_data[i-1][j]
+            color = original_cell[1] if isinstance(original_cell, tuple) else 'black'
+            cell.get_text().set_color(color)
 
     table.auto_set_font_size(True)
     table.scale(1, 2)
@@ -292,10 +208,10 @@ file_paths = glob.glob('/mnt/data/**/benchmark_stats_history.csv', recursive=Tru
 for file_path in file_paths:
     print(f"Processing file: {file_path}")
     data,summary = process_file(file_path)
-    process_and_plot(data,summary)
-    adjusted_file_name = get_adjusted_file_name(file_path)
-    all_summaries[adjusted_file_name] = summary
-    all_data[adjusted_file_name] = data
+    compare_and_plot({file_path: data}, {file_path: summary})
+    # file_path = get_adjusted_file_name(file_path)
+    all_summaries[file_path] = summary
+    all_data[file_path] = data
 
 # Plot and save summary of all files
 # plot_summary_of_all(all_summaries, list(all_summaries.keys()))
