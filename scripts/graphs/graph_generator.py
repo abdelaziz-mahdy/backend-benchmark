@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 import matplotlib.pyplot as plt
 import glob
@@ -8,7 +9,6 @@ import numpy as np
 def process_file(file_path):
     # Load the data from the provided file
     data = pd.read_csv(file_path)
-
     # Convert Timestamp to datetime and then to seconds relative to the start
     data['Timestamp'] = pd.to_datetime(data['Timestamp'], unit='s')
     data['Timestamp'] = (data['Timestamp'] - data['Timestamp'].min()).dt.total_seconds()
@@ -217,3 +217,11 @@ for file_path in file_paths:
 # plot_summary_of_all(all_summaries, list(all_summaries.keys()))
 
 compare_and_plot(all_data, all_summaries)
+
+
+# summary of each service to one json incase the values are needed (for each path we should add a column of     # file_path = get_adjusted_file_name(file_path) then we save all of this data into json using to_json since its a dataframe)
+for path , data in all_data.items():
+    for key , value in all_summaries[path].items():
+        all_data[path][key]=value
+
+print(all_data)
