@@ -17,7 +17,7 @@ class NoteUser(HttpUser):
 
     @task
     def no_db_endpoint(self):
-        self.client.get("/note/no_db_endpoint/")
+        self.client.post("/note/noDbEndpoint/")
     @task
     def no_db_endpoint2(self):
-        self.client.get("/note/no_db_endpoint2/")
+        self.client.post("/note/noDbEndpoint/")

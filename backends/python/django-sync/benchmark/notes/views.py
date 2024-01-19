@@ -13,9 +13,9 @@ class NoteViewSet(viewsets.ModelViewSet):
         return Note.objects.all()[:100]
 
     @action(detail=False, methods=['get'])
-    async def no_db_endpoint(self, request):
+    def no_db_endpoint(self, request):
         return Response("no db endpoint", status=200)
 
     @action(detail=False, methods=['get'])
-    async def no_db_endpoint2(self, request):
+    def no_db_endpoint2(self, request):
         return Response("no db endpoint2", status=200)

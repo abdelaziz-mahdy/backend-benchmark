@@ -44,6 +44,8 @@ fi
 # serverpod create-migration
 # cd ..
 
+# docker compose down 
+
 docker compose build 
 docker compose up -d
 

@@ -9,42 +9,58 @@ This repository serves as a comprehensive resource for comparing backend technol
 - Docker must be installed on the system to run the benchmarks.
 - To launch each test and create the graphs, run the script: `scripts/start_tests.sh`.
 
+
 ## Completed Benchmarks
-- Python
-  - Framework: Django
-    - Django Sync
-      - Test Types:
-        - Write: POST request (writes one note)
-        - Read: GET request (reads 100 notes)
-      - Connection Pooling (pgbouncer): PgBouncer used to manage database connections and reduce connection limit errors.
 
-    - Django Async
-      - Test Types:
-        - Write: POST request (writes one note)
-        - Read: GET request (reads 100 notes)
-      - Connection Pooling (pgbouncer): PgBouncer used to manage database connections and reduce connection limit errors.
+- **Python**
+  - **Framework:** Django
+    - **Django Sync**
+      - **Test Types:**
+        - **Write:** POST request (writes one note)
+        - **Read:** GET request (reads 100 notes)
+        - **Static Endpoints:**
+          - **Static Text 1:** GET request (returns static text)
+          - **Static Text 2:** GET request (returns static text)
+      - **Connection Pooling (pgbouncer):** PgBouncer used to manage database connections and reduce connection limit errors.
 
-- Dart
-  - Framework: Serverpod
-    - Test Types:
-      - Write: POST request (writes one note)
-      - Read: POST request (reads 100 notes)
+    - **Django Async**
+      - **Test Types:**
+        - **Write:** POST request (writes one note)
+        - **Read:** GET request (reads 100 notes)
+        - **Static Endpoints:**
+          - **Static Text 1:** GET request (returns static text)
+          - **Static Text 2:** GET request (returns static text)
+      - **Connection Pooling (pgbouncer):** PgBouncer used to manage database connections and reduce connection limit errors.
 
-- JavaScript/TypeScript
-  - Framework: Express (Node and Bun)
-    - Test Types:
-      - Write: POST request (writes one note)
-      - Read: GET request (reads 100 notes)
+- **Dart**
+  - **Framework:** Serverpod
+    - **Test Types:**
+      - **Write:** POST request (writes one note)
+      - **Read:** POST request (reads 100 notes)
+      - **Static Endpoints:**
+        - **Static Text 1:** POST request (returns static text)
+        - **Static Text 2:** POST request (returns static text)
 
-Testing Tool: Locust 
-  - Configuration: Which can be changed from `scripts/start_tests.sh`
-    - Users: 5000
-    - Spawn Rate: 10 users/second
-    - Test Duration: 500 seconds
+- **JavaScript/TypeScript**
+  - **Framework:** Express (Node and Bun)
+    - **Test Types:**
+      - **Write:** POST request (writes one note)
+      - **Read:** GET request (reads 100 notes)
+      - **Static Endpoints:**
+        - **Static Text 1:** POST request (returns static text)
+        - **Static Text 2:** POST request (returns static text)
 
-## Pending Benchmarks
+- **Testing Tool:** Locust 
+  - **Configuration:**
+    - **Users:** 5000
+    - **Spawn Rate:** 10 users/second
+    - **Test Duration:** 500 seconds
+
+### Pending Benchmarks
+
 1. **Go**
 2. **Rust**
+
 
 Tests consist of write and read requests. Write operations involve writing a single note, while read operations involve retrieving 100 notes.
 
