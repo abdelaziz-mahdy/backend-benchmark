@@ -20,4 +20,4 @@ class NoteUser(FastHttpUser):
         self.client.post("/note/noDbEndpoint/")
     @task
     def no_db_endpoint2(self):
-        self.client.post("/note/noDbEndpoint/")
+        self.client.post("/note/noDbEndpoint2/")

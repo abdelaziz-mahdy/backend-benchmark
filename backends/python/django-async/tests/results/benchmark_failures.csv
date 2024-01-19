@@ -1,9 +1,1 @@
 Method,Name,Error,Occurrences
-POST,/api/notes/,"ConnectionResetError(104, 'Connection reset by peer')",376
-GET,/api/notes/no_db_endpoint/,"ConnectionResetError(104, 'Connection reset by peer')",115
-GET,/api/notes/no_db_endpoint2/,"ConnectionResetError(104, 'Connection reset by peer')",122
-GET,/api/notes/no_db_endpoint/,"ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x....>, 'Connection to benchmark timed out. (connect timeout=None)')",447
-GET,/api/notes/,"ConnectionResetError(104, 'Connection reset by peer')",123
-POST,/api/notes/,"ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x....>, 'Connection to benchmark timed out. (connect timeout=None)')",499
-GET,/api/notes/no_db_endpoint2/,"ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x....>, 'Connection to benchmark timed out. (connect timeout=None)')",467
-GET,/api/notes/,"ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x....>, 'Connection to benchmark timed out. (connect timeout=None)')",454
