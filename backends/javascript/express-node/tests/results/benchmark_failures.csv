@@ -1,1 +1,9 @@
 Method,Name,Error,Occurrences
+GET,/no_db_endpoint/,RemoteDisconnected('Remote end closed connection without response'),1091
+GET,/no_db_endpoint2/,RemoteDisconnected('Remote end closed connection without response'),1054
+GET,/no_db_endpoint2/,"ConnectionResetError(104, 'Connection reset by peer')",19
+POST,/notes/,RemoteDisconnected('Remote end closed connection without response'),1038
+GET,/notes/,"ConnectionResetError(104, 'Connection reset by peer')",21
+POST,/notes/,"ConnectionResetError(104, 'Connection reset by peer')",29
+GET,/notes/,RemoteDisconnected('Remote end closed connection without response'),1082
+GET,/no_db_endpoint/,"ConnectionResetError(104, 'Connection reset by peer')",31

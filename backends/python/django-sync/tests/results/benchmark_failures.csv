@@ -1,3 +1,9 @@
 Method,Name,Error,Occurrences
-GET,/api/notes/no_db_endpoint/,HTTPError('500 Server Error: Internal Server Error for url: /api/notes/no_db_endpoint/'),15118
-GET,/api/notes/no_db_endpoint2/,HTTPError('500 Server Error: Internal Server Error for url: /api/notes/no_db_endpoint2/'),15318
+POST,/api/notes/,"ConnectionResetError(104, 'Connection reset by peer')",1877
+GET,/api/notes/no_db_endpoint/,"ConnectionResetError(104, 'Connection reset by peer')",826
+GET,/api/notes/no_db_endpoint2/,"ConnectionResetError(104, 'Connection reset by peer')",796
+GET,/api/notes/no_db_endpoint/,"ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x....>, 'Connection to benchmark timed out. (connect timeout=None)')",1086
+GET,/api/notes/,"ConnectionResetError(104, 'Connection reset by peer')",862
+POST,/api/notes/,"ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x....>, 'Connection to benchmark timed out. (connect timeout=None)')",1119
+GET,/api/notes/no_db_endpoint2/,"ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x....>, 'Connection to benchmark timed out. (connect timeout=None)')",1104
+GET,/api/notes/,"ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x....>, 'Connection to benchmark timed out. (connect timeout=None)')",1088
