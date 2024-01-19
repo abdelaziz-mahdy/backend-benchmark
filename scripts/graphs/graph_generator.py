@@ -66,6 +66,7 @@ def compare_and_plot(all_data, all_summaries):
         axs[3].plot(data['Timestamp'], data['Responses/s'], label=f'{file_name} - Responses/s', color=color)
 
         # Cumulative Requests and Failures Over Time
+        # TODO: make it requests and response
         axs[4].plot(data['Timestamp'], data['Total Request Count'], label=f'{file_name} - Cumulative Requests', color=color)
         axs[4].plot(data['Timestamp'], data['Total Failure Count'], label=f'{file_name} - Cumulative Failures', color=color)
 
