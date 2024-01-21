@@ -1,7 +1,7 @@
 from locust import FastHttpUser, task, between
 
 class NoteUser(FastHttpUser):
-    wait_time = between(1, 2)
+    # wait_time = between(1, 2)
 
     @task
     def write_note(self):
