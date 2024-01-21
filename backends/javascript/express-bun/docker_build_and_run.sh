@@ -42,6 +42,40 @@ fi
 docker compose build
 docker compose up -d
 
+# File to store the CPU usage data
+output_file="tests/results/cpu_usage.csv"
+
+# Ensure the results directory exists
+mkdir -p results
+
+# Write header to the CSV file
+echo "timestamp,cpu_usage" > "$output_file"
+
+# Function to record CPU usage
+record_cpu_usage() {
+    while :; do
+        # Check if Docker services are still running
+        if ! docker compose ps | grep "Up" > /dev/null; then
+            echo "Docker services are down. Stopping CPU usage tracking."
+            break
+        fi
+
+        # Get CPU usage of the 'benchmark' service
+        cpu_usage=$(docker stats --no-stream --format "{{.Name}},{{.CPUPerc}}" | grep "benchmark" | cut -d ',' -f2)
+
+        # Get the current timestamp
+        timestamp=$(date +%s)
+
+        # Append the data to the file
+        echo "$timestamp,$cpu_usage" >> "$output_file"
+
+        # Wait for 1 second
+        sleep 1
+    done
+}
+
+# Run the function in the background
+record_cpu_usage &
 # Wait for the tester to finish running
 echo "Waiting for tester service to complete..."
 while docker compose ps tester | grep "Up" > /dev/null; do
