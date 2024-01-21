@@ -31,13 +31,22 @@ def process_file(file_path):
     summary['Average Response Time (ms)'] = data['Response Time'].mean()
 
     return data,summary
+def process_file_cpu_usage(file_path):
+    # Load the data from the provided file
+    data = pd.read_csv(file_path.replace("benchmark_stats_history.csv","cpu_usage.csv"))
+    # Convert Timestamp to datetime and then to seconds relative to the start
+    data['Timestamp'] = pd.to_datetime(data['Timestamp'], unit='s')
+    data['Timestamp'] = (data['Timestamp'] - data['Timestamp'].min()).dt.total_seconds()
 
-def compare_and_plot(all_data, all_summaries):
+    # Calculating Responses per Second
+    data['Time Difference'] = data['Timestamp'].diff().fillna(0)
+    return data
+def compare_and_plot(all_data, all_summaries,all_cpu):
     # Number of datasets
     num_datasets = len(all_data)
 
     # Plotting with a vertical summary table with adjusted width
-    fig, axs = plt.subplots(10, 1, figsize=(15, 50))
+    fig, axs = plt.subplots(11, 1, figsize=(15, 50))
 
     # Colors for different datasets
     colors = ['green', 'red', 'blue', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
@@ -45,10 +54,11 @@ def compare_and_plot(all_data, all_summaries):
     # Ensure there are enough colors for the datasets
     if num_datasets > len(colors):
         raise ValueError("Need more colors for plotting")
-
+    if len(all_data)!=len(all_summaries)!=len(all_cpu):
+        raise ValueError("all_data, all_summaries, all_cpu should have same length")
     # Plotting the graphs for each dataset
-    for i, (file_name, data) in enumerate(all_data.items()):
-        file_name=get_adjusted_file_name(file_name)
+    for i, (file_path, data) in enumerate(all_data.items()):
+        file_name=get_adjusted_file_name(file_path)
         color = colors[i]
 
         # Requests/s vs. Timestamp
@@ -81,6 +91,8 @@ def compare_and_plot(all_data, all_summaries):
 
         # Total Average Content Size Over Time
         axs[8].plot(data['Timestamp'], data['Total Average Content Size'], label=f'{file_name} - Average Content Size', color=color)
+
+        axs[9].plot(all_cpu[file_path]['Timestamp'], all_cpu[file_path]['Total Average Content Size'], label=f'{file_name} - Cpu Usage', color=color)
 
     # Setting titles, labels, and legends
     titles = ['Requests per Second Over Time', 'Failures per Second Over Time', 'Response Time Percentiles Over Time',
@@ -202,6 +214,8 @@ def get_adjusted_file_name(file_path):
 all_summaries = {}
 
 all_data = {}
+
+all_cpu = {}
 # Find all benchmark_stats_history.csv files in /data directory
 file_paths = glob.glob('/mnt/data/**/benchmark_stats_history.csv', recursive=True)
 
@@ -209,15 +223,17 @@ file_paths = glob.glob('/mnt/data/**/benchmark_stats_history.csv', recursive=Tru
 for file_path in file_paths:
     print(f"Processing file: {file_path}")
     data,summary = process_file(file_path)
-    compare_and_plot({file_path: data}, {file_path: summary})
+    cpu= process_file_cpu_usage(file_path)
+    compare_and_plot({file_path: data}, {file_path: summary}, {file_path: cpu})
     # file_path = get_adjusted_file_name(file_path)
     all_summaries[file_path] = summary
     all_data[file_path] = data
+    all_cpu[file_path] = cpu
 
 # Plot and save summary of all files
 # plot_summary_of_all(all_summaries, list(all_summaries.keys()))
 
-compare_and_plot(all_data, all_summaries)
+compare_and_plot(all_data, all_summaries,all_cpu)
 
 
 # Custom serializer function for JSON
@@ -238,6 +254,7 @@ def data_json(all_summaries, all_data):
         all_data[path] ={
         'service': get_adjusted_file_name(path),
         'summary': all_summaries[path],
+        'cpu': all_cpu[path],
         'data': data
     }
 
