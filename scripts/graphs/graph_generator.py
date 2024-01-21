@@ -31,16 +31,25 @@ def process_file(file_path):
     summary['Average Response Time (ms)'] = data['Response Time'].mean()
 
     return data,summary
+import pandas as pd
+
 def process_file_cpu_usage(file_path):
     # Load the data from the provided file
     data = pd.read_csv(file_path.replace("benchmark_stats_history.csv","cpu_usage.csv"))
-    # Convert Timestamp to datetime and then to seconds relative to the start
-    data['Timestamp'] = pd.to_datetime(data['Timestamp'], unit='s')
+    
+    # Convert 'timestamp' to numeric type before converting to datetime
+    data['timestamp'] = pd.to_numeric(data['timestamp'], errors='coerce')
+    data['Timestamp'] = pd.to_datetime(data['timestamp'], unit='s')
     data['Timestamp'] = (data['Timestamp'] - data['Timestamp'].min()).dt.total_seconds()
+
+    # Ensure that the 'cpu_usage' column is string type, then remove the percentage sign and convert to float
+    data['cpu_usage'] = data['cpu_usage'].astype(str).str.rstrip('%').astype(float)
 
     # Calculating Responses per Second
     data['Time Difference'] = data['Timestamp'].diff().fillna(0)
+
     return data
+
 def compare_and_plot(all_data, all_summaries,all_cpu):
     # Number of datasets
     num_datasets = len(all_data)
@@ -92,12 +101,12 @@ def compare_and_plot(all_data, all_summaries,all_cpu):
         # Total Average Content Size Over Time
         axs[8].plot(data['Timestamp'], data['Total Average Content Size'], label=f'{file_name} - Average Content Size', color=color)
 
-        axs[9].plot(all_cpu[file_path]['Timestamp'], all_cpu[file_path]['Total Average Content Size'], label=f'{file_name} - Cpu Usage', color=color)
+        axs[9].plot(all_cpu[file_path]['Timestamp'], all_cpu[file_path]['cpu_usage'], label=f'{file_name} - Cpu Usage', color=color)
 
     # Setting titles, labels, and legends
     titles = ['Requests per Second Over Time', 'Failures per Second Over Time', 'Response Time Percentiles Over Time',
               'Responses per Second Over Time', 'Cumulative Requests and Failures Over Time', 'Response Time Distribution',
-              'Load vs Response Time', 'User Count Over Time', 'Average Content Size Over Time', 'Summary Table']
+              'Load vs Response Time', 'User Count Over Time', 'Average Content Size Over Time', 'Cpu Usage', 'Summary Table']
 
     for ax, title in zip(axs, titles):
         ax.set_title(title)
