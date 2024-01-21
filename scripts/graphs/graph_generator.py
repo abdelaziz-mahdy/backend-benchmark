@@ -282,3 +282,31 @@ def data_json(all_summaries, all_data):
 
 data_json( all_summaries, all_data)
 
+
+
+import re
+import time
+from urllib.parse import urlparse, urlunparse, ParseResult
+
+def update_image_urls(readme_path):
+    version = str(int(time.time()))
+
+    with open(readme_path, 'r', encoding='utf-8') as file:
+        content = file.read()
+
+    # Define a regular expression pattern to match image URLs
+    pattern = r'(!\[.*?\]\()(.*?)(\))'
+
+    def clean_and_update_url(match):
+        prefix, url, closing = match.groups()
+        parsed_url = urlparse(url)
+        # Reconstruct URL without query parameters, then add new 'v' parameter
+        new_url = urlunparse(parsed_url._replace(query=f"v={version}"))
+        return f"{prefix}{new_url}{closing}"
+
+    updated_content = re.sub(pattern, clean_and_update_url, content)
+
+    with open(readme_path, 'w', encoding='utf-8') as file:
+        file.write(updated_content)
+
+update_image_urls('/mnt/data/README.md')
