@@ -69,12 +69,12 @@ Tests consist of write and read requests. Write operations involve writing a sin
 Before delving into the detailed benchmark results, let's visualize the performance differences across the various backend technologies. These visual representations offer an immediate understanding of the comparative performance in terms of speed and load handling capabilities. Below are the benchmark graphs for different metrics.
 
 ## Comparison Graph
-![Comparison Graph](comparison_graph.png?v=1705863873)
+![Comparison Graph](comparison_graph.png?v=1705920362)
 
 ## Benchmark Results
 
 | Attribute            | Django Async Backend                                                                 | Django Sync Backend                                                                | Dart Serverpod Backend                                                              | Express Bun Backend                                                                 | Express Node Backend                                                                |
 |----------------------|--------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
-| Benchmark Graph      | ![Django Async Backend Benchmark Graph](/backends/python/django-async/tests/results/graph.png?v=1705863873) | ![Django Sync Backend Benchmark Graph](/backends/python/django-sync/tests/results/graph.png?v=1705863873) | ![Dart Serverpod Backend Benchmark Graph](/backends/dart/server-pod/benchmark/tests/results/graph.png?v=1705863873) | ![Express Bun Backend Benchmark Graph](/backends/javascript/express-bun/tests/results/graph.png?v=1705863873) | ![Express Node Backend Benchmark Graph](/backends/javascript/express-node/tests/results/graph.png?v=1705863873) |
+| Benchmark Graph      | ![Django Async Backend Benchmark Graph](/backends/python/django-async/tests/results/graph.png?v=1705920362) | ![Django Sync Backend Benchmark Graph](/backends/python/django-sync/tests/results/graph.png?v=1705920362) | ![Dart Serverpod Backend Benchmark Graph](/backends/dart/server-pod/benchmark/tests/results/graph.png?v=1705920362) | ![Express Bun Backend Benchmark Graph](/backends/javascript/express-bun/tests/results/graph.png?v=1705920362) | ![Express Node Backend Benchmark Graph](/backends/javascript/express-node/tests/results/graph.png?v=1705920362) |
 
 These benchmarks provide valuable insights into the performance of various backend technologies. By analyzing these results, users can make informed decisions based on the specific requirements of their applications, such as speed and capacity to handle loads.
