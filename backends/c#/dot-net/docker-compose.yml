@@ -1,0 +1,40 @@
+version: '3.9'
+
+services:
+  csharpapp:
+    container_name: csharpapp
+    image: francescoxx/csharpapp:1.0
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=db;Database=postgres;Username=postgres;Password=postgres"
+    # volumes:
+    #   - ./:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: "curl --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://127.0.0.1:80/"
+      start_period: 30s
+      interval: 15s
+      timeout: 10s
+      retries: 10
+  db:
+    container_name: db
+    image: postgres:12
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+volumes:
+  pgdata: {}
