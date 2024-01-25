@@ -173,10 +173,10 @@ def plot_summary_of_all(summaries, ax):
                 diff = ((diff_in_raw) / base_val) * 100 if base_val != 0 else 0
                 is_better = (diff_in_raw <= 0 and metric in lower_is_better_metrics) or (diff_in_raw >= 0 and metric in higher_is_better_metrics)
                 color = 'green' if is_better else 'red'
-                formatted_val = f"{val} ({diff:.2f}%)"
+                formatted_val = f"{val:.2f} ({diff:.2f}%)"
             else:
                 color = 'black'
-                formatted_val = val
+                formatted_val = f"{val:.2f}"
             row.append((formatted_val, color))
         table_data.append(row)
 
@@ -259,7 +259,10 @@ def data_json(all_summaries, all_data):
     # Fill NaN values with zero in the DataFrame
         if isinstance(data, pd.DataFrame):
             data.fillna(0, inplace=True)
-    
+        if isinstance(all_summaries[path], pd.DataFrame):
+            all_summaries[path].fillna(0, inplace=True)
+        if isinstance(all_cpu[path], pd.DataFrame):
+            all_cpu[path].fillna(0, inplace=True)
         all_data[path] ={
         'service': get_adjusted_file_name(path),
         'summary': all_summaries[path],

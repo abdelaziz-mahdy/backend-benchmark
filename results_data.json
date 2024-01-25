@@ -2023,13 +2023,13 @@
             },
             {
                 "timestamp": 1706186223,
-                "cpu_usage": NaN,
+                "cpu_usage": 0.0,
                 "Timestamp": 506.0,
                 "Time Difference": 2.0
             },
             {
                 "timestamp": 1706186223,
-                "cpu_usage": NaN,
+                "cpu_usage": 0.0,
                 "Timestamp": 506.0,
                 "Time Difference": 0.0
             }
@@ -17160,7 +17160,7 @@
             },
             {
                 "timestamp": 1705857755,
-                "cpu_usage": NaN,
+                "cpu_usage": 0.0,
                 "Timestamp": 512.0,
                 "Time Difference": 3.0
             }
@@ -32309,7 +32309,7 @@
             },
             {
                 "timestamp": 1705858295,
-                "cpu_usage": NaN,
+                "cpu_usage": 0.0,
                 "Timestamp": 513.0,
                 "Time Difference": 2.0
             }
@@ -77750,7 +77750,7 @@
             },
             {
                 "timestamp": 1705859932,
-                "cpu_usage": NaN,
+                "cpu_usage": 0.0,
                 "Timestamp": 513.0,
                 "Time Difference": 3.0
             }
