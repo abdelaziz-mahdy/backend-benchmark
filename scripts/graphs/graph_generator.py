@@ -87,7 +87,6 @@ def compare_and_plot(all_data, all_summaries,all_cpu):
         # Cumulative Requests and Failures Over Time
         # TODO: make it requests and response
         axs[4].plot(data['Timestamp'], data['Total Request Count'], label=f'{file_name} - Cumulative Requests', color=color)
-        axs[4].plot(data['Timestamp'], data['Total Failure Count'], label=f'{file_name} - Cumulative Failures', color=color)
 
         # Response Time Distribution (Histogram)
         axs[5].hist(data['Total Average Response Time'].dropna(), bins=30, color=color, alpha=0.7, label=f'{file_name}')
@@ -105,7 +104,7 @@ def compare_and_plot(all_data, all_summaries,all_cpu):
 
     # Setting titles, labels, and legends
     titles = ['Requests per Second Over Time', 'Failures per Second Over Time', 'Response Time Percentiles Over Time',
-              'Responses per Second Over Time', 'Cumulative Requests and Failures Over Time', 'Response Time Distribution',
+              'Responses per Second Over Time', 'Cumulative Requests Over Time', 'Response Time Distribution',
               'Load vs Response Time', 'User Count Over Time', 'Average Content Size Over Time', 'Cpu Usage', 'Summary Table']
 
     for ax, title in zip(axs, titles):
