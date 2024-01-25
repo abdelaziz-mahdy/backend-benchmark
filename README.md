@@ -81,7 +81,6 @@ Before delving into the detailed benchmark results, let's visualize the performa
 
 ## Benchmark Results
 
-To add the C# .NET backend benchmark graph to your table, you would update the table by adding a new row for the C# .NET backend. Here's how the updated table would look:
 
 | Attribute            | Django Async Backend                                                                 | Django Sync Backend                                                                | Dart Serverpod Backend                                                              | Express Bun Backend                                                                 | Express Node Backend                                                                | C# .NET Backend                                                                     |
 |----------------------|--------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
