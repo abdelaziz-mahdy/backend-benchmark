@@ -49,6 +49,14 @@ This repository serves as a comprehensive resource for comparing backend technol
       - **Static Endpoints:**
         - **Static Text 1:** GET request (returns static text)
         - **Static Text 2:** GET request (returns static text)
+- **C#**
+  - **Framework:** .Net Core
+    - **Test Types:**
+      - **Write:** POST request (writes one note)
+      - **Read:** GET request (reads 100 notes)
+      - **Static Endpoints:**
+        - **Static Text 1:** GET request (returns static text)
+        - **Static Text 2:** GET request (returns static text)
 
 - **Testing Tool:** Locust 
   - **Configuration:**
