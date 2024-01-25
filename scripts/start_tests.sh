@@ -36,11 +36,23 @@ fi
 
 
 cd ..
-# Find and execute all docker_build_and_run.sh scripts in the current and subdirectories
-find . -name 'docker_build_and_run.sh' | while read script; do
-    echo "Running script: $script"
+# Find all 'docker_build_and_run.sh' files and store them in an array
+scripts=($(find . -name 'docker_build_and_run.sh'))
+
+# Get total number of scripts
+total_scripts=${#scripts[@]}
+
+# Initialize a counter
+counter=1
+
+# Loop through each script
+for script in "${scripts[@]}"; do
+    echo "Running script $counter out of $total_scripts: $script"
     bash "$script"
     echo "Finished running: $script"
+    
+    # Increment the counter
+    ((counter++))
 done
 
 cd scripts/graphs

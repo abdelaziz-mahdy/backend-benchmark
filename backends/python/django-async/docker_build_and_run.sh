@@ -74,11 +74,35 @@ record_cpu_usage() {
 
 # Run the function in the background
 record_cpu_usage &
+
+echo "Waiting for tester service to start..."
+# Loop until the tester service starts
+while ! docker compose ps tester | grep "Up" > /dev/null; do
+    sleep 1
+done
+
+# Set the start time when the tester service starts
+start_time=$(date +%s)
+echo "Tester service started. Monitoring runtime..."
+
 # Wait for the tester to finish running
-echo "Waiting for tester service to complete..."
 while docker compose ps tester | grep "Up" > /dev/null; do
+    # Calculate the elapsed time
+    current_time=$(date +%s)
+    elapsed_time=$((current_time - start_time))
+
+    # Calculate remaining time
+    remaining_time=$((LOCUST_RUNTIME - elapsed_time))
+    if [ $remaining_time -le 0 ]; then
+        remaining_time=0
+    fi
+
+    # Echo the remaining time, overwriting the previous line
+    echo -ne "Remaining time: $remaining_time seconds\r"
     sleep 5
 done
+echo -e "\nTester service is no longer running."
+
 
 # Check if the tester service has exited
 if docker compose ps -a tester | grep "Exit" > /dev/null; then
