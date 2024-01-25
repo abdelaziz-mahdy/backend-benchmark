@@ -1,7 +1,5 @@
 Method,Name,Error,Occurrences
-GET,/api/notes/,"BadStatusCode('http://benchmark:8000/api/notes/', code=500)",3
-GET,/api/notes/no_db_endpoint2/,"RetriesExceeded('http://benchmark:8000/api/notes/no_db_endpoint2/', 1, original=timed out)",34
-GET,/api/notes/,"RetriesExceeded('http://benchmark:8000/api/notes/', 1, original=timed out)",45
-GET,/api/notes/no_db_endpoint/,"RetriesExceeded('http://benchmark:8000/api/notes/no_db_endpoint/', 1, original=timed out)",33
-POST,/api/notes/,"RetriesExceeded('http://benchmark:8000/api/notes/', 1, original=timed out)",50
-POST,/api/notes/,"BadStatusCode('http://benchmark:8000/api/notes/', code=500)",11
+GET,/api/notes/no_db_endpoint2/,"RetriesExceeded('http://benchmark:8000/api/notes/no_db_endpoint2/', 1, original=timed out)",981
+GET,/api/notes/,"RetriesExceeded('http://benchmark:8000/api/notes/', 1, original=timed out)",3393
+GET,/api/notes/no_db_endpoint/,"RetriesExceeded('http://benchmark:8000/api/notes/no_db_endpoint/', 1, original=timed out)",955
+POST,/api/notes/,"RetriesExceeded('http://benchmark:8000/api/notes/', 1, original=timed out)",3721
