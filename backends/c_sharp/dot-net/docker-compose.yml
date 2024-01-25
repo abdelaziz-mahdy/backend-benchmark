@@ -21,8 +21,7 @@ services:
       timeout: 10s
       retries: 10
   db:
-    container_name: db
-    image: postgres:12
+    image: postgres:14.1
     ports:
       - "5432:5432"
     environment:

@@ -29,7 +29,7 @@ webServer:
 
 # This is the database setup for your server.
 database:
-  host: postgres
+  host: db
   port: 5432
   name: benchmark
   user: postgres
