@@ -1,12 +1,12 @@
 version: '3.9'
 
 services:
-  csharpapp:
-    container_name: csharpapp
-    image: francescoxx/csharpapp:1.0
-    build: .
+  benchmark:
+    build: 
+      context: ./benchmark
+      dockerfile: ./Dockerfile
     ports:
-      - "8080:80"
+      - "8080:8080"
     environment:
       ConnectionStrings__DefaultConnection: "Host=db;Database=postgres;Username=postgres;Password=postgres"
     # volumes:
@@ -15,7 +15,7 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: "curl --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://127.0.0.1:80/"
+      test: "curl --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://127.0.0.1:8080/"
       start_period: 30s
       interval: 15s
       timeout: 10s
@@ -36,5 +36,24 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  tester:
+    image: locustio/locust
+    volumes:
+      - ./tests:/mnt/locust
+      - ./tests/results:/home/locust/
+    command: >
+      -f /mnt/locust/locustfile.py 
+      --csv benchmark 
+      --run-time ${LOCUST_RUNTIME} 
+      --headless 
+      --users ${LOCUST_USERS} 
+      --spawn-rate ${LOCUST_SPAWN_RATE} 
+      -H http://benchmark:8080
+  # ports:
+    #   - 8089:8089
+    depends_on:
+      benchmark:
+        condition: service_healthy
 volumes:
   pgdata: {}
