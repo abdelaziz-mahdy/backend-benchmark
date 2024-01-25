@@ -62,8 +62,8 @@ record_cpu_usage() {
         # Get CPU usage of the 'benchmark' service
         benchmark_cpu_usage=$(docker stats --no-stream --format "{{.Name}},{{.CPUPerc}}" | grep "benchmark" | cut -d ',' -f2)
 
-        # Get CPU usage of the database service (replace 'db_service_name' with your DB container name)
-        db_cpu_usage=$(docker stats --no-stream --format "{{.Name}},{{.CPUPerc}}" | grep "db_service_name" | cut -d ',' -f2)
+        # Get CPU usage of the database service
+        db_cpu_usage=$(docker stats --no-stream --format "{{.Name}},{{.CPUPerc}}" | grep "db" | cut -d ',' -f2)
 
         # Get the current timestamp
         timestamp=$(date +%s)
