@@ -42,8 +42,11 @@ def process_file_cpu_usage(file_path):
     data['Timestamp'] = pd.to_datetime(data['timestamp'], unit='s')
     data['Timestamp'] = (data['Timestamp'] - data['Timestamp'].min()).dt.total_seconds()
 
-    # Ensure that the 'cpu_usage' column is string type, then remove the percentage sign and convert to float
-    data['cpu_usage'] = data['cpu_usage'].astype(str).str.rstrip('%').astype(float)
+    # Ensure that the 'benchmark_cpu_usage' column is string type, then remove the percentage sign and convert to float
+    data['benchmark_cpu_usage'] = data['benchmark_cpu_usage'].astype(str).str.rstrip('%').astype(float)
+
+    # Ensure that the 'db_cpu_usage' column is string type, then remove the percentage sign and convert to float
+    data['db_cpu_usage'] = data['db_cpu_usage'].astype(str).str.rstrip('%').astype(float)
 
     # Calculating Responses per Second
     data['Time Difference'] = data['Timestamp'].diff().fillna(0)
@@ -55,7 +58,7 @@ def compare_and_plot(all_data, all_summaries,all_cpu):
     num_datasets = len(all_data)
 
     # Plotting with a vertical summary table with adjusted width
-    fig, axs = plt.subplots(11, 1, figsize=(15, 50))
+    fig, axs = plt.subplots(12, 1, figsize=(15, 50))
 
     # Colors for different datasets
     colors = ['green', 'red', 'blue', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
@@ -100,12 +103,14 @@ def compare_and_plot(all_data, all_summaries,all_cpu):
         # Total Average Content Size Over Time
         axs[8].plot(data['Timestamp'], data['Total Average Content Size'], label=f'{file_name} - Average Content Size', color=color)
 
-        axs[9].plot(all_cpu[file_path]['Timestamp'], all_cpu[file_path]['cpu_usage'], label=f'{file_name} - Cpu Usage', color=color)
+        axs[9].plot(all_cpu[file_path]['Timestamp'], all_cpu[file_path]['benchmark_cpu_usage'], label=f'{file_name} - Cpu Usage', color=color)
+        
+        axs[10].plot(all_cpu[file_path]['Timestamp'], all_cpu[file_path]['db_cpu_usage'], label=f'{file_name} - Cpu Usage', color=color)
 
     # Setting titles, labels, and legends
     titles = ['Requests per Second Over Time', 'Failures per Second Over Time', 'Response Time Percentiles Over Time',
               'Responses per Second Over Time', 'Cumulative Requests Over Time', 'Response Time Distribution',
-              'Load vs Response Time', 'User Count Over Time', 'Average Content Size Over Time', 'Cpu Usage', 'Summary Table']
+              'Load vs Response Time', 'User Count Over Time', 'Average Content Size Over Time', 'Server Cpu Usage','Database Cpu Usage', 'Summary Table']
 
     for ax, title in zip(axs, titles):
         ax.set_title(title)

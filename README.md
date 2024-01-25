@@ -60,9 +60,9 @@ This repository serves as a comprehensive resource for comparing backend technol
 
 - **Testing Tool:** Locust 
   - **Configuration:**
-    - **Users:** 5000
+    - **Users:** 10000
     - **Spawn Rate:** 10 users/second
-    - **Test Duration:** 500 seconds
+    - **Test Duration:** 1000 seconds
 
 ### Pending Benchmarks
 
@@ -77,14 +77,14 @@ Tests consist of write and read requests. Write operations involve writing a sin
 Before delving into the detailed benchmark results, let's visualize the performance differences across the various backend technologies. These visual representations offer an immediate understanding of the comparative performance in terms of speed and load handling capabilities. Below are the benchmark graphs for different metrics.
 
 ## Comparison Graph
-![Comparison Graph](comparison_graph.png?v=1706194250)
+![Comparison Graph](comparison_graph.png?v=1706223864)
 
 ## Benchmark Results
 
 
 | Attribute            | Django Async Backend                                                                 | Django Sync Backend                                                                | Dart Serverpod Backend                                                              | Express Bun Backend                                                                 | Express Node Backend                                                                | C# .NET Backend                                                                     |
 |----------------------|--------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
-| Benchmark Graph      | ![Django Async Backend Benchmark Graph](/backends/python/django-async/tests/results/graph.png?v=1706194250) | ![Django Sync Backend Benchmark Graph](/backends/python/django-sync/tests/results/graph.png?v=1706194250) | ![Dart Serverpod Backend Benchmark Graph](/backends/dart/server-pod/tests/results/graph.png?v=1706194250) | ![Express Bun Backend Benchmark Graph](/backends/javascript/express-bun/tests/results/graph.png?v=1706194250) | ![Express Node Backend Benchmark Graph](/backends/javascript/express-node/tests/results/graph.png?v=1706194250) | ![C# .NET Backend Benchmark Graph](/backends/c_sharp/dot-net/tests/results/graph.png?v=1706194250) |
+| Benchmark Graph      | ![Django Async Backend Benchmark Graph](/backends/python/django-async/tests/results/graph.png?v=1706223864) | ![Django Sync Backend Benchmark Graph](/backends/python/django-sync/tests/results/graph.png?v=1706223864) | ![Dart Serverpod Backend Benchmark Graph](/backends/dart/server-pod/tests/results/graph.png?v=1706223864) | ![Express Bun Backend Benchmark Graph](/backends/javascript/express-bun/tests/results/graph.png?v=1706223864) | ![Express Node Backend Benchmark Graph](/backends/javascript/express-node/tests/results/graph.png?v=1706223864) | ![C# .NET Backend Benchmark Graph](/backends/c_sharp/dot-net/tests/results/graph.png?v=1706223864) |
 
 
 These benchmarks provide valuable insights into the performance of various backend technologies. By analyzing these results, users can make informed decisions based on the specific requirements of their applications, such as speed and capacity to handle loads.
