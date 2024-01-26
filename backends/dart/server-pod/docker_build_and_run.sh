@@ -91,7 +91,7 @@ docker compose build
 docker compose up -d
 
 # File to store the CPU usage data
-output_file="tests/results/cpu_usage.csv"
+output_file="$results_dir/cpu_usage.csv"
 
 # Ensure the results directory exists
 mkdir -p results
