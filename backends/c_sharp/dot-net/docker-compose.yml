@@ -40,9 +40,9 @@ services:
     image: locustio/locust
     volumes:
       - ./tests:/mnt/locust
-      - ./tests/results:/home/locust/
+      - ./tests/results/${test_type}:/home/locust/
     command: >
-      -f /mnt/locust/locustfile.py 
+      -f /mnt/locust/${test_type}.py 
       --csv benchmark 
       --run-time ${LOCUST_RUNTIME} 
       --headless 

@@ -39,20 +39,26 @@ cd ..
 # Find all 'docker_build_and_run.sh' files and store them in an array
 scripts=($(find . -name 'docker_build_and_run.sh'))
 
-# Get total number of scripts
-total_scripts=${#scripts[@]}
+# Get total number of scripts and multiply by 2 for the two test types
+total_scripts=$((${#scripts[@]} * 2))
 
 # Initialize a counter
 counter=1
 
+# Define the test types
+test_types=("db_test" "no_db_test")
+
 # Loop through each script
 for script in "${scripts[@]}"; do
-    echo "Running script $counter out of $total_scripts: $script"
-    bash "$script"
-    echo "Finished running: $script"
-    
-    # Increment the counter
-    ((counter++))
+    for test_type in "${test_types[@]}"; do
+        echo "Running script $counter out of $total_scripts: $script with test_type=$test_type"
+        export test_type=$test_type
+        bash "$script"
+        echo "Finished running: $script with test_type=$test_type"
+
+        # Increment the counter
+        ((counter++))
+    done
 done
 
 cd scripts/graphs

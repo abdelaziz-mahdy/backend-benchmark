@@ -53,8 +53,9 @@ services:
     image: locustio/locust
     volumes:
       - ./tests:/mnt/locust
-      - ./tests/results:/home/locust/
-    command: -f /mnt/locust/locustfile.py --csv benchmark --run-time 200  --headless --users 1000 --spawn-rate 10 -H http://benchmark:8080
+      - ./tests/results/${test_type}:/home/locust/
+    command: >
+      -f /mnt/locust/${test_type}.py  --csv benchmark --run-time 200  --headless --users 1000 --spawn-rate 10 -H http://benchmark:8080
     # ports:
     #   - 8089:8089
     depends_on:
