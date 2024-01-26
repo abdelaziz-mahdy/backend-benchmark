@@ -74,8 +74,7 @@ fi
 echo "test_type is now set to $test_type."
 
 results_dir="tests/results/$test_type"
-mkdir $results_dir
-
+mkdir -p $results_dir
 #!/bin/bash
 #!/bin/bash
 
