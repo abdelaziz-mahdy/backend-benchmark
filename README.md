@@ -10,67 +10,58 @@ This repository serves as a comprehensive resource for comparing backend technol
 - To launch each test and create the graphs, run the script: `scripts/start_tests.sh`.
 
 
+Certainly! To update the README to include an explanation about the separation of tests into two sections – one for database interactions (`db_test`) and another for static endpoints (`no_db_test`) – and to merge common data, here's a revised version:
+
+---
+
 ## Completed Benchmarks
 
-- **Python**
-  - **Framework:** Django
-    - **Django Sync**
-      - **Test Types:**
-        - **Write:** POST request (writes one note)
-        - **Read:** GET request (reads 100 notes)
-        - **Static Endpoints:**
-          - **Static Text 1:** GET request (returns static text)
-          - **Static Text 2:** GET request (returns static text)
-      - **Connection Pooling (pgbouncer):** PgBouncer used to manage database connections and reduce connection limit errors.
+The benchmarks are categorized into two sections:
 
-    - **Django Async**
-      - **Test Types:**
-        - **Write:** POST request (writes one note)
-        - **Read:** GET request (reads 100 notes)
-        - **Static Endpoints:**
-          - **Static Text 1:** GET request (returns static text)
-          - **Static Text 2:** GET request (returns static text)
-      - **Connection Pooling (pgbouncer):** PgBouncer used to manage database connections and reduce connection limit errors.
+1. **Database Tests (`db_test`)**: These tests involve database operations such as read and write requests.
+2. **Static Endpoint Tests (`no_db_test`)**: These tests involve requests to static endpoints, which do not interact with the database.
 
-- **Dart**
-  - **Framework:** Serverpod
+### Python
+- **Framework:** Django
+  - **Django Sync**
     - **Test Types:**
-      - **Write:** POST request (writes one note)
-      - **Read:** POST request (reads 100 notes)
-      - **Static Endpoints:**
-        - **Static Text 1:** POST request (returns static text)
-        - **Static Text 2:** POST request (returns static text)
+      - **Write (db_test):** POST request (writes one note)
+      - **Read (db_test):** GET request (reads 100 notes)
+      - **Static Endpoints (no_db_test):**
+        - **Static Text 1 and 2:** GET requests (return static text)
+    - **Connection Pooling (pgbouncer):** PgBouncer used for managing database connections.
+  - **Django Async**
+    - **Test Types:** Similar to Django Sync.
 
-- **JavaScript/TypeScript**
-  - **Framework:** Express (Node and Bun)
-    - **Test Types:**
-      - **Write:** POST request (writes one note)
-      - **Read:** GET request (reads 100 notes)
-      - **Static Endpoints:**
-        - **Static Text 1:** GET request (returns static text)
-        - **Static Text 2:** GET request (returns static text)
-- **C#**
-  - **Framework:** .Net Core
-    - **Test Types:**
-      - **Write:** POST request (writes one note)
-      - **Read:** GET request (reads 100 notes)
-      - **Static Endpoints:**
-        - **Static Text 1:** GET request (returns static text)
-        - **Static Text 2:** GET request (returns static text)
+### Dart
+- **Framework:** Serverpod
+  - **Test Types:**
+    - **Write (db_test):** POST request (writes one note)
+    - **Read (db_test):** POST request (reads 100 notes)
+    - **Static Endpoints (no_db_test):**
+      - **Static Text 1 and 2:** POST requests (return static text)
 
-- **Testing Tool:** Locust 
-  - **Configuration:**
-    - **Users:** 10000
-    - **Spawn Rate:** 10 users/second
-    - **Test Duration:** 1000 seconds
+### JavaScript/TypeScript
+- **Framework:** Express (Node and Bun)
+  - **Test Types:** Same as Python Django Sync.
 
-### Pending Benchmarks
+### C#
+- **Framework:** .Net Core
+  - **Test Types:** Same as Python Django Sync.
+
+### Testing Tool: Locust
+- **Configuration:**
+  - **Users:** 10000
+  - **Spawn Rate:** 10 users/second
+  - **Test Duration:** 1000 seconds
+
+## Pending Benchmarks
 
 1. **Go**
 2. **Rust**
 
 
-Tests consist of write and read requests. Write operations involve writing a single note, while read operations involve retrieving 100 notes.
+
 
 ## Benchmark Visualization
 
