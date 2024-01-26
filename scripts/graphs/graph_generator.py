@@ -174,35 +174,44 @@ def plot_summary_of_all(summaries, ax):
     # Initialize table data
     table_data = []
 
-    # Prepare data for table
+    # Define a dictionary to store combined scores for sorting
+    combined_scores = {path: 0 for path in file_paths}
+
+    # Prepare data for table and calculate combined scores
     for metric in all_metrics:
         row = [metric]
         for path in file_paths:
             val = transposed_summaries[metric].get(path, 'N/A')
-            if val != 'N/A' and  len(summaries) != 1 :
+            if val != 'N/A' and len(summaries) != 1:
                 base_val = min(transposed_summaries[metric].values()) if metric in lower_is_better_metrics else max(transposed_summaries[metric].values())
                 diff_in_raw = val - base_val
                 diff = ((diff_in_raw) / base_val) * 100 if base_val != 0 else 0
                 is_better = (diff_in_raw <= 0 and metric in lower_is_better_metrics) or (diff_in_raw >= 0 and metric in higher_is_better_metrics)
                 color = 'green' if is_better else 'red'
                 formatted_val = f"{val:.2f} ({diff:.2f}%)"
+                
+                # Update combined scores for sorting
+                combined_scores[path] += diff if is_better else -diff
             else:
                 color = 'black'
                 formatted_val = f"{val:.2f}"
             row.append((formatted_val, color))
         table_data.append(row)
 
+    # Sort file_paths based on combined scores
+    sorted_file_paths = sorted(file_paths, key=lambda x: combined_scores[x], reverse=True)
+
     # Extracting only the text part of each cell
     extracted_cell_text = [[cell[0] if isinstance(cell, tuple) else cell for cell in row] for row in table_data]
-    col_labels = ['Metric'] + file_paths
+    col_labels = ['Metric'] + sorted_file_paths
 
     # Creating the table
     table = ax.table(cellText=np.array(extracted_cell_text, dtype=object), colLabels=col_labels, loc='center')
-    if len(summaries) != 1 :
+    if len(summaries) != 1:
         for (i, j), cell in table.get_celld().items():
             if i == 0 or j == 0:
                 continue
-            original_cell = table_data[i-1][j]
+            original_cell = table_data[i-1][sorted_file_paths.index(file_paths[j-1])+1]
             color = original_cell[1] if isinstance(original_cell, tuple) else 'black'
             cell.get_text().set_color(color)
 
@@ -210,7 +219,6 @@ def plot_summary_of_all(summaries, ax):
     table.scale(1, 2)
     ax.axis('off')
     ax.set_title('Results and Percentage Differences for All Metrics')
-
 # Function to validate and convert summary values to numeric
 def validate_and_convert_to_numeric(summary):
     numeric_summary = {}
