@@ -47,12 +47,12 @@ The benchmarks are categorized into two sections:
 ### JavaScript/TypeScript
 
 - **Framework:** Express (Node and Bun)
-  - **Test Types:** Same as Python Django Sync.
+  - **Test Types:** Same as Python Django Sync, but without connection pooling.
 
 ### C#
 
 - **Framework:** .Net Core
-  - **Test Types:** Same as Python Django Sync.
+  - **Test Types:** Same as Python Django Sync, but without connection pooling.
 
 ### Testing Tool: Locust
 
