@@ -63,7 +63,7 @@ def compare_and_plot(all_data, all_summaries,all_cpu,custom_result_file_name=Non
     num_datasets = len(all_data)
 
     # Plotting with a vertical summary table with adjusted width
-    fig, axs = plt.subplots(12, 1, figsize=(15, 50))
+    fig, axs = plt.subplots(12, 1, figsize=(20, 70))
 
     # Colors for different datasets
     colors = ['green', 'red', 'blue', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
@@ -162,8 +162,9 @@ def plot_summary_of_all(summaries, ax):
                                'Average Response Time (ms)']
     higher_is_better_metrics = ['Average Requests/s', 'Average Responses/s']
 
+    generic_metrics = [metric for metric in summaries[file_paths[0]].keys() if metric not in lower_is_better_metrics + higher_is_better_metrics]
     # Combine all metrics into one set for table headers
-    all_metrics = lower_is_better_metrics + higher_is_better_metrics
+    all_metrics = lower_is_better_metrics + higher_is_better_metrics +generic_metrics
 
     # Transpose summaries for table orientation
     transposed_summaries = {metric: {} for metric in all_metrics}
@@ -186,7 +187,8 @@ def plot_summary_of_all(summaries, ax):
 
         for path in file_paths:
             val = transposed_summaries[metric].get(path, 'N/A')
-            if val != 'N/A' and len(summaries) != 1:
+
+            if val != 'N/A' and len(summaries) != 1 and (metric in lower_is_better_metrics + higher_is_better_metrics):
                 diff_in_raw = val - base_val
                 diff = ((diff_in_raw) / base_val) * 100 if base_val != 0 else 0
                 is_better = (diff_in_raw <= 0 and metric in lower_is_better_metrics) or (diff_in_raw >= 0 and metric in higher_is_better_metrics)
