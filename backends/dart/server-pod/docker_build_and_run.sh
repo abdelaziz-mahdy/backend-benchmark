@@ -97,9 +97,9 @@ output_file="$results_dir/cpu_usage.csv"
 mkdir -p results
 
 # Write header to the CSV file
-echo "timestamp,cpu_usage" > "$output_file"
+echo "timestamp,benchmark_cpu_usage,db_cpu_usage" > "$output_file"
 
-# Function to record CPU usage
+# Function to record CPU usage for both benchmark and database services
 record_cpu_usage() {
     while :; do
         # Check if Docker services are still running
@@ -109,13 +109,16 @@ record_cpu_usage() {
         fi
 
         # Get CPU usage of the 'benchmark' service
-        cpu_usage=$(docker stats --no-stream --format "{{.Name}},{{.CPUPerc}}" | grep "benchmark" | cut -d ',' -f2)
+        benchmark_cpu_usage=$(docker stats --no-stream --format "{{.Name}},{{.CPUPerc}}" | grep "benchmark" | cut -d ',' -f2)
+
+        # Get CPU usage of the database service
+        db_cpu_usage=$(docker stats --no-stream --format "{{.Name}},{{.CPUPerc}}" | grep "db" | cut -d ',' -f2)
 
         # Get the current timestamp
         timestamp=$(date +%s)
 
         # Append the data to the file
-        echo "$timestamp,$cpu_usage" >> "$output_file"
+        echo "$timestamp,$benchmark_cpu_usage,$db_cpu_usage" >> "$output_file"
 
         # Wait for 1 second
         sleep 1
