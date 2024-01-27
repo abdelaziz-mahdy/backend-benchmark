@@ -11,9 +11,6 @@ This repository serves as a comprehensive resource for comparing backend technol
 - Docker must be installed on the system to run the benchmarks.
 - To launch each test and create the graphs, run the script: `scripts/start_tests.sh`.
 
-Certainly! To update the README to include an explanation about the separation of tests into two sections – one for database interactions (`db_test`) and another for static endpoints (`no_db_test`) – and to merge common data, here's a revised version:
-
----
 
 ## Completed Benchmarks
 
