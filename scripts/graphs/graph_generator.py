@@ -1,11 +1,14 @@
-import json
-import pandas as pd
-import matplotlib.pyplot as plt
 import glob
+import json
 import os
-import numpy as np
+import re
+import time
+from urllib.parse import urlparse, urlunparse
 
- 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
 def process_file(file_path):
     # Load the data from the provided file
     data = pd.read_csv(file_path)
@@ -33,7 +36,7 @@ def process_file(file_path):
     return data,summary
 import pandas as pd
 
-def process_file_cpu_usage(file_path):
+def process_file_cpu_usage(file_path,summary):
     # Load the data from the provided file
     data = pd.read_csv(file_path.replace("benchmark_stats_history.csv","cpu_usage.csv"))
     
@@ -51,14 +54,16 @@ def process_file_cpu_usage(file_path):
     # Calculating Responses per Second
     data['Time Difference'] = data['Timestamp'].diff().fillna(0)
 
-    return data
+    summary["Average Server CPU Usage"] = data['benchmark_cpu_usage'].mean()
+    summary["Average Database CPU Usage"] = data['db_cpu_usage'].mean()
+    return data,summary
 
-def compare_and_plot(all_data, all_summaries,all_cpu):
+def compare_and_plot(all_data, all_summaries,all_cpu,custom_result_file_name=None):
     # Number of datasets
     num_datasets = len(all_data)
 
     # Plotting with a vertical summary table with adjusted width
-    fig, axs = plt.subplots(12, 1, figsize=(15, 50))
+    fig, axs = plt.subplots(12, 1, figsize=(20, 70))
 
     # Colors for different datasets
     colors = ['green', 'red', 'blue', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
@@ -134,8 +139,11 @@ def compare_and_plot(all_data, all_summaries,all_cpu):
         file_location=list(all_summaries.keys())[0]
         plt.savefig(file_location.replace("benchmark_stats_history.csv","graph.png"))
     else:
-        # Save plot
-        plt.savefig('/mnt/data/comparison_graph.png')
+        if custom_result_file_name == None:
+            # Save plot
+            plt.savefig('/mnt/data/comparison_graph.png')
+        else:
+            plt.savefig('/mnt/data/'+custom_result_file_name)
 
 
 def plot_summary_of_all(summaries, ax):
@@ -154,8 +162,9 @@ def plot_summary_of_all(summaries, ax):
                                'Average Response Time (ms)']
     higher_is_better_metrics = ['Average Requests/s', 'Average Responses/s']
 
+    generic_metrics = [metric for metric in summaries[file_paths[0]].keys() if metric not in lower_is_better_metrics + higher_is_better_metrics]
     # Combine all metrics into one set for table headers
-    all_metrics = lower_is_better_metrics + higher_is_better_metrics
+    all_metrics = lower_is_better_metrics + higher_is_better_metrics +generic_metrics
 
     # Transpose summaries for table orientation
     transposed_summaries = {metric: {} for metric in all_metrics}
@@ -163,46 +172,73 @@ def plot_summary_of_all(summaries, ax):
         for metric in all_metrics:
             transposed_summaries[metric][path] = summary.get(metric, 'N/A')
 
-    # Initialize table data
+        # Initialize table data
     table_data = []
 
-    # Prepare data for table
+    # Define a dictionary to store combined scores for sorting
+    combined_scores = {path: 0 for path in file_paths}
+
+
+    # Prepare data for table and calculate combined scores
     for metric in all_metrics:
         row = [metric]
+        metric_values = [transposed_summaries[metric][path] for path in file_paths if transposed_summaries[metric][path] != 'N/A']
+        base_val = min(metric_values) if metric in lower_is_better_metrics else max(metric_values)
+
         for path in file_paths:
             val = transposed_summaries[metric].get(path, 'N/A')
-            if val != 'N/A' and  len(summaries) != 1 :
-                base_val = min(transposed_summaries[metric].values()) if metric in lower_is_better_metrics else max(transposed_summaries[metric].values())
+
+            if val != 'N/A' and len(summaries) != 1 and (metric in lower_is_better_metrics + higher_is_better_metrics):
                 diff_in_raw = val - base_val
                 diff = ((diff_in_raw) / base_val) * 100 if base_val != 0 else 0
                 is_better = (diff_in_raw <= 0 and metric in lower_is_better_metrics) or (diff_in_raw >= 0 and metric in higher_is_better_metrics)
                 color = 'green' if is_better else 'red'
                 formatted_val = f"{val:.2f} ({diff:.2f}%)"
+                
+                # Update combined scores for sorting
+                score_update = diff if is_better else -abs(diff)
+                combined_scores[path] += score_update
             else:
                 color = 'black'
                 formatted_val = f"{val:.2f}"
             row.append((formatted_val, color))
         table_data.append(row)
 
-    # Extracting only the text part of each cell
-    extracted_cell_text = [[cell[0] if isinstance(cell, tuple) else cell for cell in row] for row in table_data]
-    col_labels = ['Metric'] + file_paths
+    # Sort file_paths based on combined scores
+    sorted_file_paths = sorted(file_paths, key=lambda x: combined_scores[x], reverse=True)
 
-    # Creating the table
+    # Reorganize the table data according to the sorted file paths
+    sorted_table_data = []
+    for row in table_data:
+        sorted_row = [row[0]] + [row[file_paths.index(path) + 1] for path in sorted_file_paths]
+        sorted_table_data.append(sorted_row)
+
+    # Extracting only the text part of each cell for the sorted table
+    extracted_cell_text = [[cell[0] if isinstance(cell, tuple) else cell for cell in row] for row in sorted_table_data]
+    col_labels = ['Metric'] + sorted_file_paths
+
+    # Creating the sorted table
     table = ax.table(cellText=np.array(extracted_cell_text, dtype=object), colLabels=col_labels, loc='center')
-    if len(summaries) != 1 :
+    if len(summaries) != 1:
         for (i, j), cell in table.get_celld().items():
             if i == 0 or j == 0:
                 continue
-            original_cell = table_data[i-1][j]
+            original_cell = sorted_table_data[i-1][j]
             color = original_cell[1] if isinstance(original_cell, tuple) else 'black'
             cell.get_text().set_color(color)
 
     table.auto_set_font_size(True)
     table.scale(1, 2)
     ax.axis('off')
-    ax.set_title('Results and Percentage Differences for All Metrics')
+    if len(summaries) == 1:
+        ax.set_title('Service Performance Comparison with Percentage Differences')
 
+    else:
+        ax.set_title('Service Performance Comparison with Percentage Differences (best on the left)')
+        ax.text(0.5, -0.1, "Note: Green indicates better performance, Red indicates worse performance.", ha='center')
+    
+
+    
 # Function to validate and convert summary values to numeric
 def validate_and_convert_to_numeric(summary):
     numeric_summary = {}
@@ -223,62 +259,52 @@ def get_adjusted_file_name(file_path):
     # print(relevant_parts)
     return (' '.join(relevant_parts)).replace("-"," ")
 
-# Initialize a dictionary to store summaries
-all_summaries = {}
 
-all_data = {}
+# Initialize dictionaries
+all_summaries = {'db_test': {}, 'no_db_test': {}}
+all_data = {'db_test': {}, 'no_db_test': {}}
+all_cpu = {'db_test': {}, 'no_db_test': {}}
 
-all_cpu = {}
 # Find all benchmark_stats_history.csv files in /data directory
 file_paths = glob.glob('/mnt/data/**/benchmark_stats_history.csv', recursive=True)
 
 # Process and plot each file and collect summaries
 for file_path in file_paths:
     print(f"Processing file: {file_path}")
-    data,summary = process_file(file_path)
-    cpu= process_file_cpu_usage(file_path)
+    parent_dir = file_path.split('/')[-2]  # Extract parent directory
+    data, summary = process_file(file_path)
+    cpu,summary = process_file_cpu_usage(file_path,summary)
     compare_and_plot({file_path: data}, {file_path: summary}, {file_path: cpu})
-    # file_path = get_adjusted_file_name(file_path)
-    all_summaries[file_path] = summary
-    all_data[file_path] = data
-    all_cpu[file_path] = cpu
 
-# Plot and save summary of all files
-# plot_summary_of_all(all_summaries, list(all_summaries.keys()))
+    all_summaries[parent_dir][file_path] = summary
+    all_data[parent_dir][file_path] = data
+    all_cpu[parent_dir][file_path] = cpu
 
-compare_and_plot(all_data, all_summaries,all_cpu)
-
-
-# Custom serializer function for JSON
+# You may need to adjust the plotting function to handle data segregated by parent directory
+# compare_and_plot(all_data, all_summaries, all_cpu)
+for parent_dir in all_data:
+    compare_and_plot(all_data[parent_dir], all_summaries[parent_dir], all_cpu[parent_dir],custom_result_file_name="comparison_graph_"+parent_dir)
 def data_json(all_summaries, all_data):
     def custom_serializer(obj):
         if isinstance(obj, pd.DataFrame):
-        # Convert DataFrame to a list of dictionaries
             return obj.to_dict(orient='records')
         raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
 
-# Assuming all_data and all_summaries are already defined dictionaries
+    for parent_dir in all_data:
+        for path, data in all_data[parent_dir].items():
+            if isinstance(data, pd.DataFrame):
+                data.fillna(0, inplace=True)
+            if isinstance(all_summaries[parent_dir][path], pd.DataFrame):
+                all_summaries[parent_dir][path].fillna(0, inplace=True)
+            if isinstance(all_cpu[parent_dir][path], pd.DataFrame):
+                all_cpu[parent_dir][path].fillna(0, inplace=True)
+            all_data[parent_dir][path] = {
+                'service': get_adjusted_file_name(path),
+                'summary': all_summaries[parent_dir][path],
+                'cpu': all_cpu[parent_dir][path],
+                'data': data
+            }
 
-    for path, data in all_data.items():
-    # Fill NaN values with zero in the DataFrame
-        if isinstance(data, pd.DataFrame):
-            data.fillna(0, inplace=True)
-        if isinstance(all_summaries[path], pd.DataFrame):
-            all_summaries[path].fillna(0, inplace=True)
-        if isinstance(all_cpu[path], pd.DataFrame):
-            all_cpu[path].fillna(0, inplace=True)
-        all_data[path] ={
-        'service': get_adjusted_file_name(path),
-        'summary': all_summaries[path],
-        'cpu': all_cpu[path],
-        'data': data
-    }
-
-
-
-
-
-# Using json.dumps with the custom serializer and writing to a file
     try:
         all_data_json = json.dumps(all_data, default=custom_serializer, indent=4)
         with open('/mnt/data/results_data.json', 'w') as file:
@@ -287,32 +313,19 @@ def data_json(all_summaries, all_data):
     except TypeError as e:
         print(f"Serialization error: {e}")
 
-data_json( all_summaries, all_data)
-
-
-
-import re
-import time
-from urllib.parse import urlparse, urlunparse, ParseResult
+data_json(all_summaries, all_data)
 
 def update_image_urls(readme_path):
     version = str(int(time.time()))
-
     with open(readme_path, 'r', encoding='utf-8') as file:
         content = file.read()
-
-    # Define a regular expression pattern to match image URLs
     pattern = r'(!\[.*?\]\()(.*?)(\))'
-
     def clean_and_update_url(match):
         prefix, url, closing = match.groups()
         parsed_url = urlparse(url)
-        # Reconstruct URL without query parameters, then add new 'v' parameter
         new_url = urlunparse(parsed_url._replace(query=f"v={version}"))
         return f"{prefix}{new_url}{closing}"
-
     updated_content = re.sub(pattern, clean_and_update_url, content)
-
     with open(readme_path, 'w', encoding='utf-8') as file:
         file.write(updated_content)
 

@@ -9,8 +9,8 @@ cd "${0%/*}"
 #!/bin/bash
 
 # Default values
-DEFAULT_RUNTIME=500
-DEFAULT_USERS=5000
+DEFAULT_RUNTIME=1000
+DEFAULT_USERS=10000
 DEFAULT_SPAWN_RATE=10
 
 # Check for LOCUST_RUNTIME
@@ -35,8 +35,49 @@ if [ -z "$LOCUST_SPAWN_RATE" ]; then
     export LOCUST_SPAWN_RATE=$DEFAULT_SPAWN_RATE
 else
     echo "LOCUST_SPAWN_RATE is set to $LOCUST_SPAWN_RATE"
+fi 
+
+# Function to get user input for test_type
+get_user_test_type_selection() {
+    echo "Please enter the number corresponding to the test type:"
+    select choice in "db_test" "no_db_test"; do
+        case $choice in
+            db_test )
+                # Use 'return' to indicate the choice by an exit status code
+                return 1
+                ;;
+            no_db_test )
+                # Different exit status code for no_db_test
+                return 2
+                ;;
+            * )
+                echo "Invalid selection. Please enter 1 for db_test or 2 for no_db_test."
+                ;;
+        esac
+    done
+}
+
+# Check if test_type is already set
+if [ -z "$test_type" ]; then
+    # test_type is not set, ask the user to select
+    echo "test_type is not set. Please select one."
+    get_user_test_type_selection
+    result=$?
+    if [ $result -eq 1 ]; then
+        test_type="db_test"
+    elif [ $result -eq 2 ]; then
+        test_type="no_db_test"
+    fi
+    export test_type
+else
+    # test_type is set, just echo the value
+    echo "test_type is set to $test_type."
 fi
 
+echo "test_type is now set to $test_type."
+
+results_dir="tests/results/$test_type"
+mkdir -p $results_dir
 # Rest of the script...
 
 docker compose build
@@ -44,7 +85,7 @@ docker compose up -d
 #!/bin/bash
 
 # File to store the CPU usage data
-output_file="tests/results/cpu_usage.csv"
+output_file="$results_dir/cpu_usage.csv"
 
 # Ensure the results directory exists
 mkdir -p results
@@ -82,11 +123,34 @@ record_cpu_usage() {
 record_cpu_usage &
 
 
+echo "Waiting for tester service to start..."
+# Loop until the tester service starts
+while ! docker compose ps tester | grep "Up" > /dev/null; do
+    sleep 1
+done
+
+# Set the start time when the tester service starts
+start_time=$(date +%s)
+echo "Tester service started. Monitoring runtime..."
+
 # Wait for the tester to finish running
-echo "Waiting for tester service to complete..."
 while docker compose ps tester | grep "Up" > /dev/null; do
+    # Calculate the elapsed time
+    current_time=$(date +%s)
+    elapsed_time=$((current_time - start_time))
+
+    # Calculate remaining time
+    remaining_time=$((LOCUST_RUNTIME - elapsed_time))
+    if [ $remaining_time -le 0 ]; then
+        remaining_time=0
+    fi
+
+    # Echo the remaining time, overwriting the previous line
+    echo -ne "Remaining time: $remaining_time seconds\r"
     sleep 5
 done
+echo -e "\nTester service is no longer running."
+
 
 # Check if the tester service has exited
 if docker compose ps -a tester | grep "Exit" > /dev/null; then
@@ -97,4 +161,3 @@ if docker compose ps -a tester | grep "Exit" > /dev/null; then
 else
     echo "Tester service did not run or has not completed. No action taken."
 fi
-
