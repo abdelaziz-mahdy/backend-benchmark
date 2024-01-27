@@ -58,6 +58,8 @@ for script in "${scripts[@]}"; do
 
         # Increment the counter
         ((counter++))
+        echo "Sleeping for 5 seconds..."
+        sleep 5
     done
 done
 
