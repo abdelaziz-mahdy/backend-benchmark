@@ -171,19 +171,22 @@ def plot_summary_of_all(summaries, ax):
         for metric in all_metrics:
             transposed_summaries[metric][path] = summary.get(metric, 'N/A')
 
-    # Initialize table data
+        # Initialize table data
     table_data = []
 
     # Define a dictionary to store combined scores for sorting
     combined_scores = {path: 0 for path in file_paths}
 
+
     # Prepare data for table and calculate combined scores
     for metric in all_metrics:
         row = [metric]
+        metric_values = [transposed_summaries[metric][path] for path in file_paths if transposed_summaries[metric][path] != 'N/A']
+        base_val = min(metric_values) if metric in lower_is_better_metrics else max(metric_values)
+
         for path in file_paths:
             val = transposed_summaries[metric].get(path, 'N/A')
             if val != 'N/A' and len(summaries) != 1:
-                base_val = min(transposed_summaries[metric].values()) if metric in lower_is_better_metrics else max(transposed_summaries[metric].values())
                 diff_in_raw = val - base_val
                 diff = ((diff_in_raw) / base_val) * 100 if base_val != 0 else 0
                 is_better = (diff_in_raw <= 0 and metric in lower_is_better_metrics) or (diff_in_raw >= 0 and metric in higher_is_better_metrics)
@@ -191,7 +194,8 @@ def plot_summary_of_all(summaries, ax):
                 formatted_val = f"{val:.2f} ({diff:.2f}%)"
                 
                 # Update combined scores for sorting
-                combined_scores[path] += diff if is_better else -diff
+                score_update = diff if is_better else -abs(diff)
+                combined_scores[path] += score_update
             else:
                 color = 'black'
                 formatted_val = f"{val:.2f}"
@@ -201,24 +205,38 @@ def plot_summary_of_all(summaries, ax):
     # Sort file_paths based on combined scores
     sorted_file_paths = sorted(file_paths, key=lambda x: combined_scores[x], reverse=True)
 
-    # Extracting only the text part of each cell
-    extracted_cell_text = [[cell[0] if isinstance(cell, tuple) else cell for cell in row] for row in table_data]
+    # Reorganize the table data according to the sorted file paths
+    sorted_table_data = []
+    for row in table_data:
+        sorted_row = [row[0]] + [row[file_paths.index(path) + 1] for path in sorted_file_paths]
+        sorted_table_data.append(sorted_row)
+
+    # Extracting only the text part of each cell for the sorted table
+    extracted_cell_text = [[cell[0] if isinstance(cell, tuple) else cell for cell in row] for row in sorted_table_data]
     col_labels = ['Metric'] + sorted_file_paths
 
-    # Creating the table
+    # Creating the sorted table
     table = ax.table(cellText=np.array(extracted_cell_text, dtype=object), colLabels=col_labels, loc='center')
     if len(summaries) != 1:
         for (i, j), cell in table.get_celld().items():
             if i == 0 or j == 0:
                 continue
-            original_cell = table_data[i-1][sorted_file_paths.index(file_paths[j-1])+1]
+            original_cell = sorted_table_data[i-1][j]
             color = original_cell[1] if isinstance(original_cell, tuple) else 'black'
             cell.get_text().set_color(color)
 
     table.auto_set_font_size(True)
     table.scale(1, 2)
     ax.axis('off')
-    ax.set_title('Results and Percentage Differences for All Metrics')
+    if len(summaries) == 1:
+        ax.set_title('Service Performance Comparison with Percentage Differences')
+
+    else:
+        ax.set_title('Service Performance Comparison with Percentage Differences (best on the left)')
+        ax.text(0.5, -0.1, "Note: Green indicates better performance, Red indicates worse performance.", ha='center')
+    
+
+    
 # Function to validate and convert summary values to numeric
 def validate_and_convert_to_numeric(summary):
     numeric_summary = {}
@@ -263,7 +281,7 @@ for file_path in file_paths:
 # You may need to adjust the plotting function to handle data segregated by parent directory
 # compare_and_plot(all_data, all_summaries, all_cpu)
 for parent_dir in all_data:
-    compare_and_plot(all_data[parent_dir], all_summaries[parent_dir], all_cpu[parent_dir],custom_result_file_name=parent_dir)
+    compare_and_plot(all_data[parent_dir], all_summaries[parent_dir], all_cpu[parent_dir],custom_result_file_name="comparison_graph_"+parent_dir)
 def data_json(all_summaries, all_data):
     def custom_serializer(obj):
         if isinstance(obj, pd.DataFrame):
