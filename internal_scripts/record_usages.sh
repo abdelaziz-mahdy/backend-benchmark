@@ -1,4 +1,64 @@
 
+#!/bin/bash
+
+# Variables
+env_file="$results_dir/env_vars_and_hashes.txt"
+
+# Ensure the results directory exists
+mkdir -p "$results_dir"
+
+# Function to get Docker image hash
+get_image_hash() {
+    docker image ls --no-trunc | grep "$1" | awk '{print $3}' | head -n 1
+}
+
+# Function to record Docker image hashes and environment variables
+record_env_and_hashes() {
+    # Get image hashes
+    benchmark_hash=$(get_image_hash "benchmark")
+    db_hash=$(get_image_hash "db")
+    # tester_hash=$(get_image_hash "tester")
+
+    # Record environment variables and hashes
+    echo "BENCHMARK_HASH=$benchmark_hash" > "$env_file"
+    echo "DB_HASH=$db_hash" >> "$env_file"
+    # echo "TESTER_HASH=$tester_hash" >> "$env_file"
+    echo "LOCUST_ARGS='$LOCUST_ARGS'" >> "$env_file"
+    echo "LOCUST_RUNTIME='$LOCUST_RUNTIME'" >> "$env_file"
+    echo "LOCUST_USERS='$LOCUST_USERS'" >> "$env_file"
+    echo "LOCUST_SPAWN_RATE='$LOCUST_SPAWN_RATE'" >> "$env_file"
+}
+
+# Function to check if the current environment and hashes match the recorded ones
+check_env_and_hashes() {
+    if [ -f "$env_file" ]; then
+        source "$env_file"
+
+        current_benchmark_hash=$(get_image_hash "benchmark")
+        current_db_hash=$(get_image_hash "db")
+        # current_tester_hash=$(get_image_hash "tester")
+
+        # if [ "$BENCHMARK_HASH" == "$current_benchmark_hash" ] && [ "$DB_HASH" == "$current_db_hash" ] && [ "$TESTER_HASH" == "$current_tester_hash" ] && [ "$LOCUST_ARGS" == "$LOCUST_ARGS" ] && [ "$LOCUST_RUNTIME" == "$LOCUST_RUNTIME" ] && [ "$LOCUST_USERS" == "$LOCUST_USERS" ] && [ "$LOCUST_SPAWN_RATE" == "$LOCUST_SPAWN_RATE" ]; then
+        if [ "$BENCHMARK_HASH" == "$current_benchmark_hash" ] && [ "$DB_HASH" == "$current_db_hash" ] && [ "$LOCUST_ARGS" == "$LOCUST_ARGS" ] && [ "$LOCUST_RUNTIME" == "$LOCUST_RUNTIME" ] && [ "$LOCUST_USERS" == "$LOCUST_USERS" ] && [ "$LOCUST_SPAWN_RATE" == "$LOCUST_SPAWN_RATE" ]; then
+
+            echo "Environment and variables match the previous run. Skipping certain actions."
+            return 0
+        else
+            echo "Environment or variables have changed. Proceeding with the script."
+            return 1
+        fi
+    else
+        echo "No previous environment recorded. Proceeding with the script."
+        return 1
+    fi
+}
+
+# Check the environment and hashes at the beginning of the script
+if check_env_and_hashes; then
+    # If the function returns 0, skip to the end or perform only the required actions
+    exit 0
+fi
+
 docker compose build
 docker compose up -d
 #!/bin/bash
@@ -84,6 +144,7 @@ echo -e "\nTester service is no longer running."
 # Check if the tester service has exited
 if docker compose ps -a tester | grep "Exit" > /dev/null; then
     echo "Tester service has completed. Proceeding to shut down..."
+    record_env_and_hashes
     # Bring down the services and remove them
     docker compose down -v
     echo "Services shut down and volumes removed."
