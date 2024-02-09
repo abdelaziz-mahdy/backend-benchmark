@@ -55,10 +55,17 @@ counter=1
 # Define the test types
 test_types=("db_test" "no_db_test")
 
-# Loop through each script
 for script in "${scripts[@]}"; do
     for test_type in "${test_types[@]}"; do
+        # Calculate total remaining runtime
+        remaining_tests=$((total_scripts - counter + 1))
+        total_remaining_seconds=$((remaining_tests * LOCUST_RUNTIME))
+        minutes=$((total_remaining_seconds / 60))
+        seconds=$((total_remaining_seconds % 60))
+
         echo "Running script $counter out of $total_scripts: $script with test_type=$test_type"
+        echo "Estimated remaining time: $minutes minutes, $seconds seconds"
+        
         export test_type=$test_type
         bash "$script"
         echo "Finished running: $script with test_type=$test_type"
@@ -69,6 +76,5 @@ for script in "${scripts[@]}"; do
         sleep 5
     done
 done
-
 cd scripts/graphs
 bash create_graphs.sh

@@ -1,8 +1,8 @@
-version: '3.7'
+version: "3.7"
 
 services:
   db:
-    image: postgres:14.1
+    image: postgres:16.1
     # ports:
     #   - '8090:5432'
     environment:
@@ -25,7 +25,7 @@ services:
       - REDIS_REPLICATION_MODE=master
   benchmark:
     restart: always
-    build: 
+    build:
       context: ./
       dockerfile: ./Dockerfile
     volumes:

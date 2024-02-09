@@ -1,8 +1,8 @@
-version: '3.9'
+version: "3.9"
 
 services:
   benchmark:
-    build: 
+    build:
       context: ./benchmark
       dockerfile: ./Dockerfile
     ports:
@@ -21,7 +21,7 @@ services:
       timeout: 10s
       retries: 10
   db:
-    image: postgres:14.1
+    image: postgres:16.1
     ports:
       - "5432:5432"
     environment:
@@ -50,7 +50,7 @@ services:
       --spawn-rate ${LOCUST_SPAWN_RATE} 
       -H http://benchmark:8080
       ${LOCUST_ARGS}
-  # ports:
+    # ports:
     #   - 8089:8089
     depends_on:
       benchmark:

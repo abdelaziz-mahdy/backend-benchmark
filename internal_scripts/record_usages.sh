@@ -69,8 +69,13 @@ while docker compose ps tester | grep "Up" > /dev/null; do
         remaining_time=0
     fi
 
-    # Echo the remaining time, overwriting the previous line
-    echo -ne "Remaining time: $remaining_time seconds\r"
+    # Assuming remaining_time is in seconds
+    minutes=$((remaining_time / 60))
+    seconds=$((remaining_time % 60))
+
+    # Display the remaining time in minutes and seconds, overwriting the previous line
+    echo -ne "Remaining time: $minutes minutes, $seconds seconds\r"
+
     sleep 5
 done
 echo -e "\nTester service is no longer running."
