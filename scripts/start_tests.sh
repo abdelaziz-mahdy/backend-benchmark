@@ -5,6 +5,17 @@
 
 
 #!/bin/bash
+#!/bin/bash
+
+# Get device (system) name
+deviceName=$(hostname)
+
+# Get CPU information
+cpuInfo=$(lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//')
+
+# Print the results
+echo "Device Name: $deviceName"
+echo "CPU Info: $cpuInfo"
 
 # Save the current directory
 dir=$(pwd)

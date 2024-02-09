@@ -75,7 +75,7 @@ services:
       --users ${LOCUST_USERS} 
       --spawn-rate ${LOCUST_SPAWN_RATE} 
       -H http://benchmark:8000
-      --processes -1
+      ${LOCUST_ARGS}
     # ports:
     #   - 8089:8089
     depends_on:

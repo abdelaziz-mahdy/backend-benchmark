@@ -15,33 +15,32 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-  pgbouncer:
-    image: edoburu/pgbouncer
-    environment:
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_HOST=db
-      # - DB_NAME=test
-      - POOL_MODE=transaction
-      - ADMIN_USERS=postgres,dbuser
-      - AUTH_TYPE=scram-sha-256
-      - MAX_CLIENT_CONN=100000
-    # ports:
-    #   - "5432:5432"
-    depends_on:
-      - db
-    healthcheck:
-      test: "pg_isready --host localhost  -U postgres"
-      interval: 5s
-      timeout: 5s
-      retries: 5
+
+  # pgbouncer:
+  #   image: edoburu/pgbouncer
+  #   environment:
+  #     - DB_USER=postgres
+  #     - DB_PASSWORD=postgres
+  #     - DB_HOST=db
+  #     # - DB_NAME=test
+  #     - POOL_MODE=transaction
+  #     - ADMIN_USERS=postgres,dbuser
+  #     - AUTH_TYPE=scram-sha-256
+  #     - MAX_CLIENT_CONN=100000
+  #   # ports:
+  #   #   - "5432:5432"
+  #   depends_on:
+  #     - db
+  #   healthcheck:
+  #     test: "pg_isready --host localhost  -U postgres"
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
   benchmark:
     restart: always
     build: 
-      context: ./benchmark
+      context: ./
       dockerfile: ./Dockerfile
-    volumes:
-      - "/app/notes/migrations/"
 
     ports:
       - "${PORT:-8000}:8000"
@@ -50,7 +49,8 @@ services:
       - DATABASE_NAME=postgres
       - DATABASE_USER=postgres
       - DATABASE_PASSWORD=postgres
-      - DATABASE_HOST=pgbouncer
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
     healthcheck:
       test: "curl --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://127.0.0.1:8000/"
       start_period: 30s
@@ -58,18 +58,17 @@ services:
       timeout: 10s
       retries: 10
     depends_on:
-      pgbouncer:
-        condition: service_healthy
+      # pgbouncer:
+      #   condition: service_healthy
       db:
         condition: service_healthy
-
   tester:
     image: locustio/locust
     volumes:
       - ./tests:/mnt/locust
       - ./tests/results/${test_type}:/home/locust/
     command: >
-      -f /mnt/locust/${test_type}.py 
+      -f /mnt/locust/${test_type}.py  
       --csv benchmark 
       --run-time ${LOCUST_RUNTIME} 
       --headless 
@@ -78,8 +77,9 @@ services:
       -H http://benchmark:8000
       ${LOCUST_ARGS}
 
-  # ports:
+    # ports:
     #   - 8089:8089
     depends_on:
+
       benchmark:
         condition: service_healthy

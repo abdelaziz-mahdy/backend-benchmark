@@ -52,9 +52,10 @@ The benchmarks are categorized into two sections:
   - **Test Types:** Same as Python Django Sync, but without pgbouncer .
 
 ### Go
-
   - **Test Types:** Same as Python Django Sync, but without pgbouncer.
 
+### Rust 
+  - **Test Types:** Same as Python Django Sync, but without pgbouncer.
 ### Testing Tool: Locust
 
 - **Configuration:**
@@ -62,9 +63,7 @@ The benchmarks are categorized into two sections:
   - **Spawn Rate:** 10 users/second
   - **Test Duration:** 1000 seconds
 
-## Pending Benchmarks
 
-1. **Rust**
 
 ## Benchmark Visualization
 
