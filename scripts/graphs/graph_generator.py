@@ -298,6 +298,7 @@ def data_json(all_summaries, all_data):
                 all_summaries[parent_dir][path].fillna(0, inplace=True)
             if isinstance(all_cpu[parent_dir][path], pd.DataFrame):
                 all_cpu[parent_dir][path].fillna(0, inplace=True)
+            
             all_data[parent_dir][path] = {
                 'service': get_adjusted_file_name(path),
                 'summary': all_summaries[parent_dir][path],
@@ -305,10 +306,12 @@ def data_json(all_summaries, all_data):
                 'data': data
             }
 
+
     try:
         all_data_json = json.dumps(all_data, default=custom_serializer, indent=4)
         with open('/mnt/data/results_data.json', 'w') as file:
             file.write(all_data_json)
+        
         print("JSON data successfully written to file.")
     except TypeError as e:
         print(f"Serialization error: {e}")

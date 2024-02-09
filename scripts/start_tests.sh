@@ -3,36 +3,40 @@
 # Script name: run_docker_build_and_run.sh
 #!/bin/bash
 
-# Default values
-DEFAULT_RUNTIME=1000
-DEFAULT_USERS=10000
-DEFAULT_SPAWN_RATE=10
 
-# Check for LOCUST_RUNTIME
-if [ -z "$LOCUST_RUNTIME" ]; then
-    echo "Warning: LOCUST_RUNTIME is not set. Using default value: $DEFAULT_RUNTIME"
-    export LOCUST_RUNTIME=$DEFAULT_RUNTIME
-else
-    echo "LOCUST_RUNTIME is set to $LOCUST_RUNTIME"
+#!/bin/bash
+
+# Save the current directory
+dir=$(pwd)
+
+# Flag to check if the script is found
+found=0
+
+# Loop through the current and parent directories
+while true; do
+  # Check if the script exists in the current directory
+  if [[ -f "$dir/internal_scripts/set_required_envs.sh" ]]; then
+    # Script found, execute it
+    echo "Found script at $dir/internal_scripts/set_required_envs.sh"
+    . "$dir/internal_scripts/set_required_envs.sh"
+    found=1
+    break
+  else
+    # Move to the parent directory
+    parentdir=$(dirname "$dir")
+    # Check if we have reached the root directory
+    if [[ "$dir" == "$parentdir" ]]; then
+      break
+    fi
+    dir=$parentdir
+  fi
+done
+
+# Check if script was not found
+if [[ $found -eq 0 ]]; then
+  echo "Script not found."
+  exit 1
 fi
-
-# Check for LOCUST_USERS
-if [ -z "$LOCUST_USERS" ]; then
-    echo "Warning: LOCUST_USERS is not set. Using default value: $DEFAULT_USERS"
-    export LOCUST_USERS=$DEFAULT_USERS
-else
-    echo "LOCUST_USERS is set to $LOCUST_USERS"
-fi
-
-# Check for LOCUST_SPAWN_RATE
-if [ -z "$LOCUST_SPAWN_RATE" ]; then
-    echo "Warning: LOCUST_SPAWN_RATE is not set. Using default value: $DEFAULT_SPAWN_RATE"
-    export LOCUST_SPAWN_RATE=$DEFAULT_SPAWN_RATE
-else
-    echo "LOCUST_SPAWN_RATE is set to $LOCUST_SPAWN_RATE"
-fi
-
-# Rest of the script...
 
 
 cd ..
