@@ -1,3 +1,0 @@
-Method,Name,Error,Occurrences
-GET,/api/notes/,"RetriesExceeded('http://benchmark:8000/api/notes/', 1, original=timed out)",7091
-POST,/api/notes/,"RetriesExceeded('http://benchmark:8000/api/notes/', 1, original=timed out)",6989

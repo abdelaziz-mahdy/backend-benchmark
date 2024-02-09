@@ -1,4 +1,0 @@
-Type,Name,Request Count,Failure Count,Median Response Time,Average Response Time,Min Response Time,Max Response Time,Average Content Size,Requests/s,Failures/s,50%,66%,75%,80%,90%,95%,98%,99%,99.9%,99.99%,100%
-POST,/note/noDbEndpoint/,5941973,0,4,5.88542307412033,0,923,16.0,5930.180172922121,0.0,4,6,8,8,10,11,14,30,110,780,920
-POST,/note/noDbEndpoint2/,5939103,0,4,5.898013555245632,0,923,17.0,5927.315868911267,0.0,4,6,8,8,10,11,14,30,120,790,920
-,Aggregated,11881076,0,4,5.891716794000812,0,923,16.499879219693568,11857.496041833389,0.0,4,6,8,8,10,11,14,30,110,780,920

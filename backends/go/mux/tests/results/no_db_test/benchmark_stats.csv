@@ -1,4 +1,0 @@
-Type,Name,Request Count,Failure Count,Median Response Time,Average Response Time,Min Response Time,Max Response Time,Average Content Size,Requests/s,Failures/s,50%,66%,75%,80%,90%,95%,98%,99%,99.9%,99.99%,100%
-GET,/no_db_endpoint/,7375933,0,2,3.2299048811858784,0,975,14.0,7366.282406496507,0.0,2,3,4,4,5,6,7,13,100,620,980
-GET,/no_db_endpoint2/,7375937,0,2,3.2275397688456398,0,975,15.0,7366.286401262949,0.0,2,3,4,4,5,6,7,13,100,610,980
-,Aggregated,14751870,0,2,3.2287223246951067,0,975,14.500000135576032,14732.568807759457,0.0,2,3,4,4,5,6,7,13,100,620,980
