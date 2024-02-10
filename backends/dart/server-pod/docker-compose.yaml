@@ -75,7 +75,6 @@ services:
     depends_on:
       benchmark:
         condition: service_healthy
-      tester:
-        condition: service_healthy
+
 volumes:
   benchmark_data:
