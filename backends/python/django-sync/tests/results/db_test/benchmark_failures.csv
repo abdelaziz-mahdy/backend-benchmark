@@ -1,0 +1,4 @@
+Method,Name,Error,Occurrences
+GET,/api/notes/,"""RetriesExceeded('http://benchmark:8000/api/notes/', 1, original=timed out)""",14340
+POST,/api/notes/,"""RetriesExceeded('http://benchmark:8000/api/notes/', 1, original=timed out)""",19808
+POST,/api/notes/,"""BadStatusCode('http://benchmark:8000/api/notes/', code=500)""",1

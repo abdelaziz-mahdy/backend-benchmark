@@ -1,0 +1,3 @@
+Method,Name,Error,Occurrences
+GET,/api/notes/,"""ConnectionRefusedError(111, 'Connection refused')""",382760
+POST,/api/notes/,"""ConnectionRefusedError(111, 'Connection refused')""",382189
