@@ -7,3 +7,10 @@ pub struct Note {
     pub title: String,
     pub content: String,
 }
+
+// Used for creating new notes, does not include an id
+#[derive(Serialize, Deserialize)]
+pub struct NewNote {
+    pub title: String,
+    pub content: String,
+}

@@ -5,6 +5,7 @@ use tokio_postgres::{NoTls, Error};
 use std::fs;
 mod models;
 use models::Note;
+use models::NewNote;
 use anyhow::Result;
 use actix_web::web::Json;
 async fn run_migration(db_pool: &tokio_postgres::Client) -> Result<(), Error> {
@@ -40,7 +41,7 @@ async fn notes(db_pool: web::Data<tokio_postgres::Client>) -> impl Responder {
 }
 
 // Modified create_note function
-async fn create_note(db_pool: web::Data<tokio_postgres::Client>, note: Json<Note>) -> impl Responder {
+async fn create_note(db_pool: web::Data<tokio_postgres::Client>, note: Json<NewNote>) -> impl Responder {
     let result = db_pool.execute(
         "INSERT INTO note (title, content) VALUES ($1, $2)",
         &[&note.title, &note.content],

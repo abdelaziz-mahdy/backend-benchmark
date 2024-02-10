@@ -1,2 +1,2 @@
 Method,Name,Error,Occurrences
-POST,/notes/,"""BadStatusCode('http://benchmark:8000/notes/', code=400)""",26383550
+POST,/notes/,"'CatchResponseError(""BadStatusCode: \'http://benchmark:8000/notes/\', code=400, response_text=Json deserialize error: missing field `id` at line 1 column 62"")'",5005179
