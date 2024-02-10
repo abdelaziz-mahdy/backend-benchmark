@@ -76,8 +76,22 @@ services:
       --spawn-rate ${LOCUST_SPAWN_RATE} 
       -H http://benchmark:8000
       ${LOCUST_ARGS}
+      --master
     # ports:
     #   - 8089:8089
     depends_on:
       benchmark:
+        condition: service_healthy
+  tester_worker:
+    image: locustio/locust
+    volumes:
+      - ./tests:/mnt/locust
+      - ./tests/results/${test_type}:/home/locust/
+    command: >
+      -f /mnt/locust/${test_type}.py 
+      --worker --master-host tester
+    depends_on:
+      benchmark:
+        condition: service_healthy
+      tester:
         condition: service_healthy

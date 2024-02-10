@@ -8,9 +8,9 @@
 
 # Configuration for the main API server.
 apiServer:
-  port: 8080
+  port: 8000
   publicHost: benchmark
-  publicPort: 8080
+  publicPort: 8000
   publicScheme: http
 
 # Configuration for the Insights server.
