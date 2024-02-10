@@ -23,10 +23,10 @@ record_env_and_hashes() {
     echo "BENCHMARK_HASH=$benchmark_hash" > "$env_file"
     echo "DB_HASH=$db_hash" >> "$env_file"
     # echo "TESTER_HASH=$tester_hash" >> "$env_file"
-    echo "LOCUST_ARGS='$LOCUST_ARGS'" >> "$env_file"
-    echo "LOCUST_RUNTIME='$LOCUST_RUNTIME'" >> "$env_file"
-    echo "LOCUST_USERS='$LOCUST_USERS'" >> "$env_file"
-    echo "LOCUST_SPAWN_RATE='$LOCUST_SPAWN_RATE'" >> "$env_file"
+    echo "RECORDED_LOCUST_ARGS='$LOCUST_ARGS'" >> "$env_file"
+    echo "RECORDED_LOCUST_RUNTIME='$LOCUST_RUNTIME'" >> "$env_file"
+    echo "RECORDED_LOCUST_USERS='$LOCUST_USERS'" >> "$env_file"
+    echo "RECORDED_LOCUST_SPAWN_RATE='$LOCUST_SPAWN_RATE'" >> "$env_file"
 }
 
 # Function to check if the current environment and hashes match the recorded ones
@@ -39,7 +39,7 @@ check_env_and_hashes() {
         # current_tester_hash=$(get_image_hash "tester")
 
         # if [ "$BENCHMARK_HASH" == "$current_benchmark_hash" ] && [ "$DB_HASH" == "$current_db_hash" ] && [ "$TESTER_HASH" == "$current_tester_hash" ] && [ "$LOCUST_ARGS" == "$LOCUST_ARGS" ] && [ "$LOCUST_RUNTIME" == "$LOCUST_RUNTIME" ] && [ "$LOCUST_USERS" == "$LOCUST_USERS" ] && [ "$LOCUST_SPAWN_RATE" == "$LOCUST_SPAWN_RATE" ]; then
-        if [ "$BENCHMARK_HASH" == "$current_benchmark_hash" ] && [ "$DB_HASH" == "$current_db_hash" ] && [ "$LOCUST_ARGS" == "$LOCUST_ARGS" ] && [ "$LOCUST_RUNTIME" == "$LOCUST_RUNTIME" ] && [ "$LOCUST_USERS" == "$LOCUST_USERS" ] && [ "$LOCUST_SPAWN_RATE" == "$LOCUST_SPAWN_RATE" ]; then
+        if [ "$BENCHMARK_HASH" == "$current_benchmark_hash" ] && [ "$DB_HASH" == "$current_db_hash" ] && [ "$RECORDED_LOCUST_ARGS" == "$LOCUST_ARGS" ] && [ "$RECORDED_LOCUST_RUNTIME" == "$LOCUST_RUNTIME" ] && [ "$RECORDED_LOCUST_USERS" == "$LOCUST_USERS" ] && [ "$RECORDED_LOCUST_SPAWN_RATE" == "$LOCUST_SPAWN_RATE" ]; then
 
             echo "Environment and variables match the previous run. Skipping certain actions."
             return 0
