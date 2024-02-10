@@ -113,7 +113,7 @@ while ! docker compose ps tester | grep "Up" > /dev/null; do
     sleep 1
 done
 echo "Tester service started. scaling up workers..."
-docker compose up --scale tester_worker=4
+docker compose up --scale tester_worker=4 -d
 
 # Set the start time when the tester service starts
 start_time=$(date +%s)
