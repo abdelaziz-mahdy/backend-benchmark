@@ -39,7 +39,7 @@ services:
   benchmark:
     restart: always
     build:
-      context: ./
+      context: ./src
       dockerfile: ./Dockerfile
 
     ports:

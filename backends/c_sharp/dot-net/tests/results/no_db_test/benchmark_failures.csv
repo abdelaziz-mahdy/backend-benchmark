@@ -1,4 +1,5 @@
 Method,Name,Error,Occurrences
-GET,/api/notes/no_db_endpoint/,"""ConnectionRefusedError(111, 'Connection refused')""",412493
-GET,/api/notes/no_db_endpoint2/,"""ConnectionRefusedError(111, 'Connection refused')""",411601
-GET,/api/notes/no_db_endpoint/,"""gaierror(-3, 'Temporary failure in name resolution')""",1
+GET,/api/notes/no_db_endpoint/,"""ConnectionRefusedError(111, 'Connection refused')""",388972
+GET,/api/notes/no_db_endpoint2/,"""gaierror(-3, 'Temporary failure in name resolution')""",375
+GET,/api/notes/no_db_endpoint2/,"""ConnectionRefusedError(111, 'Connection refused')""",389685
+GET,/api/notes/no_db_endpoint/,"""gaierror(-3, 'Temporary failure in name resolution')""",402
