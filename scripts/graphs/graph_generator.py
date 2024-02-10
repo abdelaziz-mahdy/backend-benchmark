@@ -11,7 +11,7 @@ import pandas as pd
 
 def process_file(file_path):
     # Load the data from the provided file
-    data = pd.read_csv(file_path)
+    data = pd.read_csv(file_path, on_bad_lines='skip')
     # Convert Timestamp to datetime and then to seconds relative to the start
     data['Timestamp'] = pd.to_datetime(data['Timestamp'], unit='s')
     data['Timestamp'] = (data['Timestamp'] - data['Timestamp'].min()).dt.total_seconds()
@@ -38,7 +38,7 @@ import pandas as pd
 
 def process_file_cpu_usage(file_path,summary):
     # Load the data from the provided file
-    data = pd.read_csv(file_path.replace("benchmark_stats_history.csv","cpu_usage.csv"))
+    data = pd.read_csv(file_path.replace("benchmark_stats_history.csv","cpu_usage.csv"), on_bad_lines='skip')
     
     # Convert 'timestamp' to numeric type before converting to datetime
     data['timestamp'] = pd.to_numeric(data['timestamp'], errors='coerce')

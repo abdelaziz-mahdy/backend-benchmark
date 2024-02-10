@@ -2,8 +2,8 @@
 DEFAULT_RUNTIME=1000
 DEFAULT_USERS=10000
 DEFAULT_SPAWN_RATE=10
-DEFAULT_LOCUST_ARGS="--processes -1"
-
+# DEFAULT_LOCUST_ARGS="--processes -1"
+DEFAULT_LOCUST_ARGS=""
 # Check for LOCUST_ARGS
 if [ -z "$LOCUST_ARGS" ]; then
     echo "Warning: LOCUST_ARGS is not set. Using default value: $DEFAULT_LOCUST_ARGS"
