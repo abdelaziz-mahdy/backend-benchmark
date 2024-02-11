@@ -32,27 +32,63 @@ record_env_and_hashes() {
 # Function to check if the current environment and hashes match the recorded ones
 check_env_and_hashes() {
     if [ -f "$env_file" ]; then
-        source "$env_file"
-
+        source "$env_file" # Load the recorded variables
+        changed=false
+        # Get current values for comparison
         current_benchmark_hash=$(get_image_hash "benchmark")
         current_db_hash=$(get_image_hash "db")
-        # current_tester_hash=$(get_image_hash "tester")
+        # Assuming current Locust values are set elsewhere in your script
+        # For example:
+        current_locust_args=$LOCUST_ARGS # Update this based on your script's actual logic
+        current_locust_runtime=$LOCUST_RUNTIME # Ditto
+        current_locust_users=$LOCUST_USERS # Ditto
+        current_locust_spawn_rate=$LOCUST_SPAWN_RATE # Ditto
 
-        # if [ "$BENCHMARK_HASH" == "$current_benchmark_hash" ] && [ "$DB_HASH" == "$current_db_hash" ] && [ "$TESTER_HASH" == "$current_tester_hash" ] && [ "$LOCUST_ARGS" == "$LOCUST_ARGS" ] && [ "$LOCUST_RUNTIME" == "$LOCUST_RUNTIME" ] && [ "$LOCUST_USERS" == "$LOCUST_USERS" ] && [ "$LOCUST_SPAWN_RATE" == "$LOCUST_SPAWN_RATE" ]; then
-        if [ "$BENCHMARK_HASH" == "$current_benchmark_hash" ] && [ "$DB_HASH" == "$current_db_hash" ] && [ "$RECORDED_LOCUST_ARGS" == "$LOCUST_ARGS" ] && [ "$RECORDED_LOCUST_RUNTIME" == "$LOCUST_RUNTIME" ] && [ "$RECORDED_LOCUST_USERS" == "$LOCUST_USERS" ] && [ "$RECORDED_LOCUST_SPAWN_RATE" == "$LOCUST_SPAWN_RATE" ]; then
+        # Compare and report changes for BENCHMARK_HASH and DB_HASH
+        if [ "$BENCHMARK_HASH" != "$current_benchmark_hash" ]; then
+            echo "BENCHMARK_HASH changed: was $BENCHMARK_HASH, now $current_benchmark_hash"
+            changed=true
+        fi
 
-            echo "Environment and variables match the previous run. Skipping certain actions."
-            return 0
-        else
+        if [ "$DB_HASH" != "$current_db_hash" ]; then
+            echo "DB_HASH changed: was $DB_HASH, now $current_db_hash"
+            changed=true
+        fi
+
+        # Compare and report changes for LOCUST_* variables
+        # Note: Comparison includes checking against both recorded and non-recorded (i.e., current) values
+        if [ "$RECORDED_LOCUST_ARGS" != "$current_locust_args" ]; then
+            echo "LOCUST_ARGS changed: was $RECORDED_LOCUST_ARGS, now $current_locust_args"
+            changed=true
+        fi
+
+        if [ "$RECORDED_LOCUST_RUNTIME" != "$current_locust_runtime" ]; then
+            echo "LOCUST_RUNTIME changed: was $RECORDED_LOCUST_RUNTIME, now $current_locust_runtime"
+            changed=true
+        fi
+
+        if [ "$RECORDED_LOCUST_USERS" != "$current_locust_users" ]; then
+            echo "LOCUST_USERS changed: was $RECORDED_LOCUST_USERS, now $current_locust_users"
+            changed=true
+        fi
+
+        if [ "$RECORDED_LOCUST_SPAWN_RATE" != "$current_locust_spawn_rate" ]; then
+            echo "LOCUST_SPAWN_RATE changed: was $RECORDED_LOCUST_SPAWN_RATE, now $current_locust_spawn_rate"
+            changed=true
+        fi
+
+        # Final decision based on changes
+        if [ "$changed" = true ]; then
             echo "Environment or variables have changed. Proceeding with the script."
-            return 1
+            return 1 # Changes detected
+        else
+            echo "Environment and variables match the previous run. Skipping certain actions."
+            return 0 # No changes detected
         fi
     else
-        echo "No previous environment recorded. Proceeding with the script."
-        return 1
+        echo "No previous environment recorded."
     fi
 }
-
 # Check the environment and hashes at the beginning of the script
 if check_env_and_hashes; then
     # If the function returns 0, skip to the end or perform only the required actions
