@@ -1,3 +1,1 @@
 Method,Name,Error,Occurrences
-GET,/notes/,"'CatchResponseError(""BadStatusCode: \'http://benchmark:8000/notes/\', code=0, response_text=None"")'",402044
-POST,/notes/,"'CatchResponseError(""BadStatusCode: \'http://benchmark:8000/notes/\', code=0, response_text=None"")'",402516
