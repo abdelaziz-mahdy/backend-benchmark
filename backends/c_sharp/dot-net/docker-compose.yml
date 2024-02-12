@@ -15,7 +15,7 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: "curl --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://127.0.0.1:8080/"
+      test: "curl --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://127.0.0.1:8000/"
       start_period: 30s
       interval: 15s
       timeout: 10s
