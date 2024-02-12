@@ -6,7 +6,7 @@ services:
       context: ./benchmark
       dockerfile: ./Dockerfile
     ports:
-      - "8080:8080"
+      - "8000:8000"
     environment:
       ConnectionStrings__DefaultConnection: "Host=db;Database=postgres;Username=postgres;Password=postgres"
     # volumes:
