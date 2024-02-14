@@ -308,7 +308,7 @@ def data_json(all_summaries, all_data):
 
 
     try:
-        all_data_json = json.dumps(all_data, default=custom_serializer, indent=4)
+        all_data_json = json.dumps(all_data, default=custom_serializer)
         with open('/mnt/data/results_data.json', 'w') as file:
             file.write(all_data_json)
         
