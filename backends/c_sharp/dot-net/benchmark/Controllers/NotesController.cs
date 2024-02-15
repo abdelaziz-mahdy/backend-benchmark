@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace csharp_crud_api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class NotesController : ControllerBase
 {
     private readonly NoteContext _context;

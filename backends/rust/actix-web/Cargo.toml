@@ -1,0 +1,41 @@
+[package]
+name = "actix-web-app"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Web server framework
+actix-web = "4.0"
+
+# Asynchronous runtime
+tokio = { version = "1", features = ["full"] }
+
+# PostgreSQL asynchronous driver
+tokio-postgres = "0.7.5"
+
+# Environment variable management
+dotenv = "0.15.0"
+
+# Futures utility library
+futures = "0.3"
+
+# Serialization/Deserialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# This dependency is useful for handling CORS in your Actix-web application,
+# if you need to interact with web frontends from different origins.
+actix-cors = "0.6.0"
+
+anyhow = "1.0"
+
+# Optional: include this if you're planning on using static files.
+actix-files = "0.6.0"
+
+
+# Optional: include this if you need to log requests and responses.
+actix-web-httpauth = "0.6.0"
+log = "0.4.14"
+env_logger = "0.9.0"

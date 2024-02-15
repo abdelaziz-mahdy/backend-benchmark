@@ -1,1 +1,3 @@
 Method,Name,Error,Occurrences
+GET,/no_db_endpoint/,"""RetriesExceeded('http://benchmark:8000/no_db_endpoint/', 1, original=timed out)""",14561
+GET,/no_db_endpoint2/,"""RetriesExceeded('http://benchmark:8000/no_db_endpoint2/', 1, original=timed out)""",14868

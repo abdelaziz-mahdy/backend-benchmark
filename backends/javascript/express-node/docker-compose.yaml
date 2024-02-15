@@ -1,11 +1,11 @@
 services:
   db:
-    image: postgres:14.1
+    image: postgres:16.1
     restart: always
     # volumes:
     #   # - ./data/db:/var/lib/postgresql/data
     #   # - ./pg_hba.conf:/var/lib/foo/pg_hba.conf
-    # command: postgres -c hba_file=/var/lib/foo/pg_hba.conf 
+    # command: postgres -c hba_file=/var/lib/foo/pg_hba.conf
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
@@ -38,7 +38,7 @@ services:
   #     retries: 5
   benchmark:
     restart: always
-    build: 
+    build:
       context: ./
       dockerfile: ./Dockerfile
 
@@ -67,16 +67,28 @@ services:
       - ./tests:/mnt/locust
       - ./tests/results/${test_type}:/home/locust/
     command: >
-      -f /mnt/locust/${test_type}.py  
+      -f /mnt/locust/${test_type}.py 
       --csv benchmark 
       --run-time ${LOCUST_RUNTIME} 
       --headless 
       --users ${LOCUST_USERS} 
       --spawn-rate ${LOCUST_SPAWN_RATE} 
       -H http://benchmark:8000
+      ${LOCUST_ARGS}
+      --master
     # ports:
     #   - 8089:8089
     depends_on:
-
+      benchmark:
+        condition: service_healthy
+  tester_worker:
+    image: locustio/locust
+    volumes:
+      - ./tests:/mnt/locust
+      - ./tests/results/${test_type}:/home/locust/
+    command: >
+      -f /mnt/locust/${test_type}.py 
+      --worker --master-host tester
+    depends_on:
       benchmark:
         condition: service_healthy

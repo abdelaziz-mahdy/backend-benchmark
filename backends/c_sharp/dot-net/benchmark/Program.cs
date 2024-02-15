@@ -67,5 +67,4 @@ app.MapGet("/", async ([FromServices] NoteContext dbContext) =>
 });
 
 
-app.Run();
-
+app.Run("");
