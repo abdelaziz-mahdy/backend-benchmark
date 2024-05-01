@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -17,7 +16,7 @@ var db *sql.DB
 var serverReady bool
 
 func runMigration() {
-	data, err := ioutil.ReadFile("./migration.sql")
+	data, err := os.ReadFile("./migration.sql")
 	if err != nil {
 		log.Fatalf("Unable to read migration file: %v", err)
 	}
