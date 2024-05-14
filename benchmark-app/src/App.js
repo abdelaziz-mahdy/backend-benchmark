@@ -52,41 +52,43 @@ function App() {
 
   return (
     <div className="App">
-      <h1>Service Benchmarks</h1>
-      <div className="sidebar">
-        <div>
-          <label>Select Services:</label>
-          {Object.keys(data).map(service => (
-            <div key={service}>
-              <input
-                type="checkbox"
-                value={service}
-                onChange={handleServiceChange}
-                checked={selectedServices.includes(service)}
-              />
-              {service}
-            </div>
-          ))}
-        </div>
-        {selectedServices.length > 0 && (
-          <div>
-            <label>Fields for Y-axis:</label>
-            {Object.keys(data[selectedServices[0]][0])
-              .filter(field => field !== 'Timestamp') // Exclude Timestamp from selection
-              .map(field => (
-                <div key={field}>
-                  <input
-                    type="checkbox"
-                    value={field}
-                    onChange={handleFieldChange}
-                    checked={selectedFields.includes(field)}
-                  />
-                  {field}
-                </div>
-              ))}
+      <header>
+        <h1>Service Benchmarks</h1>
+        <div className="service-selection">
+          <div className="services">
+            <label>Select Services:</label>
+            {Object.keys(data).map(service => (
+              <div key={service}>
+                <input
+                  type="checkbox"
+                  value={service}
+                  onChange={handleServiceChange}
+                  checked={selectedServices.includes(service)}
+                />
+                {service}
+              </div>
+            ))}
           </div>
-        )}
-      </div>
+          {selectedServices.length > 0 && (
+            <div className="fields">
+              <label>Select Fields for Y-axis:</label>
+              {Object.keys(data[selectedServices[0]][0])
+                .filter(field => field !== 'Timestamp') // Exclude Timestamp from selection
+                .map(field => (
+                  <div key={field}>
+                    <input
+                      type="checkbox"
+                      value={field}
+                      onChange={handleFieldChange}
+                      checked={selectedFields.includes(field)}
+                    />
+                    {field}
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      </header>
       <div className="chart-container">
         {selectedServices.length > 0 && selectedFields.length > 0 && (
           <Line data={generateChartData()} />
