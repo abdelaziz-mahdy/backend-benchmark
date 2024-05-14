@@ -1,0 +1,51 @@
+/* src/App.css */
+.App {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+header {
+  padding: 20px;
+  background-color: #f4f4f4;
+  border-bottom: 1px solid #ddd;
+}
+
+.legend {
+  margin-top: 10px;
+}
+
+.main-content {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+}
+
+.services {
+  width: 200px;
+  padding: 20px;
+  background-color: #e0f7fa;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+.fields {
+  width: 200px;
+  padding: 20px;
+  background-color: #e1bee7;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+.chart-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.services label, .fields label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
