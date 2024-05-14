@@ -1,0 +1,22 @@
+/* src/App.css */
+.App {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 300px;
+  padding: 20px;
+  background-color: #f4f4f4;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+.chart-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
