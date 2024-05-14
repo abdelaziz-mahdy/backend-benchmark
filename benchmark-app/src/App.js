@@ -22,13 +22,14 @@ function App() {
   const [selectedFields, setSelectedFields] = useState([]);
 
   useEffect(() => {
-    axios.get('/data.json')
+    const baseURL = window.location.pathname.includes('backend-benchmark') ? '/backend-benchmark' : '';
+    axios.get(`${baseURL}/data.json`)
       .then(response => {
         setData(response.data);
       })
       .catch(error => console.error('Error fetching data:', error));
   }, []);
-
+  
   const handleServiceChange = (event) => {
     const value = event.target.value;
     setSelectedServices(prevServices => (
