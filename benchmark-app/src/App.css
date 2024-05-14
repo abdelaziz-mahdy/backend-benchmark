@@ -11,20 +11,30 @@ header {
   border-bottom: 1px solid #ddd;
 }
 
-.service-selection {
-  display: flex;
-  justify-content: space-between;
+.legend {
   margin-top: 10px;
 }
 
-.services, .fields {
+.main-content {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex: 1;
 }
 
-.services label, .fields label {
-  font-weight: bold;
-  margin-bottom: 5px;
+.services {
+  width: 200px;
+  padding: 20px;
+  background-color: #e0f7fa;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+.fields {
+  width: 200px;
+  padding: 20px;
+  background-color: #e1bee7;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
 }
 
 .chart-container {
@@ -35,3 +45,7 @@ header {
   padding: 20px;
 }
 
+.services label, .fields label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
