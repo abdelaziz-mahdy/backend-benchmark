@@ -53,7 +53,7 @@ function readCSVFiles() {
               return acc;
             }, {});
 
-          fs.writeFileSync(path.join(__dirname, 'public/data.json'), JSON.stringify(sortedData, null, 2));
+          fs.writeFileSync(path.join(__dirname, 'public/data.json'), JSON.stringify(sortedData, null, 0));
         });
     }
   });
