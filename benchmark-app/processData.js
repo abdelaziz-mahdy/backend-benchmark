@@ -3,18 +3,18 @@ const path = require('path');
 const csv = require('csv-parser');
 
 function getAdjustedFileName(filePath) {
-    const ignoredParts = new Set(['tests','results','backend', 'benchmark', 'benchmarks', 'benchmark_stats_history.csv']);
-    const parts = filePath.split(path.sep).map(part => part.toLowerCase());
-    // console.log(parts)
-    // Find the index of the first 'backend' to ignore all preceding parts
-    const backendIndex = parts.indexOf('backends');
-    if (backendIndex === -1) return ''; // If 'backend' is not found, return an empty string
-  
-    const relevantParts = parts.slice(backendIndex + 1).filter(part => !ignoredParts.has(part));
-  
-    return relevantParts.join(' ').replace(/-/g, ' ');
-  }
-  
+  const ignoredParts = new Set(['tests', 'results', 'backend', 'benchmark', 'benchmarks', 'benchmark_stats_history.csv']);
+  const parts = filePath.split(path.sep).map(part => part.toLowerCase());
+
+  // Find the index of the first 'backends' to ignore all preceding parts
+  const backendIndex = parts.indexOf('backends');
+  if (backendIndex === -1) return ''; // If 'backends' is not found, return an empty string
+
+  const relevantParts = parts.slice(backendIndex + 1).filter(part => !ignoredParts.has(part));
+
+  return relevantParts.join(' ').replace(/-/g, ' ');
+}
+
 function readCSVFiles() {
   const directoryPath = path.join(__dirname, '../backends');
   const filePaths = [];
@@ -37,14 +37,25 @@ function readCSVFiles() {
 
   filePaths.forEach(filePath => {
     const serviceName = getAdjustedFileName(filePath);
-    const results = [];
-    fs.createReadStream(filePath)
-      .pipe(csv())
-      .on('data', data => results.push(data))
-      .on('end', () => {
-        data[serviceName] = results;
-        fs.writeFileSync(path.join(__dirname, 'public/data.json'), JSON.stringify(data, null, 2));
-      });
+    if (serviceName) {
+      const results = [];
+      fs.createReadStream(filePath)
+        .pipe(csv())
+        .on('data', row => results.push(row))
+        .on('end', () => {
+          data[serviceName] = results;
+
+          // Sort the data object by keys
+          const sortedData = Object.keys(data)
+            .sort()
+            .reduce((acc, key) => {
+              acc[key] = data[key];
+              return acc;
+            }, {});
+
+          fs.writeFileSync(path.join(__dirname, 'public/data.json'), JSON.stringify(sortedData, null, 2));
+        });
+    }
   });
 }
 
