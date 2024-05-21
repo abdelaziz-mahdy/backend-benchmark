@@ -9,7 +9,7 @@ python = "^3.12"
 django = "*"
 djangorestframework = "*"
 psycopg2 = "*"
-
+gunicorn = "*"
 [tool.poetry.dev-dependencies]
 
 [build-system]
