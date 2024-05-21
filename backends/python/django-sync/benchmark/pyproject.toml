@@ -10,6 +10,7 @@ django = "*"
 djangorestframework = "*"
 psycopg2 = "*"
 gunicorn = "*"
+gevent = "*"
 [tool.poetry.dev-dependencies]
 
 [build-system]
