@@ -87,6 +87,7 @@ check_env_and_hashes() {
         fi
     else
         echo "No previous environment recorded."
+        return 1 # Changes detected
     fi
 }
 # Check the environment and hashes at the beginning of the script
