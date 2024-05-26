@@ -22,11 +22,15 @@ function readCSVFiles() {
   function findFiles(dir) {
     const files = fs.readdirSync(dir);
     files.forEach(file => {
+      try{
       const fullPath = path.join(dir, file);
       if (fs.statSync(fullPath).isDirectory()) {
         findFiles(fullPath);
       } else if (file === 'benchmark_stats_history.csv') {
         filePaths.push(fullPath);
+      }}
+      catch{
+        
       }
     });
   }
