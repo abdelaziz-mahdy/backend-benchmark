@@ -19,11 +19,11 @@ def get_db():
         db.close()
 
 @app.post("/api/notes/", response_model=schemas.Note)
-def create_note(note: schemas.NoteCreate, db: Session = Depends(get_db)):
+async def create_note(note: schemas.NoteCreate, db: Session = Depends(get_db)):
     return crud.create_note(db=db, note=note)
 
 @app.get("/api/notes/", response_model=list[schemas.Note])
-def read_notes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+async def read_notes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     notes = crud.get_notes(db, skip=skip, limit=limit)
     return notes
 @app.get("/", response_class=PlainTextResponse)
