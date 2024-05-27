@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_DB: benchmark
-      POSTGRES_PASSWORD: "tCOmMYFl3g-3fub7-JP78o8fBB5kkXJY"
+      POSTGRES_PASSWORD: '5GTzDZoK5Ntnm8nimI_gG_2nifEhQhP8'
     volumes:
       - benchmark_data:/var/lib/postgresql/data
     healthcheck:
