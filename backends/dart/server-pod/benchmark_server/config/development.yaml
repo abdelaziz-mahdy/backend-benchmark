@@ -8,9 +8,9 @@
 
 # Configuration for the main API server.
 apiServer:
-  port: 8000
-  publicHost: benchmark
-  publicPort: 8000
+  port: 8080
+  publicHost: localhost
+  publicPort: 8080
   publicScheme: http
 
 # Configuration for the Insights server.
@@ -29,13 +29,13 @@ webServer:
 
 # This is the database setup for your server.
 database:
-  host: db
-  port: 5432
+  host: localhost
+  port: 8090
   name: benchmark
   user: postgres
 
 # This is the setup for Redis.
 redis:
   enabled: false
-  host: redis
-  port: 6379
+  host: localhost
+  port: 8091

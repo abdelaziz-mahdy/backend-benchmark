@@ -10,7 +10,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _i1;
 
-abstract class Note extends _i1.TableRow {
+abstract class Note extends _i1.TableRow implements _i1.ProtocolSerialization {
   Note._({
     int? id,
     required this.title,
@@ -23,16 +23,11 @@ abstract class Note extends _i1.TableRow {
     required String content,
   }) = _NoteImpl;
 
-  factory Note.fromJson(
-    Map<String, dynamic> jsonSerialization,
-    _i1.SerializationManager serializationManager,
-  ) {
+  factory Note.fromJson(Map<String, dynamic> jsonSerialization) {
     return Note(
-      id: serializationManager.deserialize<int?>(jsonSerialization['id']),
-      title:
-          serializationManager.deserialize<String>(jsonSerialization['title']),
-      content: serializationManager
-          .deserialize<String>(jsonSerialization['content']),
+      id: jsonSerialization['id'] as int?,
+      title: jsonSerialization['title'] as String,
+      content: jsonSerialization['content'] as String,
     );
   }
 
@@ -62,159 +57,12 @@ abstract class Note extends _i1.TableRow {
   }
 
   @override
-  @Deprecated('Will be removed in 2.0.0')
-  Map<String, dynamic> toJsonForDatabase() {
+  Map<String, dynamic> toJsonForProtocol() {
     return {
-      'id': id,
+      if (id != null) 'id': id,
       'title': title,
       'content': content,
     };
-  }
-
-  @override
-  Map<String, dynamic> allToJson() {
-    return {
-      'id': id,
-      'title': title,
-      'content': content,
-    };
-  }
-
-  @override
-  void setColumn(
-    String columnName,
-    value,
-  ) {
-    switch (columnName) {
-      case 'id':
-        id = value;
-        return;
-      case 'title':
-        title = value;
-        return;
-      case 'content':
-        content = value;
-        return;
-      default:
-        throw UnimplementedError();
-    }
-  }
-
-  @Deprecated('Will be removed in 2.0.0. Use: db.find instead.')
-  static Future<List<Note>> find(
-    _i1.Session session, {
-    _i1.WhereExpressionBuilder<NoteTable>? where,
-    int? limit,
-    int? offset,
-    _i1.Column? orderBy,
-    List<_i1.Order>? orderByList,
-    bool orderDescending = false,
-    bool useCache = true,
-    _i1.Transaction? transaction,
-  }) async {
-    return session.db.find<Note>(
-      where: where != null ? where(Note.t) : null,
-      limit: limit,
-      offset: offset,
-      orderBy: orderBy,
-      orderByList: orderByList,
-      orderDescending: orderDescending,
-      useCache: useCache,
-      transaction: transaction,
-    );
-  }
-
-  @Deprecated('Will be removed in 2.0.0. Use: db.findRow instead.')
-  static Future<Note?> findSingleRow(
-    _i1.Session session, {
-    _i1.WhereExpressionBuilder<NoteTable>? where,
-    int? offset,
-    _i1.Column? orderBy,
-    bool orderDescending = false,
-    bool useCache = true,
-    _i1.Transaction? transaction,
-  }) async {
-    return session.db.findSingleRow<Note>(
-      where: where != null ? where(Note.t) : null,
-      offset: offset,
-      orderBy: orderBy,
-      orderDescending: orderDescending,
-      useCache: useCache,
-      transaction: transaction,
-    );
-  }
-
-  @Deprecated('Will be removed in 2.0.0. Use: db.findById instead.')
-  static Future<Note?> findById(
-    _i1.Session session,
-    int id,
-  ) async {
-    return session.db.findById<Note>(id);
-  }
-
-  @Deprecated('Will be removed in 2.0.0. Use: db.deleteWhere instead.')
-  static Future<int> delete(
-    _i1.Session session, {
-    required _i1.WhereExpressionBuilder<NoteTable> where,
-    _i1.Transaction? transaction,
-  }) async {
-    return session.db.delete<Note>(
-      where: where(Note.t),
-      transaction: transaction,
-    );
-  }
-
-  @Deprecated('Will be removed in 2.0.0. Use: db.deleteRow instead.')
-  static Future<bool> deleteRow(
-    _i1.Session session,
-    Note row, {
-    _i1.Transaction? transaction,
-  }) async {
-    return session.db.deleteRow(
-      row,
-      transaction: transaction,
-    );
-  }
-
-  @Deprecated('Will be removed in 2.0.0. Use: db.update instead.')
-  static Future<bool> update(
-    _i1.Session session,
-    Note row, {
-    _i1.Transaction? transaction,
-  }) async {
-    return session.db.update(
-      row,
-      transaction: transaction,
-    );
-  }
-
-  @Deprecated(
-      'Will be removed in 2.0.0. Use: db.insert instead. Important note: In db.insert, the object you pass in is no longer modified, instead a new copy with the added row is returned which contains the inserted id.')
-  static Future<void> insert(
-    _i1.Session session,
-    Note row, {
-    _i1.Transaction? transaction,
-  }) async {
-    return session.db.insert(
-      row,
-      transaction: transaction,
-    );
-  }
-
-  @Deprecated('Will be removed in 2.0.0. Use: db.count instead.')
-  static Future<int> count(
-    _i1.Session session, {
-    _i1.WhereExpressionBuilder<NoteTable>? where,
-    int? limit,
-    bool useCache = true,
-    _i1.Transaction? transaction,
-  }) async {
-    return session.db.count<Note>(
-      where: where != null ? where(Note.t) : null,
-      limit: limit,
-      useCache: useCache,
-      transaction: transaction,
-    );
   }
 
   static NoteInclude include() {
@@ -239,6 +87,11 @@ abstract class Note extends _i1.TableRow {
       orderByList: orderByList?.call(Note.t),
       include: include,
     );
+  }
+
+  @override
+  String toString() {
+    return _i1.SerializationManager.encode(this);
   }
 }
 
@@ -293,9 +146,6 @@ class NoteTable extends _i1.Table {
       ];
 }
 
-@Deprecated('Use NoteTable.t instead.')
-NoteTable tNote = NoteTable();
-
 class NoteInclude extends _i1.IncludeObject {
   NoteInclude._();
 
@@ -339,7 +189,7 @@ class NoteRepository {
     _i1.OrderByListBuilder<NoteTable>? orderByList,
     _i1.Transaction? transaction,
   }) async {
-    return session.dbNext.find<Note>(
+    return session.db.find<Note>(
       where: where?.call(Note.t),
       orderBy: orderBy?.call(Note.t),
       orderByList: orderByList?.call(Note.t),
@@ -359,7 +209,7 @@ class NoteRepository {
     _i1.OrderByListBuilder<NoteTable>? orderByList,
     _i1.Transaction? transaction,
   }) async {
-    return session.dbNext.findFirstRow<Note>(
+    return session.db.findFirstRow<Note>(
       where: where?.call(Note.t),
       orderBy: orderBy?.call(Note.t),
       orderByList: orderByList?.call(Note.t),
@@ -374,7 +224,7 @@ class NoteRepository {
     int id, {
     _i1.Transaction? transaction,
   }) async {
-    return session.dbNext.findById<Note>(
+    return session.db.findById<Note>(
       id,
       transaction: transaction,
     );
@@ -385,7 +235,7 @@ class NoteRepository {
     List<Note> rows, {
     _i1.Transaction? transaction,
   }) async {
-    return session.dbNext.insert<Note>(
+    return session.db.insert<Note>(
       rows,
       transaction: transaction,
     );
@@ -396,7 +246,7 @@ class NoteRepository {
     Note row, {
     _i1.Transaction? transaction,
   }) async {
-    return session.dbNext.insertRow<Note>(
+    return session.db.insertRow<Note>(
       row,
       transaction: transaction,
     );
@@ -408,7 +258,7 @@ class NoteRepository {
     _i1.ColumnSelections<NoteTable>? columns,
     _i1.Transaction? transaction,
   }) async {
-    return session.dbNext.update<Note>(
+    return session.db.update<Note>(
       rows,
       columns: columns?.call(Note.t),
       transaction: transaction,
@@ -421,41 +271,41 @@ class NoteRepository {
     _i1.ColumnSelections<NoteTable>? columns,
     _i1.Transaction? transaction,
   }) async {
-    return session.dbNext.updateRow<Note>(
+    return session.db.updateRow<Note>(
       row,
       columns: columns?.call(Note.t),
       transaction: transaction,
     );
   }
 
-  Future<List<int>> delete(
+  Future<List<Note>> delete(
     _i1.Session session,
     List<Note> rows, {
     _i1.Transaction? transaction,
   }) async {
-    return session.dbNext.delete<Note>(
+    return session.db.delete<Note>(
       rows,
       transaction: transaction,
     );
   }
 
-  Future<int> deleteRow(
+  Future<Note> deleteRow(
     _i1.Session session,
     Note row, {
     _i1.Transaction? transaction,
   }) async {
-    return session.dbNext.deleteRow<Note>(
+    return session.db.deleteRow<Note>(
       row,
       transaction: transaction,
     );
   }
 
-  Future<List<int>> deleteWhere(
+  Future<List<Note>> deleteWhere(
     _i1.Session session, {
     required _i1.WhereExpressionBuilder<NoteTable> where,
     _i1.Transaction? transaction,
   }) async {
-    return session.dbNext.deleteWhere<Note>(
+    return session.db.deleteWhere<Note>(
       where: where(Note.t),
       transaction: transaction,
     );
@@ -467,7 +317,7 @@ class NoteRepository {
     int? limit,
     _i1.Transaction? transaction,
   }) async {
-    return session.dbNext.count<Note>(
+    return session.db.count<Note>(
       where: where?.call(Note.t),
       limit: limit,
       transaction: transaction,

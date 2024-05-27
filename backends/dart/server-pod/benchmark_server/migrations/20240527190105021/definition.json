@@ -2,116 +2,6 @@
   "moduleName": "benchmark",
   "tables": [
     {
-      "name": "note",
-      "dartName": "Note",
-      "module": "benchmark",
-      "schema": "public",
-      "columns": [
-        {
-          "name": "id",
-          "columnType": 2,
-          "isNullable": false,
-          "columnDefault": "nextval('note_id_seq'::regclass)",
-          "dartType": "int?"
-        },
-        {
-          "name": "title",
-          "columnType": 0,
-          "isNullable": false,
-          "dartType": "String"
-        },
-        {
-          "name": "content",
-          "columnType": 0,
-          "isNullable": false,
-          "dartType": "String"
-        }
-      ],
-      "foreignKeys": [],
-      "indexes": [
-        {
-          "indexName": "note_pkey",
-          "elements": [
-            {
-              "type": 0,
-              "definition": "id"
-            }
-          ],
-          "type": "btree",
-          "isUnique": true,
-          "isPrimary": true
-        }
-      ],
-      "managed": true
-    },
-    {
-      "name": "serverpod_auth_key",
-      "dartName": "AuthKey",
-      "module": "serverpod",
-      "schema": "public",
-      "columns": [
-        {
-          "name": "id",
-          "columnType": 2,
-          "isNullable": false,
-          "columnDefault": "nextval('serverpod_auth_key_id_seq'::regclass)",
-          "dartType": "int?"
-        },
-        {
-          "name": "userId",
-          "columnType": 2,
-          "isNullable": false,
-          "dartType": "int"
-        },
-        {
-          "name": "hash",
-          "columnType": 0,
-          "isNullable": false,
-          "dartType": "String"
-        },
-        {
-          "name": "scopeNames",
-          "columnType": 8,
-          "isNullable": false,
-          "dartType": "List<String>"
-        },
-        {
-          "name": "method",
-          "columnType": 0,
-          "isNullable": false,
-          "dartType": "String"
-        }
-      ],
-      "foreignKeys": [],
-      "indexes": [
-        {
-          "indexName": "serverpod_auth_key_pkey",
-          "elements": [
-            {
-              "type": 0,
-              "definition": "id"
-            }
-          ],
-          "type": "btree",
-          "isUnique": true,
-          "isPrimary": true
-        },
-        {
-          "indexName": "serverpod_auth_key_userId_idx",
-          "elements": [
-            {
-              "type": 0,
-              "definition": "userId"
-            }
-          ],
-          "type": "btree",
-          "isUnique": false,
-          "isPrimary": false
-        }
-      ],
-      "managed": true
-    },
-    {
       "name": "serverpod_cloud_storage",
       "dartName": "CloudStorageEntry",
       "module": "serverpod",
@@ -119,7 +9,7 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_cloud_storage_id_seq'::regclass)",
           "dartType": "int?"
@@ -214,7 +104,7 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_cloud_storage_direct_upload_id_seq'::regclass)",
           "dartType": "int?"
@@ -285,7 +175,7 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_future_call_id_seq'::regclass)",
           "dartType": "int?"
@@ -382,7 +272,7 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_health_connection_info_id_seq'::regclass)",
           "dartType": "int?"
@@ -401,25 +291,25 @@
         },
         {
           "name": "active",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         },
         {
           "name": "closing",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         },
         {
           "name": "idle",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         },
         {
           "name": "granularity",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         }
@@ -469,7 +359,7 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_health_metric_id_seq'::regclass)",
           "dartType": "int?"
@@ -506,7 +396,7 @@
         },
         {
           "name": "granularity",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         }
@@ -560,20 +450,20 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_log_id_seq'::regclass)",
           "dartType": "int?"
         },
         {
           "name": "sessionLogId",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         },
         {
           "name": "messageId",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": true,
           "dartType": "int?"
         },
@@ -597,7 +487,7 @@
         },
         {
           "name": "logLevel",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "protocol:LogLevel"
         },
@@ -621,7 +511,7 @@
         },
         {
           "name": "order",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         }
@@ -677,14 +567,14 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_message_log_id_seq'::regclass)",
           "dartType": "int?"
         },
         {
           "name": "sessionLogId",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         },
@@ -696,7 +586,7 @@
         },
         {
           "name": "messageId",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         },
@@ -738,7 +628,7 @@
         },
         {
           "name": "order",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         }
@@ -782,7 +672,7 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_method_id_seq'::regclass)",
           "dartType": "int?"
@@ -841,7 +731,7 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_migrations_id_seq'::regclass)",
           "dartType": "int?"
@@ -902,7 +792,7 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_query_log_id_seq'::regclass)",
           "dartType": "int?"
@@ -915,13 +805,13 @@
         },
         {
           "name": "sessionLogId",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         },
         {
           "name": "messageId",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": true,
           "dartType": "int?"
         },
@@ -939,7 +829,7 @@
         },
         {
           "name": "numRows",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": true,
           "dartType": "int?"
         },
@@ -963,7 +853,7 @@
         },
         {
           "name": "order",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         }
@@ -1019,14 +909,14 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_readwrite_test_id_seq'::regclass)",
           "dartType": "int?"
         },
         {
           "name": "number",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "dartType": "int"
         }
@@ -1056,7 +946,7 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_runtime_settings_id_seq'::regclass)",
           "dartType": "int?"
@@ -1111,7 +1001,7 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('serverpod_session_log_id_seq'::regclass)",
           "dartType": "int?"
@@ -1154,7 +1044,7 @@
         },
         {
           "name": "numQueries",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": true,
           "dartType": "int?"
         },
@@ -1178,7 +1068,7 @@
         },
         {
           "name": "authenticatedUserId",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": true,
           "dartType": "int?"
         },
@@ -1252,11 +1142,11 @@
   "installedModules": [
     {
       "module": "benchmark",
-      "version": "20240115201111117"
+      "version": "20240527190105021"
     },
     {
       "module": "serverpod",
-      "version": "20240115074235544"
+      "version": "20240516151843329"
     }
   ],
   "migrationApiVersion": 1

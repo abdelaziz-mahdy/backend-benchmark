@@ -9,7 +9,7 @@
       "columns": [
         {
           "name": "id",
-          "columnType": 2,
+          "columnType": 6,
           "isNullable": false,
           "columnDefault": "nextval('note_id_seq'::regclass)",
           "dartType": "int?"
@@ -48,11 +48,11 @@
   "installedModules": [
     {
       "module": "serverpod",
-      "version": "20240115074235544"
+      "version": "20240516151843329"
     },
     {
       "module": "benchmark",
-      "version": "20240115184834452"
+      "version": "20240527190105021"
     }
   ],
   "migrationApiVersion": 1

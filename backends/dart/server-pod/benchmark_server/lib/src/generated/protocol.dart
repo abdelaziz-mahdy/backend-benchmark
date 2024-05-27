@@ -11,16 +11,16 @@ library protocol; // ignore_for_file: no_leading_underscores_for_library_prefixe
 
 import 'package:serverpod/serverpod.dart' as _i1;
 import 'package:serverpod/protocol.dart' as _i2;
-import 'note.dart' as _i3;
-import 'package:benchmark_server/src/generated/note.dart' as _i4;
+import 'example.dart' as _i3;
+import 'note.dart' as _i4;
+import 'package:benchmark_server/src/generated/note.dart' as _i5;
+export 'example.dart';
 export 'note.dart';
 
 class Protocol extends _i1.SerializationManagerServer {
   Protocol._();
 
   factory Protocol() => _instance;
-
-  static final Map<Type, _i1.constructor> customConstructors = {};
 
   static final Protocol _instance = Protocol._();
 
@@ -33,7 +33,7 @@ class Protocol extends _i1.SerializationManagerServer {
       columns: [
         _i2.ColumnDefinition(
           name: 'id',
-          columnType: _i2.ColumnType.integer,
+          columnType: _i2.ColumnType.bigint,
           isNullable: false,
           dartType: 'int?',
           columnDefault: 'nextval(\'note_id_seq\'::regclass)',
@@ -78,28 +78,34 @@ class Protocol extends _i1.SerializationManagerServer {
     Type? t,
   ]) {
     t ??= T;
-    if (customConstructors.containsKey(t)) {
-      return customConstructors[t]!(data, this) as T;
+    if (t == _i3.Example) {
+      return _i3.Example.fromJson(data) as T;
     }
-    if (t == _i3.Note) {
-      return _i3.Note.fromJson(data, this) as T;
+    if (t == _i4.Note) {
+      return _i4.Note.fromJson(data) as T;
     }
-    if (t == _i1.getType<_i3.Note?>()) {
-      return (data != null ? _i3.Note.fromJson(data, this) : null) as T;
+    if (t == _i1.getType<_i3.Example?>()) {
+      return (data != null ? _i3.Example.fromJson(data) : null) as T;
     }
-    if (t == List<_i4.Note>) {
-      return (data as List).map((e) => deserialize<_i4.Note>(e)).toList()
+    if (t == _i1.getType<_i4.Note?>()) {
+      return (data != null ? _i4.Note.fromJson(data) : null) as T;
+    }
+    if (t == List<_i5.Note>) {
+      return (data as List).map((e) => deserialize<_i5.Note>(e)).toList()
           as dynamic;
     }
     try {
       return _i2.Protocol().deserialize<T>(data, t);
-    } catch (_) {}
+    } on _i1.DeserializationTypeNotFoundException catch (_) {}
     return super.deserialize<T>(data, t);
   }
 
   @override
   String? getClassNameForObject(Object data) {
-    if (data is _i3.Note) {
+    if (data is _i3.Example) {
+      return 'Example';
+    }
+    if (data is _i4.Note) {
       return 'Note';
     }
     return super.getClassNameForObject(data);
@@ -107,8 +113,11 @@ class Protocol extends _i1.SerializationManagerServer {
 
   @override
   dynamic deserializeByClassName(Map<String, dynamic> data) {
+    if (data['className'] == 'Example') {
+      return deserialize<_i3.Example>(data['data']);
+    }
     if (data['className'] == 'Note') {
-      return deserialize<_i3.Note>(data['data']);
+      return deserialize<_i4.Note>(data['data']);
     }
     return super.deserializeByClassName(data);
   }
@@ -122,8 +131,8 @@ class Protocol extends _i1.SerializationManagerServer {
       }
     }
     switch (t) {
-      case _i3.Note:
-        return _i3.Note.t;
+      case _i4.Note:
+        return _i4.Note.t;
     }
     return null;
   }
