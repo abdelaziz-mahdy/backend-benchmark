@@ -22,4 +22,4 @@ EXPOSE 8080
 EXPOSE 8081
 EXPOSE 8082
 
-CMD dart ./server --apply-migrations &&  ./server --mode=$runmode --server-id=$serverid --logging=$logging --role=$role
+CMD ./server --apply-migrations &&  ./server --mode=$runmode --server-id=$serverid --logging=$logging --role=$role
