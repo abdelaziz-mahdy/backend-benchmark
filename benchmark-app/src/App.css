@@ -107,7 +107,30 @@ header {
   height: 100%;
 }
 
+@media (max-width: 768px) {
+  .main-content {
+      flex-direction: column;
+  }
+
+  .sidebar, .fields {
+      width: 100%;
+  }
+
+  .chart-container {
+      padding: 10px;
+  }
+
+  .checkbox-container {
+      flex-direction: column;
+      align-items: flex-start;
+  }
+
+  .checkbox-container input[type="checkbox"] {
+      margin-bottom: 5px;
+  }
+}
+
 @keyframes spin {
   0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+   100% { transform: rotate(360deg); }
 }

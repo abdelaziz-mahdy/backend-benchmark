@@ -31,7 +31,7 @@ function App() {
         axios.get(`${baseURL}/data.json`, {
             cancelToken: source.token,
             onDownloadProgress: (progressEvent) => {
-                const total = progressEvent.total;
+                const total = progressEvent.total || 1; // Ensure total is not 0 or undefined
                 const current = progressEvent.loaded;
                 setProgress(Math.floor((current / total) * 100));
             }
@@ -96,7 +96,7 @@ function App() {
             <header>
                 <h1>Service Benchmarks</h1>
                 <div className="legend">
-                    <p className="info-text">Below are the tests and their corresponding colors used:</p>
+                    <p className="info-text">Below are the services and their corresponding colors used in the chart:</p>
                     <ul>
                         {Object.entries(colorMap).map(([service, color]) => (
                             <li key={service} style={{ color }}>
@@ -129,7 +129,7 @@ function App() {
                     <div className="fields">
                         <label>Select Fields for Y-axis:</label>
                         {Object.keys(data[selectedServices[0]].data[0])
-                            .filter(field => !['timestamp','Timestamp', 'Time Difference', 'Name', 'Type'].includes(field)) // Exclude specific fields from selection
+                            .filter(field => !['timestamp', 'Timestamp', 'Time Difference', 'Name', 'Type'].includes(field)) // Exclude specific fields from selection
                             .map(field => (
                                 <div key={field} className="checkbox-container" onClick={() => handleFieldChange({ target: { value: field } })}>
                                     <input
