@@ -45,7 +45,8 @@ header {
   padding: 20px;
 }
 
-.services label, .fields label {
+.services label,
+.fields label {
   font-weight: bold;
   margin-bottom: 5px;
 }
