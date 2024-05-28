@@ -96,7 +96,7 @@ function App() {
             <header>
                 <h1>Service Benchmarks</h1>
                 <div className="legend">
-                    <h2>Legend</h2>
+                    <p className="info-text">Below are the tests and their corresponding colors used:</p>
                     <ul>
                         {Object.entries(colorMap).map(([service, color]) => (
                             <li key={service} style={{ color }}>

@@ -11,12 +11,23 @@ header {
   background-color: #f4f4f4;
   border-bottom: 1px solid #ddd;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .legend {
   margin-top: 10px;
+  text-align: left;
+}
+
+.legend h2 {
+  margin: 10px 0;
+}
+
+.legend .info-text {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 10px;
 }
 
 .legend ul {
@@ -100,5 +111,3 @@ header {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
-
-
