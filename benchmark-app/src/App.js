@@ -3,6 +3,8 @@ import axios from 'axios';
 import { Line } from 'react-chartjs-2';
 import 'chart.js/auto';
 import './App.css'; // Import CSS for styling
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
 
 const colorMap = {
     db_test: '#FF33A8',
@@ -21,18 +23,35 @@ function App() {
     const [selectedServices, setSelectedServices] = useState([]);
     const [selectedFields, setSelectedFields] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [progress, setProgress] = useState(0);
 
     useEffect(() => {
         const baseURL = window.location.pathname.includes('backend-benchmark') ? '/backend-benchmark' : '';
-        axios.get(`${baseURL}/data.json`)
+        const source = axios.CancelToken.source();
+        axios.get(`${baseURL}/data.json`, {
+            cancelToken: source.token,
+            onDownloadProgress: (progressEvent) => {
+                const total = progressEvent.total;
+                const current = progressEvent.loaded;
+                setProgress(Math.floor((current / total) * 100));
+            }
+        })
             .then(response => {
                 setData(response.data);
                 setLoading(false);
             })
             .catch(error => {
-                console.error('Error fetching data:', error);
+                if (axios.isCancel(error)) {
+                    console.log('Request canceled', error.message);
+                } else {
+                    console.error('Error fetching data:', error);
+                }
                 setLoading(false);
             });
+
+        return () => {
+            source.cancel("Component got unmounted");
+        };
     }, []);
 
     const handleServiceChange = (event) => {
@@ -46,6 +65,12 @@ function App() {
         const value = event.target.value;
         setSelectedFields(prevFields => (
             prevFields.includes(value) ? prevFields.filter(field => field !== value) : [...prevFields, value]
+        ));
+    };
+
+    const handleServiceClick = (service) => {
+        setSelectedServices(prevServices => (
+            prevServices.includes(service) ? prevServices.filter(s => s !== service) : [...prevServices, service]
         ));
     };
 
@@ -82,25 +107,37 @@ function App() {
                 </div>
             </header>
             <div className="main-content">
-                <div className="services">
-                    <label>Select Services:</label>
-                    {Object.keys(data).map(service => (
-                        <div key={service}>
-                            <input type="checkbox" value={service} onChange={handleServiceChange} checked={selectedServices.includes(service)} />
-                            <span style={{ color: getColor(service) }}>
-                                {service.replace('no_db_test', '').replace('db_test', '').trim()}
-                            </span>
-                        </div>
-                    ))}
+                <div className="sidebar">
+                    <div className="services">
+                        <label>Select Services:</label>
+                        {Object.keys(data).map(service => (
+                            <div key={service} className="checkbox-container" onClick={() => handleServiceClick(service)}>
+                                <input
+                                    type="checkbox"
+                                    value={service}
+                                    onChange={handleServiceChange}
+                                    checked={selectedServices.includes(service)}
+                                />
+                                <span style={{ color: getColor(service) }}>
+                                    {service.replace('no_db_test', '').replace('db_test', '').trim()}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
                 {selectedServices.length > 0 && (
                     <div className="fields">
                         <label>Select Fields for Y-axis:</label>
                         {Object.keys(data[selectedServices[0]].data[0])
-                            .filter(field => field !== 'Timestamp') // Exclude Timestamp from selection
+                            .filter(field => !['timestamp','Timestamp', 'Time Difference', 'Name', 'Type'].includes(field)) // Exclude specific fields from selection
                             .map(field => (
-                                <div key={field}>
-                                    <input type="checkbox" value={field} onChange={handleFieldChange} checked={selectedFields.includes(field)} />
+                                <div key={field} className="checkbox-container" onClick={() => handleFieldChange({ target: { value: field } })}>
+                                    <input
+                                        type="checkbox"
+                                        value={field}
+                                        onChange={handleFieldChange}
+                                        checked={selectedFields.includes(field)}
+                                    />
                                     {field}
                                 </div>
                             ))}
@@ -108,7 +145,17 @@ function App() {
                 )}
                 <div className="chart-container">
                     {loading ? (
-                        <div>Loading...</div>
+                        <div className="loading-indicator">
+                            <CircularProgressbar
+                                value={progress}
+                                text={`${progress}%`}
+                                styles={buildStyles({
+                                    textSize: '16px',
+                                    pathColor: '#3498db',
+                                    textColor: '#3498db',
+                                })}
+                            />
+                        </div>
                     ) : (
                         selectedServices.length > 0 && selectedFields.length > 0 && (
                             <Line data={generateChartData()} />

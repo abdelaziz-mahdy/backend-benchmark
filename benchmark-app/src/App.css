@@ -3,26 +3,40 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  font-family: Arial, sans-serif;
 }
 
 header {
   padding: 20px;
   background-color: #f4f4f4;
   border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .legend {
   margin-top: 10px;
 }
 
+.legend ul {
+  list-style: none;
+  padding: 0;
+}
+
+.legend li {
+  margin: 5px 0;
+}
+
 .main-content {
   display: flex;
-  flex-direction: row;
   flex: 1;
 }
 
-.services {
-  width: 200px;
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 220px;
   padding: 20px;
   background-color: #e0f7fa;
   border-right: 1px solid #ddd;
@@ -30,11 +44,40 @@ header {
 }
 
 .fields {
-  width: 200px;
+  display: flex;
+  flex-direction: column;
+  width: 220px;
   padding: 20px;
   background-color: #e1bee7;
   border-right: 1px solid #ddd;
   overflow-y: auto;
+}
+
+.services label, .fields label {
+  font-weight: bold;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.checkbox-container input[type="checkbox"] {
+  margin-right: 10px;
+}
+
+.checkbox-container span {
+  cursor: pointer;
+  display: block;
+  width: 100%;
+}
+
+.checkbox-container:hover {
+  background-color: #f0f0f0;
 }
 
 .chart-container {
@@ -43,10 +86,19 @@ header {
   justify-content: center;
   align-items: center;
   padding: 20px;
+  background-color: #fafafa;
 }
 
-.services label,
-.fields label {
-  font-weight: bold;
-  margin-bottom: 5px;
+.loading-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
 }
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
