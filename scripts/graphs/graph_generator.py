@@ -284,39 +284,71 @@ for file_path in file_paths:
 # compare_and_plot(all_data, all_summaries, all_cpu)
 for parent_dir in all_data:
     compare_and_plot(all_data[parent_dir], all_summaries[parent_dir], all_cpu[parent_dir],custom_result_file_name="comparison_graph_"+parent_dir)
-def data_json(all_summaries, all_data):
+def merge_data_and_cpu(data, cpu):
+    # Ensure data and cpu are sorted by 'Timestamp'
+    data = data.sort_values('Timestamp').reset_index(drop=True)
+    cpu = cpu.sort_values('Timestamp').reset_index(drop=True)
+    
+    # Initialize the columns in data for CPU usage and memory usage
+    data['benchmark_cpu_usage'] = np.nan
+    data['benchmark_mem_usage'] = np.nan
+    data['db_cpu_usage'] = np.nan
+    data['db_mem_usage'] = np.nan
+    
+    # Iterate over each row in the data to merge the CPU information
+    cpu_index = 0
+    cpu_length = len(cpu)
+    
+    for index, row in data.iterrows():
+        # Find the next CPU timestamp that is greater than or equal to the current data timestamp
+        while cpu_index < cpu_length and cpu.loc[cpu_index, 'Timestamp'] < row['Timestamp']:
+            cpu_index += 1
+        
+        # If the CPU index is within the bounds, merge the CPU data
+        if cpu_index < cpu_length:
+            data.at[index, 'benchmark_cpu_usage'] = cpu.loc[cpu_index, 'benchmark_cpu_usage']
+            data.at[index, 'benchmark_mem_usage'] = cpu.loc[cpu_index, 'benchmark_mem_usage']
+            data.at[index, 'db_cpu_usage'] = cpu.loc[cpu_index, 'db_cpu_usage']
+            data.at[index, 'db_mem_usage'] = cpu.loc[cpu_index, 'db_mem_usage']
+    
+    return data
+
+
+def data_json(all_summaries, all_data, all_cpu):
     def custom_serializer(obj):
         if isinstance(obj, pd.DataFrame):
             return obj.to_dict(orient='records')
         raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
 
+    combined_data = {}
+
     for parent_dir in all_data:
         for path, data in all_data[parent_dir].items():
+            service_name = get_adjusted_file_name(path)
             if isinstance(data, pd.DataFrame):
                 data.fillna(0, inplace=True)
             if isinstance(all_summaries[parent_dir][path], pd.DataFrame):
                 all_summaries[parent_dir][path].fillna(0, inplace=True)
             if isinstance(all_cpu[parent_dir][path], pd.DataFrame):
                 all_cpu[parent_dir][path].fillna(0, inplace=True)
-            
-            all_data[parent_dir][path] = {
-                'service': get_adjusted_file_name(path),
+
+            merged_data = merge_data_and_cpu(data, all_cpu[parent_dir][path])
+
+            combined_data[service_name] = {
                 'summary': all_summaries[parent_dir][path],
-                'cpu': all_cpu[parent_dir][path],
-                'data': data
+                'data': merged_data
             }
 
-
     try:
-        all_data_json = json.dumps(all_data, default=custom_serializer)
+        all_data_json = json.dumps(combined_data, default=custom_serializer)
         with open('/mnt/data/results_data.json', 'w') as file:
             file.write(all_data_json)
-        
+
         print("JSON data successfully written to file.")
     except TypeError as e:
         print(f"Serialization error: {e}")
 
-data_json(all_summaries, all_data)
+data_json(all_summaries, all_data, all_cpu)
 
 def update_image_urls(readme_path):
     version = str(int(time.time()))
