@@ -13,7 +13,7 @@ def process_file(file_path):
     # Load the data from the provided file
     data = pd.read_csv(file_path, on_bad_lines='skip')
 
-    data['timestamp'] = pd.to_numeric(data['Timestamp'], errors='coerce')
+    data['timestamp'] = pd.to_numeric(data['Timestamp'], errors='coerce').astype('int').apply(int)
     # Convert Timestamp to datetime and then to seconds relative to the start
     data['Timestamp'] = pd.to_datetime(data['Timestamp'], unit='s')
     data['Timestamp'] = (data['Timestamp'] - data['Timestamp'].min()).dt.total_seconds()
@@ -43,7 +43,7 @@ def process_file_cpu_usage(file_path,summary):
     data = pd.read_csv(file_path.replace("benchmark_stats_history.csv","cpu_usage.csv"), on_bad_lines='skip')
     
     # Convert 'timestamp' to numeric type before converting to datetime
-    data['timestamp'] = pd.to_numeric(data['timestamp'], errors='coerce')
+    data['timestamp'] = pd.to_numeric(data['timestamp'], errors='coerce').astype('int').apply(int)
     data['Timestamp'] = pd.to_datetime(data['timestamp'], unit='s')
     data['Timestamp'] = (data['Timestamp'] - data['Timestamp'].min()).dt.total_seconds()
 
@@ -286,8 +286,19 @@ for file_path in file_paths:
 # compare_and_plot(all_data, all_summaries, all_cpu)
 for parent_dir in all_data:
     compare_and_plot(all_data[parent_dir], all_summaries[parent_dir], all_cpu[parent_dir],custom_result_file_name="comparison_graph_"+parent_dir)
-def merge_data_and_cpu(data, cpu):
-    # Ensure data and cpu are sorted by 'Timestamp'
+# Assuming 'df' is your DataFrame
+def print_all_columns_and_first_five_rows(df):
+    # Set display option to show all columns
+    pd.set_option('display.max_columns', None)
+    
+    # Print the first 5 rows
+    print(df.head())
+def merge_data_and_cpu(data, cpu, print_data=False):
+    if print_data:
+        print_all_columns_and_first_five_rows(data)
+        print_all_columns_and_first_five_rows(cpu)
+
+    # Ensure data and cpu are sorted by 'timestamp'
     data = data.sort_values('timestamp').reset_index(drop=True)
     cpu = cpu.sort_values('timestamp').reset_index(drop=True)
     
@@ -301,17 +312,77 @@ def merge_data_and_cpu(data, cpu):
     cpu_length = len(cpu)
     
     for index, row in data.iterrows():
-        # Move the CPU index forward if the CPU timestamp is less than the current data timestamp
-        while cpu_index < cpu_length and cpu.loc[cpu_index, 'timestamp'] <= row['timestamp']:
+        # Move the CPU index forward if the CPU timestamp is less than or equal to the current data timestamp
+        while cpu_index < cpu_length and float(cpu.loc[cpu_index, 'timestamp']) <= float(row['timestamp']):
             cpu_index += 1
+            if print_data and cpu_index < 5 and cpu_index < cpu_length:
+                print({
+                    "cpu": cpu.loc[cpu_index], 
+                    "cpu_index": cpu_index, 
+                    "cpu_timestamp": cpu.loc[cpu_index, 'timestamp'], 
+                    "data_timestamp": row['timestamp'], 
+                    "cpu_length": cpu_length
+                })
         
-        # If the CPU index is within the bounds and greater than the data timestamp, merge the CPU data
-        if cpu_index < cpu_length:
+        if cpu_index >= cpu_length:
+            break
+
+        if print_data and cpu_index < 5 and cpu_index < cpu_length:
+            print("DONE", {
+                "cpu": cpu.loc[cpu_index], 
+                "cpu_index": cpu_index, 
+                "cpu_timestamp": cpu.loc[cpu_index, 'timestamp'], 
+                "data_timestamp": row['timestamp'], 
+                "cpu_length": cpu_length
+            })
+
+        # If the CPU index is within the bounds and the CPU timestamp is greater than the data timestamp, merge the CPU data
+        if cpu_index < cpu_length and cpu.loc[cpu_index, 'timestamp'] > row['timestamp']:
+            if print_data and cpu_index < 5:
+                print("merging")
             data.at[index, 'benchmark_cpu_usage'] = cpu.loc[cpu_index, 'benchmark_cpu_usage']
             data.at[index, 'benchmark_mem_usage'] = str(cpu.loc[cpu_index, 'benchmark_mem_usage'])
             data.at[index, 'db_cpu_usage'] = cpu.loc[cpu_index, 'db_cpu_usage']
             data.at[index, 'db_mem_usage'] = str(cpu.loc[cpu_index, 'db_mem_usage'])
     
+    return data
+
+def merge_data_and_cpu(data, cpu, print_data=False):
+    # Ensure data and cpu are sorted by 'timestamp'
+    data = data.sort_values('timestamp').reset_index(drop=True)
+    cpu = cpu.sort_values('timestamp').reset_index(drop=True)
+    
+    # Initialize the columns in data for CPU usage and memory usage
+    data['benchmark_cpu_usage'] = None
+    data['benchmark_mem_usage'] = None
+    data['db_cpu_usage'] = None
+    data['db_mem_usage'] = None
+    
+    cpu_index = 0
+    cpu_length = len(cpu)
+    
+    for index, row in data.iterrows():
+        # Move the CPU index forward if the CPU timestamp is less than the current data timestamp
+        while cpu_index < cpu_length and cpu.loc[cpu_index, 'timestamp'] < row['timestamp']:
+            cpu_index += 1
+        
+        if cpu_index >= cpu_length:
+            break
+        
+        # Check if the previous CPU timestamp is less than the current data timestamp
+        if cpu_index > 0 and cpu.loc[cpu_index - 1, 'timestamp'] < row['timestamp']:
+            # Use the previous CPU index for merging as its timestamp is less than the data timestamp
+            prev_cpu_index = cpu_index - 1
+            data.at[index, 'benchmark_cpu_usage'] = cpu.loc[prev_cpu_index, 'benchmark_cpu_usage']
+            data.at[index, 'benchmark_mem_usage'] = str(cpu.loc[prev_cpu_index, 'benchmark_mem_usage'])
+            data.at[index, 'db_cpu_usage'] = cpu.loc[prev_cpu_index, 'db_cpu_usage']
+            data.at[index, 'db_mem_usage'] = str(cpu.loc[prev_cpu_index, 'db_mem_usage'])
+        else:
+            # Remove the CPU and memory fields by setting them to None
+            data.at[index, 'benchmark_cpu_usage'] = None
+            data.at[index, 'benchmark_mem_usage'] = None
+            data.at[index, 'db_cpu_usage'] = None
+            data.at[index, 'db_mem_usage'] = None
     return data
 
 
@@ -323,7 +394,7 @@ def data_json(all_summaries, all_data, all_cpu):
         raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
 
     combined_data = {}
-
+    print_data=True
     for parent_dir in all_data:
         for path, data in all_data[parent_dir].items():
             service_name = get_adjusted_file_name(path)
@@ -334,16 +405,18 @@ def data_json(all_summaries, all_data, all_cpu):
             if isinstance(all_cpu[parent_dir][path], pd.DataFrame):
                 all_cpu[parent_dir][path].fillna(0, inplace=True)
 
-            merged_data = merge_data_and_cpu(data, all_cpu[parent_dir][path])
+            merged_data = merge_data_and_cpu(data, all_cpu[parent_dir][path],print_data)
 
             combined_data[service_name] = {
                 'summary': all_summaries[parent_dir][path],
                 'data': merged_data
             }
 
+            print_data=False
+
     try:
         all_data_json = json.dumps(combined_data, default=custom_serializer)
-        with open('/mnt/data/results_data.json', 'w') as file:
+        with open('/mnt/data/benchmark-app/public/data.json', 'w') as file:
             file.write(all_data_json)
 
         print("JSON data successfully written to file.")
