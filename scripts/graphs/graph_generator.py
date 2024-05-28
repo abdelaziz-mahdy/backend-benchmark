@@ -332,4 +332,47 @@ def update_image_urls(readme_path):
     with open(readme_path, 'w', encoding='utf-8') as file:
         file.write(updated_content)
 
+def update_image_urls(readme_path):
+    version = str(int(time.time()))
+    with open(readme_path, 'r', encoding='utf-8') as file:
+        content = file.read()
+    pattern = r'(!\[.*?\]\()(.*?)(\))'
+    def clean_and_update_url(match):
+        prefix, url, closing = match.groups()
+        parsed_url = urlparse(url)
+        new_url = urlunparse(parsed_url._replace(query=f"v={version}"))
+        return f"{prefix}{new_url}{closing}"
+    updated_content = re.sub(pattern, clean_and_update_url, content)
+    with open(readme_path, 'w', encoding='utf-8') as file:
+        file.write(updated_content)
+
+def generate_dynamic_readme(template_path, output_path, db_endpoint_graphs, static_endpoint_graphs):
+    with open(template_path, 'r', encoding='utf-8') as file:
+        content = file.read()
+
+    version = str(int(time.time()))
+    content = content.replace('{version}', version)
+    content = content.replace('{db_endpoint_graphs}', db_endpoint_graphs)
+    content = content.replace('{static_endpoint_graphs}', static_endpoint_graphs)
+
+    with open(output_path, 'w', encoding='utf-8') as file:
+        file.write(content)
+
+def generate_graph_sections(all_data, section_type):
+    version = str(int(time.time()))
+    graph_sections = ""
+    for file_path, data in all_data.items():
+        file_name = get_adjusted_file_name(file_path)
+        graph_path = file_path.replace("benchmark_stats_history.csv", "graph.png").replace("/mnt/data/", "")
+        graph_section = f"![{file_name} Benchmark Graph]({graph_path}?v={version})"
+        graph_sections += f"- **{file_name}**\n{graph_section}\n\n"
+    return graph_sections
+
+
+# Generate dynamic README.md
+db_endpoint_graphs = generate_graph_sections(all_data['db_test'], 'db_test')
+static_endpoint_graphs = generate_graph_sections(all_data['no_db_test'], 'no_db_test')
+generate_dynamic_readme('/mnt/data/README_template.md', '/mnt/data/README.md', db_endpoint_graphs, static_endpoint_graphs)
+
+# Update image URLs
 update_image_urls('/mnt/data/README.md')
