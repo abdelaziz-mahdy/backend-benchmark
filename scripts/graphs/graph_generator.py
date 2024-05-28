@@ -12,6 +12,8 @@ import pandas as pd
 def process_file(file_path):
     # Load the data from the provided file
     data = pd.read_csv(file_path, on_bad_lines='skip')
+
+    data['timestamp'] = pd.to_numeric(data['Timestamp'], errors='coerce')
     # Convert Timestamp to datetime and then to seconds relative to the start
     data['Timestamp'] = pd.to_datetime(data['Timestamp'], unit='s')
     data['Timestamp'] = (data['Timestamp'] - data['Timestamp'].min()).dt.total_seconds()
@@ -286,8 +288,8 @@ for parent_dir in all_data:
     compare_and_plot(all_data[parent_dir], all_summaries[parent_dir], all_cpu[parent_dir],custom_result_file_name="comparison_graph_"+parent_dir)
 def merge_data_and_cpu(data, cpu):
     # Ensure data and cpu are sorted by 'Timestamp'
-    data = data.sort_values('Timestamp').reset_index(drop=True)
-    cpu = cpu.sort_values('Timestamp').reset_index(drop=True)
+    data = data.sort_values('timestamp').reset_index(drop=True)
+    cpu = cpu.sort_values('timestamp').reset_index(drop=True)
     
     # Initialize the columns in data for CPU usage and memory usage
     data['benchmark_cpu_usage'] = np.nan
@@ -295,23 +297,23 @@ def merge_data_and_cpu(data, cpu):
     data['db_cpu_usage'] = np.nan
     data['db_mem_usage'] = np.nan
     
-    # Iterate over each row in the data to merge the CPU information
     cpu_index = 0
     cpu_length = len(cpu)
     
     for index, row in data.iterrows():
-        # Find the next CPU timestamp that is greater than or equal to the current data timestamp
-        while cpu_index < cpu_length and cpu.loc[cpu_index, 'Timestamp'] < row['Timestamp']:
+        # Move the CPU index forward if the CPU timestamp is less than the current data timestamp
+        while cpu_index < cpu_length and cpu.loc[cpu_index, 'timestamp'] <= row['timestamp']:
             cpu_index += 1
         
-        # If the CPU index is within the bounds, merge the CPU data
+        # If the CPU index is within the bounds and greater than the data timestamp, merge the CPU data
         if cpu_index < cpu_length:
             data.at[index, 'benchmark_cpu_usage'] = cpu.loc[cpu_index, 'benchmark_cpu_usage']
-            data.at[index, 'benchmark_mem_usage'] = cpu.loc[cpu_index, 'benchmark_mem_usage']
+            data.at[index, 'benchmark_mem_usage'] = str(cpu.loc[cpu_index, 'benchmark_mem_usage'])
             data.at[index, 'db_cpu_usage'] = cpu.loc[cpu_index, 'db_cpu_usage']
-            data.at[index, 'db_mem_usage'] = cpu.loc[cpu_index, 'db_mem_usage']
+            data.at[index, 'db_mem_usage'] = str(cpu.loc[cpu_index, 'db_mem_usage'])
     
     return data
+
 
 
 def data_json(all_summaries, all_data, all_cpu):
