@@ -1,4 +1,3 @@
-version: "3.7"
 
 services:
   db:
@@ -8,9 +7,14 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_DB: benchmark
-      POSTGRES_PASSWORD: "tCOmMYFl3g-3fub7-JP78o8fBB5kkXJY"
-    volumes:
-      - benchmark_data:/var/lib/postgresql/data
+      POSTGRES_PASSWORD: "5GTzDZoK5Ntnm8nimI_gG_2nifEhQhP8"
+    # volumes:
+    #   - benchmark_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5      
   redis:
     image: redis:6.2.6
     # ports:
@@ -40,9 +44,9 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
-    # depends_on:
-    #   db:
-    #     condition: service_healthy
+    depends_on:
+      db:
+        condition: service_healthy
 
   tester:
     image: locustio/locust
@@ -76,5 +80,5 @@ services:
       benchmark:
         condition: service_healthy
 
-volumes:
-  benchmark_data:
+# volumes:
+#   benchmark_data:
