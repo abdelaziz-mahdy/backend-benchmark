@@ -1,4 +1,3 @@
-import 'package:benchmark_server/src/generated/protocol.dart';
 import 'package:serverpod/serverpod.dart';
 
 // This is an example endpoint of your server. It's best practice to use the
@@ -18,17 +17,5 @@ class ExampleEndpoint extends Endpoint {
   // passwords, and information about the request being made to the server.
   Future<String> hello(Session session, String name) async {
     return 'Hello $name';
-  }
-
-  Future<void> createNote(Session session, Note note) async {
-    await Note.db.insertRow(session, note);
-  }
-
-  Future<List<Note>> getAllNotes(Session session) async {
-    // By ordering by the id column, we always get the notes in the same order
-    // and not in the order they were updated.
-    return await Note.db.find(
-      session,
-    );
   }
 }

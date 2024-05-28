@@ -12,6 +12,8 @@ import pandas as pd
 def process_file(file_path):
     # Load the data from the provided file
     data = pd.read_csv(file_path, on_bad_lines='skip')
+
+    data['timestamp'] = pd.to_numeric(data['Timestamp'], errors='coerce').astype('int').apply(int)
     # Convert Timestamp to datetime and then to seconds relative to the start
     data['Timestamp'] = pd.to_datetime(data['Timestamp'], unit='s')
     data['Timestamp'] = (data['Timestamp'] - data['Timestamp'].min()).dt.total_seconds()
@@ -41,7 +43,7 @@ def process_file_cpu_usage(file_path,summary):
     data = pd.read_csv(file_path.replace("benchmark_stats_history.csv","cpu_usage.csv"), on_bad_lines='skip')
     
     # Convert 'timestamp' to numeric type before converting to datetime
-    data['timestamp'] = pd.to_numeric(data['timestamp'], errors='coerce')
+    data['timestamp'] = pd.to_numeric(data['timestamp'], errors='coerce').astype('int').apply(int)
     data['Timestamp'] = pd.to_datetime(data['timestamp'], unit='s')
     data['Timestamp'] = (data['Timestamp'] - data['Timestamp'].min()).dt.total_seconds()
 
@@ -284,39 +286,144 @@ for file_path in file_paths:
 # compare_and_plot(all_data, all_summaries, all_cpu)
 for parent_dir in all_data:
     compare_and_plot(all_data[parent_dir], all_summaries[parent_dir], all_cpu[parent_dir],custom_result_file_name="comparison_graph_"+parent_dir)
-def data_json(all_summaries, all_data):
+# Assuming 'df' is your DataFrame
+def print_all_columns_and_first_five_rows(df):
+    # Set display option to show all columns
+    pd.set_option('display.max_columns', None)
+    
+    # Print the first 5 rows
+    print(df.head())
+def merge_data_and_cpu(data, cpu, print_data=False):
+    if print_data:
+        print_all_columns_and_first_five_rows(data)
+        print_all_columns_and_first_five_rows(cpu)
+
+    # Ensure data and cpu are sorted by 'timestamp'
+    data = data.sort_values('timestamp').reset_index(drop=True)
+    cpu = cpu.sort_values('timestamp').reset_index(drop=True)
+    
+    # Initialize the columns in data for CPU usage and memory usage
+    data['benchmark_cpu_usage'] = np.nan
+    data['benchmark_mem_usage'] = np.nan
+    data['db_cpu_usage'] = np.nan
+    data['db_mem_usage'] = np.nan
+    
+    cpu_index = 0
+    cpu_length = len(cpu)
+    
+    for index, row in data.iterrows():
+        # Move the CPU index forward if the CPU timestamp is less than or equal to the current data timestamp
+        while cpu_index < cpu_length and float(cpu.loc[cpu_index, 'timestamp']) <= float(row['timestamp']):
+            cpu_index += 1
+            if print_data and cpu_index < 5 and cpu_index < cpu_length:
+                print({
+                    "cpu": cpu.loc[cpu_index], 
+                    "cpu_index": cpu_index, 
+                    "cpu_timestamp": cpu.loc[cpu_index, 'timestamp'], 
+                    "data_timestamp": row['timestamp'], 
+                    "cpu_length": cpu_length
+                })
+        
+        if cpu_index >= cpu_length:
+            break
+
+        if print_data and cpu_index < 5 and cpu_index < cpu_length:
+            print("DONE", {
+                "cpu": cpu.loc[cpu_index], 
+                "cpu_index": cpu_index, 
+                "cpu_timestamp": cpu.loc[cpu_index, 'timestamp'], 
+                "data_timestamp": row['timestamp'], 
+                "cpu_length": cpu_length
+            })
+
+        # If the CPU index is within the bounds and the CPU timestamp is greater than the data timestamp, merge the CPU data
+        if cpu_index < cpu_length and cpu.loc[cpu_index, 'timestamp'] > row['timestamp']:
+            if print_data and cpu_index < 5:
+                print("merging")
+            data.at[index, 'benchmark_cpu_usage'] = cpu.loc[cpu_index, 'benchmark_cpu_usage']
+            data.at[index, 'benchmark_mem_usage'] = str(cpu.loc[cpu_index, 'benchmark_mem_usage'])
+            data.at[index, 'db_cpu_usage'] = cpu.loc[cpu_index, 'db_cpu_usage']
+            data.at[index, 'db_mem_usage'] = str(cpu.loc[cpu_index, 'db_mem_usage'])
+    
+    return data
+
+def merge_data_and_cpu(data, cpu, print_data=False):
+    # Ensure data and cpu are sorted by 'timestamp'
+    data = data.sort_values('timestamp').reset_index(drop=True)
+    cpu = cpu.sort_values('timestamp').reset_index(drop=True)
+    
+    # Initialize the columns in data for CPU usage and memory usage
+    data['benchmark_cpu_usage'] = None
+    data['benchmark_mem_usage'] = None
+    data['db_cpu_usage'] = None
+    data['db_mem_usage'] = None
+    
+    cpu_index = 0
+    cpu_length = len(cpu)
+    
+    for index, row in data.iterrows():
+        # Move the CPU index forward if the CPU timestamp is less than the current data timestamp
+        while cpu_index < cpu_length and cpu.loc[cpu_index, 'timestamp'] < row['timestamp']:
+            cpu_index += 1
+        
+        if cpu_index >= cpu_length:
+            break
+        
+        # Check if the previous CPU timestamp is less than the current data timestamp
+        if cpu_index > 0 and cpu.loc[cpu_index - 1, 'timestamp'] < row['timestamp']:
+            # Use the previous CPU index for merging as its timestamp is less than the data timestamp
+            prev_cpu_index = cpu_index - 1
+            data.at[index, 'benchmark_cpu_usage'] = cpu.loc[prev_cpu_index, 'benchmark_cpu_usage']
+            data.at[index, 'benchmark_mem_usage'] = str(cpu.loc[prev_cpu_index, 'benchmark_mem_usage'])
+            data.at[index, 'db_cpu_usage'] = cpu.loc[prev_cpu_index, 'db_cpu_usage']
+            data.at[index, 'db_mem_usage'] = str(cpu.loc[prev_cpu_index, 'db_mem_usage'])
+        else:
+            # Remove the CPU and memory fields by setting them to None
+            data.at[index, 'benchmark_cpu_usage'] = None
+            data.at[index, 'benchmark_mem_usage'] = None
+            data.at[index, 'db_cpu_usage'] = None
+            data.at[index, 'db_mem_usage'] = None
+    return data
+
+
+
+def data_json(all_summaries, all_data, all_cpu):
     def custom_serializer(obj):
         if isinstance(obj, pd.DataFrame):
             return obj.to_dict(orient='records')
         raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
 
+    combined_data = {}
+    print_data=True
     for parent_dir in all_data:
         for path, data in all_data[parent_dir].items():
+            service_name = get_adjusted_file_name(path)
             if isinstance(data, pd.DataFrame):
                 data.fillna(0, inplace=True)
             if isinstance(all_summaries[parent_dir][path], pd.DataFrame):
                 all_summaries[parent_dir][path].fillna(0, inplace=True)
             if isinstance(all_cpu[parent_dir][path], pd.DataFrame):
                 all_cpu[parent_dir][path].fillna(0, inplace=True)
-            
-            all_data[parent_dir][path] = {
-                'service': get_adjusted_file_name(path),
+
+            merged_data = merge_data_and_cpu(data, all_cpu[parent_dir][path],print_data)
+
+            combined_data[service_name] = {
                 'summary': all_summaries[parent_dir][path],
-                'cpu': all_cpu[parent_dir][path],
-                'data': data
+                'data': merged_data
             }
 
+            print_data=False
 
     try:
-        all_data_json = json.dumps(all_data, default=custom_serializer)
-        with open('/mnt/data/results_data.json', 'w') as file:
+        all_data_json = json.dumps(combined_data, default=custom_serializer)
+        with open('/mnt/data/benchmark-app/public/data.json', 'w') as file:
             file.write(all_data_json)
-        
+
         print("JSON data successfully written to file.")
     except TypeError as e:
         print(f"Serialization error: {e}")
 
-data_json(all_summaries, all_data)
+data_json(all_summaries, all_data, all_cpu)
 
 def update_image_urls(readme_path):
     version = str(int(time.time()))
@@ -332,4 +439,47 @@ def update_image_urls(readme_path):
     with open(readme_path, 'w', encoding='utf-8') as file:
         file.write(updated_content)
 
+def update_image_urls(readme_path):
+    version = str(int(time.time()))
+    with open(readme_path, 'r', encoding='utf-8') as file:
+        content = file.read()
+    pattern = r'(!\[.*?\]\()(.*?)(\))'
+    def clean_and_update_url(match):
+        prefix, url, closing = match.groups()
+        parsed_url = urlparse(url)
+        new_url = urlunparse(parsed_url._replace(query=f"v={version}"))
+        return f"{prefix}{new_url}{closing}"
+    updated_content = re.sub(pattern, clean_and_update_url, content)
+    with open(readme_path, 'w', encoding='utf-8') as file:
+        file.write(updated_content)
+
+def generate_dynamic_readme(template_path, output_path, db_endpoint_graphs, static_endpoint_graphs):
+    with open(template_path, 'r', encoding='utf-8') as file:
+        content = file.read()
+
+    version = str(int(time.time()))
+    content = content.replace('{version}', version)
+    content = content.replace('{db_endpoint_graphs}', db_endpoint_graphs)
+    content = content.replace('{static_endpoint_graphs}', static_endpoint_graphs)
+
+    with open(output_path, 'w', encoding='utf-8') as file:
+        file.write(content)
+
+def generate_graph_sections(all_data, section_type):
+    version = str(int(time.time()))
+    graph_sections = ""
+    for file_path, data in all_data.items():
+        file_name = get_adjusted_file_name(file_path)
+        graph_path = file_path.replace("benchmark_stats_history.csv", "graph.png").replace("/mnt/data/", "")
+        graph_section = f"![{file_name} Benchmark Graph]({graph_path}?v={version})"
+        graph_sections += f"- **{file_name}**\n{graph_section}\n\n"
+    return graph_sections
+
+
+# Generate dynamic README.md
+db_endpoint_graphs = generate_graph_sections(all_data['db_test'], 'db_test')
+static_endpoint_graphs = generate_graph_sections(all_data['no_db_test'], 'no_db_test')
+generate_dynamic_readme('/mnt/data/README_template.md', '/mnt/data/README.md', db_endpoint_graphs, static_endpoint_graphs)
+
+# Update image URLs
 update_image_urls('/mnt/data/README.md')

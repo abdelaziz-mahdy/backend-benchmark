@@ -25,19 +25,6 @@ class EndpointExample extends _i1.EndpointRef {
         'hello',
         {'name': name},
       );
-
-  _i2.Future<void> createNote(_i3.Note note) => caller.callServerEndpoint<void>(
-        'example',
-        'createNote',
-        {'note': note},
-      );
-
-  _i2.Future<List<_i3.Note>> getAllNotes() =>
-      caller.callServerEndpoint<List<_i3.Note>>(
-        'example',
-        'getAllNotes',
-        {},
-      );
 }
 
 /// {@category Endpoint}
@@ -80,6 +67,12 @@ class Client extends _i1.ServerpodClient {
     _i1.AuthenticationKeyManager? authenticationKeyManager,
     Duration? streamingConnectionTimeout,
     Duration? connectionTimeout,
+    Function(
+      _i1.MethodCallContext,
+      Object,
+      StackTrace,
+    )? onFailedCall,
+    Function(_i1.MethodCallContext)? onSucceededCall,
   }) : super(
           host,
           _i4.Protocol(),
@@ -87,6 +80,8 @@ class Client extends _i1.ServerpodClient {
           authenticationKeyManager: authenticationKeyManager,
           streamingConnectionTimeout: streamingConnectionTimeout,
           connectionTimeout: connectionTimeout,
+          onFailedCall: onFailedCall,
+          onSucceededCall: onSucceededCall,
         ) {
     example = EndpointExample(this);
     note = EndpointNote(this);

@@ -51,35 +51,7 @@ class Endpoints extends _i1.EndpointDispatch {
             session,
             params['name'],
           ),
-        ),
-        'createNote': _i1.MethodConnector(
-          name: 'createNote',
-          params: {
-            'note': _i1.ParameterDescription(
-              name: 'note',
-              type: _i1.getType<_i4.Note>(),
-              nullable: false,
-            )
-          },
-          call: (
-            _i1.Session session,
-            Map<String, dynamic> params,
-          ) async =>
-              (endpoints['example'] as _i2.ExampleEndpoint).createNote(
-            session,
-            params['note'],
-          ),
-        ),
-        'getAllNotes': _i1.MethodConnector(
-          name: 'getAllNotes',
-          params: {},
-          call: (
-            _i1.Session session,
-            Map<String, dynamic> params,
-          ) async =>
-              (endpoints['example'] as _i2.ExampleEndpoint)
-                  .getAllNotes(session),
-        ),
+        )
       },
     );
     connectors['note'] = _i1.EndpointConnector(
