@@ -31,8 +31,10 @@ function App() {
         axios.get(`${baseURL}/data.json`, {
             cancelToken: source.token,
             onDownloadProgress: (progressEvent) => {
-                const progress = parseInt(Math.round((progressEvent.loaded * 100) / progressEvent.total));
-                setProgress(progress);
+                if (progressEvent.total > 0) {
+                    const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    setProgress(progress);
+                }
             }
         })
             .then(response => {

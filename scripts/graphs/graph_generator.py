@@ -24,8 +24,8 @@ def process_file(file_path):
     # Replace infinities with NaN
     data['Responses/s'] = data['Responses/s'].replace([np.inf, -np.inf], np.nan)
     # Smooth out the values using a rolling mean with a window size of your choice (e.g., 3)
-    window_size = 3
-    data['Responses/s'] = data['Responses/s'].rolling(window=window_size, min_periods=1).mean()
+    window_size =  100
+    data['Responses/s Smoothed'] = data['Responses/s'].rolling(window=window_size, min_periods=1).mean()
 
     # Remove rows with NaN values (which were infinities)
     data = data.dropna(subset=['Responses/s'])    
@@ -100,7 +100,7 @@ def compare_and_plot(all_data, all_summaries,all_cpu,custom_result_file_name=Non
             axs[2].plot(data['Timestamp'], data[percentile], label=f'{file_name} - {percentile} Response Time', color=color)
 
         # Responses/s vs. Timestamp
-        axs[3].plot(data['Timestamp'], data['Responses/s'], label=f'{file_name} - Responses/s', color=color)
+        axs[3].plot(data['Timestamp'], data['Responses/s'], label=f'{file_name} - Responses/s (Smoothed)', color=color)
 
         # Cumulative Requests and Failures Over Time
         # TODO: make it requests and response
