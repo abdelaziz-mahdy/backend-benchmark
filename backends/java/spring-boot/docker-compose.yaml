@@ -43,7 +43,7 @@ services:
       dockerfile: ./Dockerfile
 
     ports:
-      - "${PORT:-8000}:8000"
+      - "${PORT:-8080}:8080"
 
     environment:
       - DATABASE_NAME=postgres
@@ -51,7 +51,7 @@ services:
       - DATABASE_PASSWORD=postgres
       - DATABASE_HOST=db
     healthcheck:
-      test: "curl --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://127.0.0.1:8000/"
+      test: "curl --fail --silent --write-out 'HTTP CODE : %{http_code}\n' --output /dev/null http://127.0.0.1:8080/"
       start_period: 30s
       interval: 15s
       timeout: 10s
@@ -73,7 +73,7 @@ services:
       --headless 
       --users ${LOCUST_USERS} 
       --spawn-rate ${LOCUST_SPAWN_RATE} 
-      -H http://benchmark:8000
+      -H http://benchmark:8080
       ${LOCUST_ARGS}
       --master
     # ports:

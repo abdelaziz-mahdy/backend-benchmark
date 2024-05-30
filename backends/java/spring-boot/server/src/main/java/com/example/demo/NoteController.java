@@ -36,6 +36,6 @@ public class NoteController {
 
     @GetMapping("/")
     public ResponseEntity<String> serverStatus() {
-        return ResponseEntity.ok("Server is ready");
+        return ResponseEntity.ok("OK");
     }
 }
