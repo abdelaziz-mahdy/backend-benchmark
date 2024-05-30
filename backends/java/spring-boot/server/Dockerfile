@@ -17,6 +17,9 @@ RUN mvn package -DskipTests
 # Use the official OpenJDK image to run the app
 FROM openjdk:17-jdk-slim
 
+# Install curl
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Set the working directory
 WORKDIR /app
 
