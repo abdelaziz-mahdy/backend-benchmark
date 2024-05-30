@@ -83,7 +83,7 @@ function App() {
                 label: `${service} - ${field}`,
                 data: serviceData.map(item => item[field]),
                 fill: false,
-                borderColor: getColor(service),
+                // borderColor: getColor(service),
             }));
         });
 
