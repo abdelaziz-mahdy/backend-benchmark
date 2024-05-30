@@ -19,9 +19,17 @@ def process_file(file_path):
     data['Timestamp'] = (data['Timestamp'] - data['Timestamp'].min()).dt.total_seconds()
 
     # Calculating Responses per Second
-    data['Time Difference'] = data['Timestamp'].diff().fillna(0)
-    data['Responses/s'] = data['Total Request Count'].diff().fillna(0) / data['Time Difference']
-    data['Responses/s'] = data['Responses/s'].replace([float('inf'), -float('inf')], 0)  # Replace infinities with 0
+    data['Time Difference'] = data['Timestamp'].diff()
+    data['Responses/s'] = data['Total Request Count'].diff() / data['Time Difference']
+    # Replace infinities with NaN
+    data['Responses/s'] = data['Responses/s'].replace([np.inf, -np.inf], np.nan)
+    # Smooth out the values using a rolling mean with a window size of your choice (e.g., 3)
+    window_size = 3
+    data['Responses/s'] = data['Responses/s'].rolling(window=window_size, min_periods=1).mean()
+
+    # Remove rows with NaN values (which were infinities)
+    data = data.dropna(subset=['Responses/s'])    
+    
     data['Response Time'] = data[['50%', '75%', '99%']].mean(axis=1)
 
     # Calculate summary statistics for key metrics
@@ -54,7 +62,7 @@ def process_file_cpu_usage(file_path,summary):
     data['db_cpu_usage'] = data['db_cpu_usage'].astype(str).str.rstrip('%').astype(float)
 
     # Calculating Responses per Second
-    data['Time Difference'] = data['Timestamp'].diff().fillna(0)
+    data['Time Difference'] = data['Timestamp'].diff()
 
     summary["Average Server CPU Usage"] = data['benchmark_cpu_usage'].mean()
     summary["Average Database CPU Usage"] = data['db_cpu_usage'].mean()
