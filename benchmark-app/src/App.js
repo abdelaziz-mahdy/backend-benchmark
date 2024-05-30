@@ -31,9 +31,8 @@ function App() {
         axios.get(`${baseURL}/data.json`, {
             cancelToken: source.token,
             onDownloadProgress: (progressEvent) => {
-                const total = progressEvent.total || 1; // Ensure total is not 0 or undefined
-                const current = progressEvent.loaded;
-                setProgress(Math.floor((current / total) * 100));
+                const progress = parseInt(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+                setProgress(progress);
             }
         })
             .then(response => {
