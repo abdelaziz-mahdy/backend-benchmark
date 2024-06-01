@@ -55,69 +55,75 @@ Visual comparisons for database endpoints and static endpoints are provided to s
 # Database Endpoints
 
 ## Comparison Graph with db endpoints
-![Comparison Graph](comparison_graph_db_test.png?v=1717056948)
+![Comparison Graph](comparison_graph_db_test.png?v=1717266655)
 
 ## Detailed Graphs for each backend
 - **go mux db_test**
-![go mux db_test Benchmark Graph](backends/go/mux/tests/results/db_test/graph.png?v=1717056948)
+![go mux db_test Benchmark Graph](backends/go/mux/tests/results/db_test/graph.png?v=1717266655)
 
 - **c_sharp dot net db_test**
-![c_sharp dot net db_test Benchmark Graph](backends/c_sharp/dot-net/tests/results/db_test/graph.png?v=1717056948)
+![c_sharp dot net db_test Benchmark Graph](backends/c_sharp/dot-net/tests/results/db_test/graph.png?v=1717266655)
 
 - **python django sync db_test**
-![python django sync db_test Benchmark Graph](backends/python/django-sync/tests/results/db_test/graph.png?v=1717056948)
+![python django sync db_test Benchmark Graph](backends/python/django-sync/tests/results/db_test/graph.png?v=1717266655)
 
 - **python fast api db_test**
-![python fast api db_test Benchmark Graph](backends/python/fast-api/tests/results/db_test/graph.png?v=1717056948)
+![python fast api db_test Benchmark Graph](backends/python/fast-api/tests/results/db_test/graph.png?v=1717266655)
 
 - **python django async db_test**
-![python django async db_test Benchmark Graph](backends/python/django-async/tests/results/db_test/graph.png?v=1717056948)
+![python django async db_test Benchmark Graph](backends/python/django-async/tests/results/db_test/graph.png?v=1717266655)
 
 - **dart server pod db_test**
-![dart server pod db_test Benchmark Graph](backends/dart/server-pod/tests/results/db_test/graph.png?v=1717056948)
+![dart server pod db_test Benchmark Graph](backends/dart/server-pod/tests/results/db_test/graph.png?v=1717266655)
 
 - **rust actix web db_test**
-![rust actix web db_test Benchmark Graph](backends/rust/actix-web/tests/results/db_test/graph.png?v=1717056948)
+![rust actix web db_test Benchmark Graph](backends/rust/actix-web/tests/results/db_test/graph.png?v=1717266655)
+
+- **java spring boot db_test**
+![java spring boot db_test Benchmark Graph](backends/java/spring-boot/tests/results/db_test/graph.png?v=1717266655)
 
 - **javascript express bun db_test**
-![javascript express bun db_test Benchmark Graph](backends/javascript/express-bun/tests/results/db_test/graph.png?v=1717056948)
+![javascript express bun db_test Benchmark Graph](backends/javascript/express-bun/tests/results/db_test/graph.png?v=1717266655)
 
 - **javascript express node db_test**
-![javascript express node db_test Benchmark Graph](backends/javascript/express-node/tests/results/db_test/graph.png?v=1717056948)
+![javascript express node db_test Benchmark Graph](backends/javascript/express-node/tests/results/db_test/graph.png?v=1717266655)
 
 
 
 # Static Endpoints
 
 ## Comparison Graph with static endpoints
-![Comparison Graph](comparison_graph_no_db_test.png?v=1717056948)
+![Comparison Graph](comparison_graph_no_db_test.png?v=1717266655)
 
 ## Detailed Graphs for each backend
 - **go mux no_db_test**
-![go mux no_db_test Benchmark Graph](backends/go/mux/tests/results/no_db_test/graph.png?v=1717056948)
+![go mux no_db_test Benchmark Graph](backends/go/mux/tests/results/no_db_test/graph.png?v=1717266655)
 
 - **c_sharp dot net no_db_test**
-![c_sharp dot net no_db_test Benchmark Graph](backends/c_sharp/dot-net/tests/results/no_db_test/graph.png?v=1717056948)
+![c_sharp dot net no_db_test Benchmark Graph](backends/c_sharp/dot-net/tests/results/no_db_test/graph.png?v=1717266655)
 
 - **python django sync no_db_test**
-![python django sync no_db_test Benchmark Graph](backends/python/django-sync/tests/results/no_db_test/graph.png?v=1717056948)
+![python django sync no_db_test Benchmark Graph](backends/python/django-sync/tests/results/no_db_test/graph.png?v=1717266655)
 
 - **python fast api no_db_test**
-![python fast api no_db_test Benchmark Graph](backends/python/fast-api/tests/results/no_db_test/graph.png?v=1717056948)
+![python fast api no_db_test Benchmark Graph](backends/python/fast-api/tests/results/no_db_test/graph.png?v=1717266655)
 
 - **python django async no_db_test**
-![python django async no_db_test Benchmark Graph](backends/python/django-async/tests/results/no_db_test/graph.png?v=1717056948)
+![python django async no_db_test Benchmark Graph](backends/python/django-async/tests/results/no_db_test/graph.png?v=1717266655)
 
 - **dart server pod no_db_test**
-![dart server pod no_db_test Benchmark Graph](backends/dart/server-pod/tests/results/no_db_test/graph.png?v=1717056948)
+![dart server pod no_db_test Benchmark Graph](backends/dart/server-pod/tests/results/no_db_test/graph.png?v=1717266655)
 
 - **rust actix web no_db_test**
-![rust actix web no_db_test Benchmark Graph](backends/rust/actix-web/tests/results/no_db_test/graph.png?v=1717056948)
+![rust actix web no_db_test Benchmark Graph](backends/rust/actix-web/tests/results/no_db_test/graph.png?v=1717266655)
+
+- **java spring boot no_db_test**
+![java spring boot no_db_test Benchmark Graph](backends/java/spring-boot/tests/results/no_db_test/graph.png?v=1717266655)
 
 - **javascript express bun no_db_test**
-![javascript express bun no_db_test Benchmark Graph](backends/javascript/express-bun/tests/results/no_db_test/graph.png?v=1717056948)
+![javascript express bun no_db_test Benchmark Graph](backends/javascript/express-bun/tests/results/no_db_test/graph.png?v=1717266655)
 
 - **javascript express node no_db_test**
-![javascript express node no_db_test Benchmark Graph](backends/javascript/express-node/tests/results/no_db_test/graph.png?v=1717056948)
+![javascript express node no_db_test Benchmark Graph](backends/javascript/express-node/tests/results/no_db_test/graph.png?v=1717266655)
 
 
