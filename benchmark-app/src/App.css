@@ -1,4 +1,3 @@
-/* src/App.css */
 .App {
   display: flex;
   flex-direction: column;
@@ -94,10 +93,24 @@ header {
 .chart-container {
   flex: 1;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column; /* Change to column layout */
+  justify-content: flex-start; /* Align charts at the top */
+  align-items: center; /* Center align charts horizontally */
   padding: 20px;
   background-color: #fafafa;
+  gap: 20px; /* Adds space between each chart */
+}
+
+.individual-chart {
+  width: 100%; /* Ensure each chart takes full width */
+  max-width: 800px; /* Limit the maximum width for better layout */
+  margin-bottom: 20px; /* Add some space below each chart */
+}
+
+.individual-chart h2 {
+  margin-bottom: 10px; /* Space between title and chart */
+  font-size: 18px; /* Adjust the font size if needed */
+  text-align: center; /* Center align the title */
 }
 
 .loading-indicator {
@@ -117,7 +130,9 @@ header {
   }
 
   .chart-container {
-      padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px; /* Adds space between each chart */
   }
 
   .checkbox-container {
