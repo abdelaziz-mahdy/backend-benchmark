@@ -3,15 +3,6 @@ BEGIN;
 --
 -- ACTION CREATE TABLE
 --
-CREATE TABLE "note" (
-    "id" bigserial PRIMARY KEY,
-    "title" text NOT NULL,
-    "content" text NOT NULL
-);
-
---
--- ACTION CREATE TABLE
---
 CREATE TABLE "serverpod_cloud_storage" (
     "id" bigserial PRIMARY KEY,
     "storageId" text NOT NULL,
@@ -250,9 +241,9 @@ ALTER TABLE ONLY "serverpod_query_log"
 -- MIGRATION VERSION FOR benchmark
 --
 INSERT INTO "serverpod_migrations" ("module", "version", "timestamp")
-    VALUES ('benchmark', '20240528075504376', now())
+    VALUES ('benchmark', '20240924014145685', now())
     ON CONFLICT ("module")
-    DO UPDATE SET "version" = '20240528075504376', "timestamp" = now();
+    DO UPDATE SET "version" = '20240924014145685', "timestamp" = now();
 
 --
 -- MIGRATION VERSION FOR serverpod

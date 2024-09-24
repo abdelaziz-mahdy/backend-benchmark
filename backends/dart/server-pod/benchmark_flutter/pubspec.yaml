@@ -18,13 +18,13 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.1.0 <4.0.0'
-  flutter: '>=3.13.0'
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.19.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  serverpod_flutter: 2.0.0
+  serverpod_flutter: 2.1.1
   benchmark_client:
     path: ../benchmark_client
 

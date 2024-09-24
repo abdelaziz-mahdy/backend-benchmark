@@ -8,9 +8,8 @@ build/
 # Directory created by dartdoc
 doc/api/
 
-# this should not be added but for testing porposes i added it 
-# # Passwords file
-# config/passwords.yaml
+# Passwords file
+config/passwords.yaml
 
 # Firebase service account key for Firebase auth
 config/firebase_service_account_key.json

@@ -1185,7 +1185,7 @@
   "installedModules": [
     {
       "module": "benchmark",
-      "version": "20240528075504376"
+      "version": "20240924014505402"
     },
     {
       "module": "serverpod",

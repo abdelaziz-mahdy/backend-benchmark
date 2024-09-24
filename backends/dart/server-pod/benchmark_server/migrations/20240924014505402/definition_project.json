@@ -49,6 +49,10 @@
     {
       "module": "serverpod",
       "version": "20240516151843329"
+    },
+    {
+      "module": "benchmark",
+      "version": "20240924014145685"
     }
   ],
   "migrationApiVersion": 1
