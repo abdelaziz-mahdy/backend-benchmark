@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:graphic/graphic.dart'; // Use graphic for charts
-import 'package:percent_indicator/percent_indicator.dart'; // For progress indicator
+import 'package:graphic/graphic.dart';
+import 'package:intl/intl.dart';
 
 const colorMap = {
   'db_test': Color(0xFFFF33A8),
   'no_db_test': Color(0xFF333FA8),
 };
 
-Color getColor(String serviceName) {
+Color getServiceColor(String serviceName) {
   if (serviceName.toLowerCase().contains('no_db_test')) {
     return colorMap['no_db_test']!;
   }
@@ -26,6 +25,9 @@ Color getColor(String serviceName) {
       Colors.primaries[serviceName.hashCode % Colors.primaries.length];
 }
 
+String getServiceDisplayName(String serviceName) =>
+    serviceName.replaceAll(RegExp(r'(db_test|no_db_test)'), '').trim();
+
 class BenchmarkApp extends StatefulWidget {
   const BenchmarkApp({Key? key}) : super(key: key);
 
@@ -35,10 +37,9 @@ class BenchmarkApp extends StatefulWidget {
 
 class _BenchmarkAppState extends State<BenchmarkApp> {
   Map<String, dynamic> data = {};
-  List<String> selectedServices = [];
-  List<String> selectedFields = [];
+  Set<String> selectedServices = {};
+  Set<String> selectedFields = {};
   bool loading = true;
-  double progress = 0;
 
   @override
   void initState() {
@@ -47,217 +48,177 @@ class _BenchmarkAppState extends State<BenchmarkApp> {
   }
 
   Future<void> _fetchData() async {
-    final baseURL =
-        Uri.base.path.contains('backend-benchmark') ? '/backend-benchmark' : '';
-    final url = Uri.parse('$baseURL/data.json'); // Adjust URL as needed
-
     try {
-      final String jsonString = await rootBundle
-          .loadString('assets/data.json'); // Update path as needed
-      final jsonData = json.decode(jsonString);
-
+      final jsonString = await rootBundle.loadString('assets/data.json');
       setState(() {
-        data = jsonData;
+        data = json.decode(jsonString);
         loading = false;
       });
     } catch (e) {
-      // Handle timeout or other errors
-      setState(() {
-        loading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text(
-            'Request timed out. Check your internet connection or try again later.'),
-      ));
-      print('Error fetching data: $e');
+      setState(() => loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading data: $e')),
+      );
     }
   }
 
-  void handleServiceChange(String value) {
+  void _toggleService(String service) {
     setState(() {
-      selectedServices.contains(value)
-          ? selectedServices.remove(value)
-          : selectedServices.add(value);
+      selectedServices.contains(service)
+          ? selectedServices.remove(service)
+          : selectedServices.add(service);
     });
   }
 
-  void handleFieldChange(String value) {
+  void _toggleField(String field) {
     setState(() {
-      selectedFields.contains(value)
-          ? selectedFields.remove(value)
-          : selectedFields.add(value);
+      selectedFields.contains(field)
+          ? selectedFields.remove(field)
+          : selectedFields.add(field);
     });
   }
 
-  List<Map<String, dynamic>> generateChartDataForField(String field) {
-    final List<Map<String, dynamic>> chartData = [];
+  List<Map<String, dynamic>> _generateChartData(String field) {
+    if (selectedServices.isEmpty || data.isEmpty) return [];
 
-    for (var i = 0; i < data[selectedServices[0]]['data'].length; i++) {
-      final Map<String, dynamic> dataPoint = {};
-
+    return List.generate(data[selectedServices.first]['data'].length, (i) {
+      final dataPoint = {
+        'Timestamp': data[selectedServices.first]['data'][i]['Timestamp']
+      };
       for (final service in selectedServices) {
-        dataPoint['Timestamp'] = data[service]['data'][i]['Timestamp'] ?? 0;
         dataPoint[service] = data[service]['data'][i][field] ?? 0;
       }
-      chartData.add(dataPoint);
-    }
-
-    return chartData;
+      return dataPoint;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      // Wrap with MaterialApp
       home: Scaffold(
-        body: Column(
+        appBar: AppBar(title: const Text("Benchmark Visualizer")),
+        body: loading
+            ? const Center(child: CircularProgressIndicator())
+            : _buildContent(),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AppBar(
-                title: const Text("Service Benchmarks")), // Use AppBar widget
-            Expanded(
-              // Add Expanded to fill remaining space
-              child: ListView(
-                // Wrap with ListView for scrolling content
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Wrap(
-                      // Use Wrap for legend items
-                      spacing: 8.0,
-                      children: colorMap.entries
-                          .map((entry) => Chip(
-                                label: Text(entry.key,
-                                    style: TextStyle(
-                                        color: (ThemeData.light().brightness ==
-                                                Brightness.dark
-                                            ? Colors.black
-                                            : Colors.white))),
-                                backgroundColor: entry.value,
-                              ))
-                          .toList(),
-                    ),
-                  ),
-                  ..._buildContent(),
-                ],
-              ),
-            ),
+            _buildSelectionSection('Select Services:', data.keys,
+                selectedServices, _toggleService),
+            if (selectedServices.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _buildSelectionSection('Select Fields:', _getAvailableFields(),
+                  selectedFields, _toggleField),
+            ],
+            if (selectedFields.isNotEmpty) ..._buildCharts(),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildContent() {
-    if (loading) {
-      return [
-        Center(
-          child: CircularPercentIndicator(
-            radius: 60.0,
-            lineWidth: 10.0,
-            percent: progress,
-            center: Text("${(progress * 100).toInt()}%"),
-            progressColor: Colors.blue, // Customize color as needed
-          ),
-        )
-      ];
-    } else {
-      return [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Wrap(
-            // Use Wrap for checkbox items
-            spacing: 8.0,
-            children: data.keys
-                .map((service) => ChoiceChip(
-                      label: Text(
-                          service
-                              .replaceAll('no_db_test', '')
-                              .replaceAll('db_test', '')
-                              .trim(),
-                          style: TextStyle(
-                              color: selectedServices.contains(service)
-                                  ? Colors.white
-                                  : Colors.black)), // Show trimmed service name
-                      selected: selectedServices.contains(service),
-                      onSelected: (selected) => handleServiceChange(service),
-                      selectedColor: getColor(service),
-                    ))
-                .toList(),
-          ),
+  Widget _buildSelectionSection(String title, Iterable<String> items,
+      Set<String> selectedItems, Function(String) onToggle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Wrap(
+          spacing: 8.0,
+          children: items
+              .map((item) => ChoiceChip(
+                    label: Text(getServiceDisplayName(item)),
+                    selected: selectedItems.contains(item),
+                    onSelected: (_) => onToggle(item),
+                    selectedColor: getServiceColor(item),
+                  ))
+              .toList(),
         ),
-        if (selectedServices.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Wrap(
-                // Wrap with Wrap for better layout
-                spacing: 8.0,
-                children: (data[selectedServices[0]]?['data']?[0]
-                            as Map<String, dynamic> ??
-                        {})
-                    .keys
-                    .where((field) => ![
-                          'timestamp',
-                          'Timestamp',
-                          'Time Difference',
-                          'Name',
-                          'Type'
-                        ].contains(field))
-                    .map((field) => ChoiceChip(
-                          label: Text(field),
-                          selected: selectedFields.contains(field),
-                          onSelected: (selected) => handleFieldChange(field),
-                        ))
-                    .toList()),
-          ),
-        if (selectedServices.isNotEmpty && selectedFields.isNotEmpty)
-          ...selectedFields.map((field) {
-            final chartData = generateChartDataForField(field);
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: SizedBox(
-                height: 300, // Set a fixed height for the chart
-                child: Chart(
-                  data: chartData,
-                  marks: [
-                    for (final service in selectedServices)
-                      LineMark(
-                          color: ColorEncode(
-                        variable: service,
-                        value: getColor(service),
-                      ))
-                  ],
-                  axes: [
-                    Defaults.horizontalAxis,
-                    Defaults.verticalAxis,
-                  ],
-                  // coord: RectCoord(),
-                  variables: {
-                    'Timestamp': Variable(
-                        accessor: (Map map) => map['Timestamp'] as double,
-                        scale: LinearScale()
-                        // scale: TimeScale(
-                        //   formatter: (time) =>
-                        //       time.toString(), // Format time as needed
-                        // ),
-                        ),
-                    for (final service in selectedServices)
-                      service: Variable(
-                        accessor: (Map map) => map[service] as num,
-                        scale: LinearScale(),
-                      )
-                  },
-                  // elements: [
-                  //   ...selectedServices.map((service) => LineElement(
-                  //         position: Varset('Timestamp') * Varset(service),
-                  //         color: getColor(service),
-                  //       )),
-                  // ],
+      ],
+    );
+  }
+
+  Iterable<String> _getAvailableFields() {
+    if (selectedServices.isEmpty) return [];
+    return (data[selectedServices.first]['data'][0] as Map<String, dynamic>)
+        .keys
+        .where((field) => ![
+              'timestamp',
+              'Timestamp',
+              'Time Difference',
+              'Name',
+              'Type'
+            ].contains(field));
+  }
+
+  List<Widget> _buildCharts() {
+    return selectedFields.map((field) {
+      final chartData = _generateChartData(field);
+      if (chartData.isEmpty)
+        return const Text('No data available for this field.');
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(field,
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          SizedBox(
+            height: 300,
+            child: Chart(
+              data: chartData,
+              variables: {
+                'Timestamp': Variable(
+                  accessor: (Map map) => map['Timestamp'] as num,
+                  scale: LinearScale(
+                    formatter: (value) => DateFormat('MM/dd HH:mm').format(
+                        DateTime.fromMillisecondsSinceEpoch(value.toInt())),
+                  ),
                 ),
-              ),
-            );
-          }).toList()
-      ];
-    }
+                ...Map.fromEntries(selectedServices.map((service) => MapEntry(
+                    service,
+                    Variable(
+                      accessor: (Map map) => map[service] as num,
+                      scale: LinearScale(),
+                    )))),
+              },
+              marks: [
+                for (final service in selectedServices)
+                  LineMark(
+                      color: ColorEncode(
+                          variable: service,
+                          // value: getServiceColor(service),
+                          values: Defaults.colors10
+                          // value: getServiceColor(service),
+                          ))
+              ],
+              // marks: [
+              //   for (final service in selectedServices)
+              //     LineMark(
+              //       position: Varset('Timestamp') * Varset(service),
+              //       color: ColorEncode(value: getServiceColor(service)),
+              //     ),
+              // ],
+              axes: [
+                Defaults.horizontalAxis,
+                Defaults.verticalAxis,
+              ],
+              // tooltip: TooltipGuide(),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      );
+    }).toList();
   }
 }
 
