@@ -86,7 +86,10 @@ class _BenchmarkAppState extends State<BenchmarkApp> {
         'Timestamp': data[selectedServices.first]['data'][i]['Timestamp']
       };
       for (final service in selectedServices) {
-        dataPoint[service] = data[service]['data'][i][field] ?? 0;
+        dataPoint[service] = (data[service]['data'].length > i &&
+                data[service]['data'][i][field] != null)
+            ? data[service]['data'][i][field]
+            : 0;
       }
       return dataPoint;
     });
@@ -179,10 +182,7 @@ class _BenchmarkAppState extends State<BenchmarkApp> {
               variables: {
                 'Timestamp': Variable(
                   accessor: (Map map) => map['Timestamp'] as num,
-                  scale: LinearScale(
-                    formatter: (value) => DateFormat('MM/dd HH:mm').format(
-                        DateTime.fromMillisecondsSinceEpoch(value.toInt())),
-                  ),
+                  scale: LinearScale(),
                 ),
                 ...Map.fromEntries(selectedServices.map((service) => MapEntry(
                     service,
@@ -191,15 +191,25 @@ class _BenchmarkAppState extends State<BenchmarkApp> {
                       scale: LinearScale(),
                     )))),
               },
+              // marks: [
+              //   // LineMark(
+              //   //   position: [
+              //   //     ...selectedServices
+              //   //   ].fold<Varset>(Varset("Timestamp"), (a, b) => a * Varset(b)),
+              //   //   // color: ColorEncode(
+              //   //   //   variable: 'index',
+              //   //   //   values: selectedServices
+              //   //   //       .map((service) => getServiceColor(service))
+              //   //   //       .toList(),
+              //   //   // ),
+              //   // ),
+              // ],
               marks: [
+                // LineMark()
                 for (final service in selectedServices)
                   LineMark(
-                      color: ColorEncode(
-                          variable: service,
-                          // value: getServiceColor(service),
-                          values: Defaults.colors10
-                          // value: getServiceColor(service),
-                          ))
+                    position: Varset('Timestamp') * Varset(service),
+                  )
               ],
               // marks: [
               //   for (final service in selectedServices)
