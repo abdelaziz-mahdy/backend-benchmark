@@ -11,6 +11,8 @@ import {
   LineChart,
   Settings,
   Check,
+  Database,
+  Cpu,
 } from 'lucide-react';
 
 // --- Enhanced Color Palette ---
@@ -26,17 +28,60 @@ const colorPalette = {
   danger: '#e74c3c', // Red for errors or critical alerts
 };
 
-const getColor = (serviceName) => {
-  const baseColors = {
-    db_test: colorPalette.success,
-    no_db_test: colorPalette.secondary,
-  };
+// --- Service Color Patterns ---
+const serviceColorPatterns = [
+  { pattern: /python/i, baseColor: '#3776AB' }, // Python (Steel Blue)
+  { pattern: /django/i, baseColor: '#092E20' }, // Django (Dark Green) - more specific
+  { pattern: /fast \s?api/i, baseColor: '#009485' }, // Fast API (Teal) - more specific
+  { pattern: /javascript|js/i, baseColor: '#F0DB4F' }, // JavaScript (Yellow)
+  { pattern: /express/i, baseColor: '#68A063' }, // Express (Light Green) - more specific
+  { pattern: /bun/i, baseColor: '#F0DB4F' }, // Bun (Yellow) - more specific, same as JavaScript
+  { pattern: /node/i, baseColor: '#68A063' }, // Node.js (Light Green) - more specific, same as Express
+  { pattern: /go|golang/i, baseColor: '#00ADD8' }, // Go (Light Blue)
+  { pattern: /mux/i, baseColor: '#00ADD8' }, // Go Mux (Light Blue) - same as Go
+  { pattern: /java/i, baseColor: '#5382A1' }, // Java (Slate Blue)
+  { pattern: /spring/i, baseColor: '#5382A1' }, // Spring (Slate Blue) - same as Java
+  { pattern: /c#|csharp/i, baseColor: '#67217A' }, // C# (Purple)
+  { pattern: /\.net/i, baseColor: '#67217A' }, // .NET (Purple) - same as C#
+  { pattern: /rust/i, baseColor: '#DEA584' }, // Rust (Light Brown)
+  { pattern: /actix/i, baseColor: '#DEA584' }, // Actix (Light Brown) - same as Rust
+  { pattern: /dart/i, baseColor: '#0175C2' }, // Dart (Blue)
+  { pattern: /server\s?pod/i, baseColor: '#0175C2' }, // Server Pod (Blue) - same as Dart
+];
 
-  return (
-    baseColors[serviceName] ||
-    `#${Math.floor(Math.random() * 16777215).toString(16)}`
-  );
+// --- Helper function to darken a color ---
+function darkenColor(hexColor, factor = 0.6) {
+  // Convert hex to RGB
+  let r = parseInt(hexColor.slice(1, 3), 16);
+  let g = parseInt(hexColor.slice(3, 5), 16);
+  let b = parseInt(hexColor.slice(5, 7), 16);
+
+  // Darken each component
+  r = Math.floor(r * factor);
+  g = Math.floor(g * factor);
+  b = Math.floor(b * factor);
+
+  // Convert back to hex
+  return `#${r.toString(16).padStart(2, '0')}${g
+    .toString(16)
+    .padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+// --- Get Color Function ---
+const getColor = (serviceName) => {
+  const lowerCaseServiceName = serviceName.toLowerCase();
+  const isDbService = lowerCaseServiceName.includes('no_db_test');
+
+  for (const { pattern, baseColor } of serviceColorPatterns) {
+    if (pattern.test(lowerCaseServiceName)) {
+      // Darken the color if it's a DB service
+      return isDbService ? darkenColor(baseColor) : baseColor;
+    }
+  }
+
+  return colorPalette.gray; // Default to gray if no pattern matches
 };
+
 
 function ImprovedBenchmarkApp() {
   const [data, setData] = useState({});
@@ -46,6 +91,9 @@ function ImprovedBenchmarkApp() {
   const [progress, setProgress] = useState(0);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [servicesExpanded, setServicesExpanded] = useState(true);
+  const [dbServicesExpanded, setDbServicesExpanded] = useState(true); // State for DB services section
+  const [noDbServicesExpanded, setNoDbServicesExpanded] =
+    useState(true); // State for No DB services section
   const [fieldsExpanded, setFieldsExpanded] = useState(true);
 
   // --- Data Fetching ---
@@ -98,25 +146,48 @@ function ImprovedBenchmarkApp() {
     );
   };
 
-  // --- Chart Data Generation ---
+  // --- Chart Data Generation with Smoothing ---
   const generateChartDataForField = (field) => {
-    const datasets = selectedServices.map((service) => ({
-      label: `${service} - ${field}`,
-      data: data[service].data.map((item) => item[field]),
-      fill: false,
-      borderColor: getColor(service),
-      tension: 0.4, // Increased tension for smoother curves
-      pointBackgroundColor: getColor(service), // Color of data points
-      pointBorderColor: colorPalette.background, // Border color of data points
-      pointBorderWidth: 2, // Border width of data points
-      pointRadius: 4, // Radius of data points
-      pointHoverRadius: 6, // Radius of data points on hover
-    }));
+    const datasets = selectedServices.map((service) => {
+      const rawData = data[service].data.map((item) => item[field]);
+      const smoothedData = smoothData(rawData); // Apply smoothing to the data
+
+      return {
+        label: `${service} - ${field}`,
+        data: smoothedData, // Use smoothed data here
+        fill: false,
+        borderColor: getColor(service),
+        tension: 0.4, // Increased tension for smoother curves
+        pointBackgroundColor: getColor(service),
+        pointBorderColor: colorPalette.background,
+        pointBorderWidth: 2,
+        pointRadius: 0, // Set pointRadius to 0 to hide data points
+        pointHoverRadius: 6,
+      };
+    });
 
     const labels = data[selectedServices[0]].data.map(
       (item) => item.Timestamp
     );
     return { labels, datasets };
+  };
+
+  // --- Data Smoothing Function ---
+  const smoothData = (data) => {
+    if (data.length < 3) {
+      return data; // Not enough data points to smooth
+    }
+
+    const smoothed = [];
+    for (let i = 0; i < data.length; i++) {
+      if (i === 0 || i === data.length - 1) {
+        smoothed.push(data[i]); // Keep first and last data points as is
+      } else {
+        const average = (data[i - 1] + data[i] + data[i + 1]) / 3;
+        smoothed.push(average); // Replace with average of neighboring points
+      }
+    }
+    return smoothed;
   };
 
   return (
@@ -125,7 +196,7 @@ function ImprovedBenchmarkApp() {
       style={{
         backgroundColor: colorPalette.background,
         color: colorPalette.text,
-        fontFamily: 'Arial, sans-serif', // Professional font
+        fontFamily: 'Arial, sans-serif',
       }}
     >
       {/* --- Header --- */}
@@ -137,8 +208,8 @@ function ImprovedBenchmarkApp() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.2)', // Subtle shadow for depth
-          zIndex: 10, // Ensure header stays on top
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+          zIndex: 10,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -168,7 +239,7 @@ function ImprovedBenchmarkApp() {
         style={{
           display: 'flex',
           padding: '20px',
-          gap: '20px', // Space between sidebar and charts
+          gap: '20px',
         }}
       >
         {/* --- Sidebar --- */}
@@ -177,14 +248,14 @@ function ImprovedBenchmarkApp() {
           style={{
             width: sidebarExpanded ? '300px' : '60px',
             backgroundColor: 'white',
-            borderRadius: '10px', // Rounded corners
+            borderRadius: '10px',
             boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
             transition: 'width 0.3s ease, transform 0.3s ease',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             zIndex: 5,
-            position: 'relative', // Needed for the toggle position
+            position: 'relative',
           }}
         >
           {/* Sidebar Toggle */}
@@ -198,13 +269,13 @@ function ImprovedBenchmarkApp() {
               backgroundColor: colorPalette.primary,
               width: '30px',
               height: '30px',
-              borderRadius: '0 10px 10px 0', // Match sidebar rounding
+              borderRadius: '0 10px 10px 0',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
               transition: 'right 0.3s ease',
-              zIndex: 20, // Make sure it's above other sidebar content
+              zIndex: 20,
             }}
           >
             <ChevronDown
@@ -254,58 +325,195 @@ function ImprovedBenchmarkApp() {
                 />
               </div>
               {servicesExpanded && (
-                <div className="options">
-                  {Object.keys(data).map((service) => (
+                <>
+                  {/* DB Services */}
+                  <div className="subsection">
                     <div
-                      key={service}
-                      className="option"
-                      onClick={() => handleServiceChange(service)}
+                      className="subsection-header"
+                      onClick={() => setDbServicesExpanded(!dbServicesExpanded)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        padding: '8px',
-                        borderRadius: '4px',
-                        transition: 'background-color 0.2s',
-                        backgroundColor: selectedServices.includes(service)
-                          ? colorPalette.gray
-                          : 'transparent',
+                        justifyContent: 'space-between',
                         cursor: 'pointer',
+                        marginTop: '10px',
                       }}
                     >
-                      <div
+                      <h4
                         style={{
-                          width: '12px',
-                          height: '12px',
-                          borderRadius: '50%',
-                          backgroundColor: getColor(service),
-                          marginRight: '10px',
-                          border: '2px solid white', // Add a border to the circle
-                          boxShadow: `0 0 0 2px ${getColor(
-                            service
-                          )}`, // Add a shadow effect
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          margin: 0,
                         }}
                       >
-                        {selectedServices.includes(service) && (
-                          <Check
-                            size={10}
-                            color="white"
-                            style={{
-                              position: 'relative',
-                              top: '1px',
-                              left: '1px',
-                            }}
-                          />
-                        )}
-                      </div>
-                      <span style={{ color: colorPalette.text }}>
-                        {service
-                          .replace('no_db_test', '')
-                          .replace('db_test', '')
-                          .trim()}
-                      </span>
+                        <Database size={18} />
+                        DB Services
+                      </h4>
+                      <ChevronDown
+                        size={18}
+                        style={{
+                          transform: dbServicesExpanded ? '' : 'rotate(-90deg)',
+                          transition: 'transform 0.3s ease',
+                        }}
+                      />
                     </div>
-                  ))}
-                </div>
+                    {dbServicesExpanded && (
+                      <div className="options">
+                        {Object.keys(data)
+                          .filter(
+                            (service) =>
+                              service.includes('db_test') &&
+                              !service.includes('no_db_test')
+                          )
+                          .map((service) => (
+                            <div
+                              key={service}
+                              className="option"
+                              onClick={() => handleServiceChange(service)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '8px',
+                                borderRadius: '4px',
+                                transition: 'background-color 0.2s',
+                                backgroundColor:
+                                  selectedServices.includes(service)
+                                    ? colorPalette.gray
+                                    : 'transparent',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {/* ... (rest of the option content) */}
+                              <div
+                                style={{
+                                  width: '12px',
+                                  height: '12px',
+                                  borderRadius: '50%',
+                                  backgroundColor: getColor(service),
+                                  marginRight: '10px',
+                                  border: '2px solid white',
+                                  boxShadow: `0 0 0 2px ${getColor(service)}`,
+                                }}
+                              >
+                                {selectedServices.includes(service) && (
+                                  <Check
+                                    size={10}
+                                    color="white"
+                                    style={{
+                                      position: 'relative',
+                                      top: '1px',
+                                      left: '1px',
+                                    }}
+                                  />
+                                )}
+                              </div>
+                              <span style={{ color: colorPalette.text }}>
+                                {service.replace('no_db_test', '')
+                                  .replace('db_test', '')
+                                  
+                                  .trim()}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* No DB Services */}
+                  <div className="subsection">
+                    <div
+                      className="subsection-header"
+                      onClick={() =>
+                        setNoDbServicesExpanded(!noDbServicesExpanded)
+                      }
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        marginTop: '10px',
+                      }}
+                    >
+                      <h4
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          margin: 0,
+                        }}
+                      >
+                        <Cpu size={18} />
+                        No DB Services
+                      </h4>
+                      <ChevronDown
+                        size={18}
+                        style={{
+                          transform: noDbServicesExpanded
+                            ? ''
+                            : 'rotate(-90deg)',
+                          transition: 'transform 0.3s ease',
+                        }}
+                      />
+                    </div>
+                    {noDbServicesExpanded && (
+                      <div className="options">
+                        {Object.keys(data)
+                          .filter((service) => service.includes('no_db_test'))
+                          .map((service) => (
+                            <div
+                              key={service}
+                              className="option"
+                              onClick={() => handleServiceChange(service)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '8px',
+                                borderRadius: '4px',
+                                transition: 'background-color 0.2s',
+                                backgroundColor:
+                                  selectedServices.includes(service)
+                                    ? colorPalette.gray
+                                    : 'transparent',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {/* ... (rest of the option content) */}
+                              <div
+                                style={{
+                                  width: '12px',
+                                  height: '12px',
+                                  borderRadius: '50%',
+                                  backgroundColor: getColor(service),
+                                  marginRight: '10px',
+                                  border: '2px solid white',
+                                  boxShadow: `0 0 0 2px ${getColor(service)}`,
+                                }}
+                              >
+                                {selectedServices.includes(service) && (
+                                  <Check
+                                    size={10}
+                                    color="white"
+                                    style={{
+                                      position: 'relative',
+                                      top: '1px',
+                                      left: '1px',
+                                    }}
+                                  />
+                                )}
+                              </div>
+                              <span style={{ color: colorPalette.text }}>
+                                {service
+                                  .replace('no_db_test', '')
+                                  .replace('db_test', '')
+                                  .trim()}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
 
@@ -465,8 +673,6 @@ function ImprovedBenchmarkApp() {
                       {field}
                     </h2>
                     <div style={{ height: '350px' }}>
-                      {' '}
-                      {/* Fixed height for charts */}
                       <Line
                         data={generateChartDataForField(field)}
                         options={{
