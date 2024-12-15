@@ -1,151 +1,52 @@
 .App {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  font-family: Arial, sans-serif;
-}
-
-header {
-  padding: 20px;
-  background-color: #f4f4f4;
-  border-bottom: 1px solid #ddd;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.legend {
-  margin-top: 10px;
-  text-align: left;
-}
-
-.legend h2 {
-  margin: 10px 0;
-}
-
-.legend .info-text {
-  font-size: 14px;
-  color: #555;
-  margin-bottom: 10px;
-}
-
-.legend ul {
-  list-style: none;
-  padding: 0;
-}
-
-.legend li {
-  margin: 5px 0;
-}
-
-.main-content {
-  display: flex;
-  flex: 1;
+  font-family: sans-serif;
+  text-align: center;
 }
 
 .sidebar {
-  display: flex;
-  flex-direction: column;
-  width: 220px;
-  padding: 20px;
-  background-color: #e0f7fa;
-  border-right: 1px solid #ddd;
+  height: calc(100vh - 90px); /* Adjust height to account for the header */
   overflow-y: auto;
 }
 
-.fields {
-  display: flex;
-  flex-direction: column;
-  width: 220px;
-  padding: 20px;
-  background-color: #e1bee7;
-  border-right: 1px solid #ddd;
-  overflow-y: auto;
+.sidebar.collapsed {
+  width: 60px;
 }
 
-.services label, .fields label {
-  font-weight: bold;
-  margin-bottom: 10px;
-  display: block;
+.sidebar.collapsed .section-header h3,
+.sidebar.collapsed .options,
+.sidebar.collapsed .section-header .lucide {
+  display: none;
 }
 
-.checkbox-container {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-  cursor: pointer;
+.sidebar.collapsed .section-header {
+  padding: 10px;
+  justify-content: center;
 }
 
-.checkbox-container input[type="checkbox"] {
-  margin-right: 10px;
+.section-header {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
 }
 
-.checkbox-container span {
-  cursor: pointer;
-  display: block;
-  width: 100%;
+.options {
+  padding: 10px 0;
 }
 
-.checkbox-container:hover {
-  background-color: #f0f0f0;
+.option {
+  margin-bottom: 5px;
+}
+
+.option:hover {
+  background-color: #f8f8f8;
 }
 
 .chart-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column; /* Change to column layout */
-  justify-content: flex-start; /* Align charts at the top */
-  align-items: center; /* Center align charts horizontally */
-  padding: 20px;
-  background-color: #fafafa;
-  gap: 20px; /* Adds space between each chart */
-}
-
-.individual-chart {
-  width: 100%; /* Ensure each chart takes full width */
-  max-width: 800px; /* Limit the maximum width for better layout */
-  margin-bottom: 20px; /* Add some space below each chart */
-}
-
-.individual-chart h2 {
-  margin-bottom: 10px; /* Space between title and chart */
-  font-size: 18px; /* Adjust the font size if needed */
-  text-align: center; /* Center align the title */
+  min-height: calc(100vh - 90px); /* Ensure chart container fills the screen */
 }
 
 .loading-indicator {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100%;
-}
-
-@media (max-width: 768px) {
-  .main-content {
-      flex-direction: column;
-  }
-
-  .sidebar, .fields {
-      width: 100%;
-  }
-
-  .chart-container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px; /* Adds space between each chart */
-  }
-
-  .checkbox-container {
-      flex-direction: column;
-      align-items: flex-start;
-  }
-
-  .checkbox-container input[type="checkbox"] {
-      margin-bottom: 5px;
-  }
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-   100% { transform: rotate(360deg); }
+  height: 200px;
 }
