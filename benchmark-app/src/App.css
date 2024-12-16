@@ -14,7 +14,9 @@
 
 .sidebar.collapsed .section-header h3,
 .sidebar.collapsed .options,
-.sidebar.collapsed .section-header .lucide {
+.sidebar.collapsed .section-header .lucide,
+.sidebar.collapsed .option span {
+  /* Hide text in collapsed sidebar */
   display: none;
 }
 
@@ -34,14 +36,17 @@
 
 .option {
   margin-bottom: 5px;
+  position: relative; /* For tooltip positioning */
 }
 
 .option:hover {
   background-color: #f8f8f8;
 }
 
+/* Chart container responsiveness */
 .chart-container {
   min-height: calc(100vh - 90px); /* Ensure chart container fills the screen */
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); /* Responsive columns */
 }
 
 .loading-indicator {
@@ -49,4 +54,32 @@
   justify-content: center;
   align-items: center;
   height: 200px;
+}
+
+/* Tooltip styles */
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -60px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
 }
