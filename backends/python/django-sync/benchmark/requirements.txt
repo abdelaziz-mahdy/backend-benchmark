@@ -1,7 +1,0 @@
-asgiref==3.7.2 ; python_version >= "3.12" and python_version < "4.0"
-django==5.0.1 ; python_version >= "3.12" and python_version < "4.0"
-djangorestframework==3.14.0 ; python_version >= "3.12" and python_version < "4.0"
-psycopg2==2.9.9 ; python_version >= "3.12" and python_version < "4.0"
-pytz==2023.3.post1 ; python_version >= "3.12" and python_version < "4.0"
-sqlparse==0.4.4 ; python_version >= "3.12" and python_version < "4.0"
-tzdata==2023.4 ; python_version >= "3.12" and python_version < "4.0" and sys_platform == "win32"
