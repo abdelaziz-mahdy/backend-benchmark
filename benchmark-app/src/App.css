@@ -43,10 +43,55 @@
   background-color: #f8f8f8;
 }
 
-/* Chart container responsiveness */
+/* Chart container and chart card */
 .chart-container {
   min-height: calc(100vh - 90px); /* Ensure chart container fills the screen */
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); /* Responsive columns */
+  gap: 20px;
+}
+
+.chart-card {
+  /* New styles for chart cards */
+  background-color: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px; /* Add spacing between charts */
+}
+
+.chart-card h2 {
+  /* Style chart titles */
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #2c3e50; /* Darker color for emphasis */
+  margin-bottom: 10px;
+}
+
+.summary-stats {
+  margin-bottom: 15px;
+}
+
+.summary-stats p {
+  font-size: 0.9rem;
+  margin: 5px 0;
+}
+
+.summary-stats span {
+  font-weight: bold;
+}
+
+.error-message {
+  color: #e74c3c; /* Error message color */
+  font-size: 0.9rem;
+  margin-top: 10px;
+}
+
+/* Improved axis and legend label readability */
+.chartjs-axis-x, /* These might need to be adjusted based on your version of Chart.js */
+.chartjs-axis-y,
+.chartjs-legend {
+  font-size: 0.9rem !important;
+  color: #34495e !important; /* Slightly darker font color */
 }
 
 .loading-indicator {
@@ -82,4 +127,23 @@
 .tooltip:hover .tooltiptext {
   visibility: visible;
   opacity: 1;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 60px; /* Collapse sidebar by default */
+  }
+
+  .sidebar.expanded {
+    width: 250px; /* Still allow expanding */
+  }
+
+  .chart-container {
+    grid-template-columns: 1fr; /* Stack charts vertically */
+  }
+
+  .chart-card h2 {
+    font-size: 1.1rem; /* Reduce font size */
+  }
 }

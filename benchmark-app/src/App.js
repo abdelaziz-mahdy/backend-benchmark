@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { Line } from 'react-chartjs-2';
 import 'chart.js/auto';
@@ -13,6 +13,7 @@ import {
   Check,
   Database,
   Cpu,
+  Filter,
 } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -29,6 +30,18 @@ const colorPalette = {
   success: '#2ecc71', // Green for positive indicators
   warning: '#f39c12', // Orange for warnings
   danger: '#e74c3c', // Red for errors or critical alerts
+  light: {
+    buttonBg: '#3498db',
+    buttonText: '#fff',
+    buttonHoverBg: '#2980b9',
+    link: '#3498db',
+  },
+  dark: {
+    buttonBg: '#bdc3c7',
+    buttonText: '#2c3e50',
+    buttonHoverBg: '#95a5a6',
+    link: '#bdc3c7',
+  },
 };
 
 // --- Service Color Patterns ---
@@ -58,16 +71,12 @@ function darkenColor(hexColor, factor = 0.6) {
   let r = parseInt(hexColor.slice(1, 3), 16);
   let g = parseInt(hexColor.slice(3, 5), 16);
   let b = parseInt(hexColor.slice(5, 7), 16);
-
   // Darken each component
   r = Math.floor(r * factor);
   g = Math.floor(g * factor);
   b = Math.floor(b * factor);
-
   // Convert back to hex
-  return `#${r.toString(16).padStart(2, '0')}${g
-    .toString(16)
-    .padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
 // --- Get Color Function ---
@@ -85,23 +94,30 @@ const getColor = (serviceName) => {
   return colorPalette.gray; // Default to gray if no pattern matches
 };
 
+// --- Theme Context ---
+const ThemeContext = React.createContext();
+
 function ImprovedBenchmarkApp() {
   const [data, setData] = useState({});
+  const [serviceLoadingStates, setServiceLoadingStates] = useState({});
   const [selectedServices, setSelectedServices] = useState([]);
   const [selectedFields, setSelectedFields] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(0);  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [servicesExpanded, setServicesExpanded] = useState(true);
-  const [dbServicesExpanded, setDbServicesExpanded] = useState(true); // State for DB services section
-  const [noDbServicesExpanded, setNoDbServicesExpanded] = useState(true); // State for No DB services section
+  const [dbServicesExpanded, setDbServicesExpanded] = useState(true);
+  const [noDbServicesExpanded, setNoDbServicesExpanded] = useState(true);
   const [fieldsExpanded, setFieldsExpanded] = useState(true);
-  const [allFieldsSelected, setAllFieldsSelected] = useState(false); // State for "All Fields" checkbox
-  const [theme, setTheme] = useState('light'); // State for theming
+  const [allFieldsSelected, setAllFieldsSelected] = useState(false);
+  const [theme, setTheme] = useState('light');
 
-  // --- Theme Context ---
-  const ThemeContext = React.createContext();
+  // --- Theme Toggle Function ---
+  const toggleTheme = () => {
+    setTheme(theme === 'light' ? 'dark' : 'light');
+  };
 
-  // --- Data Fetching with Error Handling ---
+  // --- Data Fetching with Error Handling and Partial Loading ---
   useEffect(() => {
     const baseURL = window.location.pathname.includes('backend-benchmark')
       ? '/backend-benchmark'
@@ -137,11 +153,20 @@ function ImprovedBenchmarkApp() {
 
   // --- Selection Handlers with Checkboxes ---
   const handleServiceChange = (service) => {
-    setSelectedServices((prev) =>
-      prev.includes(service)
+    setSelectedServices((prev) => {
+      const updatedServices = prev.includes(service)
         ? prev.filter((s) => s !== service)
-        : [...prev, service]
-    );
+        : [...prev, service];
+
+      // // If a service is deselected, also deselect all its fields
+      // if (!prev.includes(service)) {
+      //   setSelectedFields((prevFields) =>
+      //     prevFields.filter((field) => !data[service]?.data[0]?.hasOwnProperty(field))
+      //   );
+      // }
+
+      return updatedServices;
+    });
   };
 
   const handleFieldChange = (field) => {
@@ -169,31 +194,51 @@ function ImprovedBenchmarkApp() {
     }
   };
 
+  // --- Calculate Average for Summary Stats (example) ---
+  const calculateAverage = useCallback((datasets) => {
+    if (!datasets || datasets.length === 0 || !datasets[0].data) {
+      return 0;
+    }
+
+    const sums = datasets.reduce((acc, dataset) => {
+      dataset.data.forEach((value, index) => {
+        acc[index] = (acc[index] || 0) + value;
+      });
+      return acc;
+    }, []);
+
+    const averages = sums.map((sum) => sum / datasets.length);
+    return averages.reduce((a, b) => a + b, 0).toFixed(2); // Overall average
+  }, []);
+
   // --- Memoized Chart Data Generation with Smoothing ---
   const generateChartDataForField = useMemo(() => {
     return (field) => {
-      const datasets = selectedServices.map((service) => {
-        const rawData = data[service].data.map((item) => item[field]);
-        const smoothedData = smoothData(rawData);
+      const datasets = selectedServices
+        .filter((service) => !data[service]?.error) // Exclude services with errors
+        .map((service) => {
+          const rawData = data[service].data.map((item) => item[field]);
+          const smoothedData = smoothData(rawData);
 
-        return {
-          label: `${service}`,
-          data: smoothedData,
-          fill: false,
-          borderColor: getColor(service),
-          tension: 0.4,
-          pointBackgroundColor: getColor(service),
-          pointBorderColor: colorPalette.background,
-          pointBorderWidth: 2,
-          pointRadius: 0,
-          pointHoverRadius: 6,
-        };
-      });
+          return {
+            label: `${service}`,
+            data: smoothedData,
+            fill: false,
+            borderColor: getColor(service),
+            tension: 0.4,
+            pointBackgroundColor: getColor(service),
+            pointBorderColor: colorPalette.background,
+            pointBorderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 6,
+          };
+        });
 
       const labels = data[selectedServices[0]].data.map((item) => item.Timestamp);
+
       return { labels, datasets };
     };
-  }, [selectedServices, data]); // Dependencies for useMemo
+  }, [selectedServices, data]);
 
   // --- Data Smoothing Function ---
   const smoothData = (data) => {
@@ -212,17 +257,13 @@ function ImprovedBenchmarkApp() {
     }
     return smoothed;
   };
+
   // --- Download Chart Function ---
   const downloadChart = (chartRef, field) => {
     if (chartRef.current) {
       const chartCanvas = chartRef.current.toBase64Image();
       saveAs(chartCanvas, `chart-${field}.png`);
     }
-  };
-
-  // --- Theme Toggle Function ---
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
   return (
@@ -257,7 +298,7 @@ function ImprovedBenchmarkApp() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {/* Theme Toggle Button */}
-            <button
+            {/* <button
               onClick={toggleTheme}
               style={{
                 background: 'none',
@@ -268,7 +309,7 @@ function ImprovedBenchmarkApp() {
               aria-label="Toggle Theme"
             >
               {theme === 'light' ? '🌙' : '☀️'}
-            </button>
+            </button> */}
 
             {/* Settings Button */}
             <button
@@ -430,16 +471,44 @@ function ImprovedBenchmarkApp() {
                                   borderRadius: '4px',
                                   transition: 'background-color 0.2s',
                                   backgroundColor: selectedServices.includes(service)
-                                    ? colorPalette.gray
+                                    ? colorPalette.accent
                                     : 'transparent',
+                                  fontWeight: selectedServices.includes(service)
+                                    ? 'bold'
+                                    : 'normal',
                                   cursor: 'pointer',
+                                  position: 'relative',
                                 }}
                               >
+                                {serviceLoadingStates[service] && (
+                                  <div
+                                    style={{
+                                      position: 'absolute',
+                                      top: '50%',
+                                      left: '2px',
+                                      transform: 'translateY(-50%)',
+                                    }}
+                                  >
+                                    <CircularProgressbar
+                                      value={100}
+                                      styles={buildStyles({
+                                        pathColor: getColor(service),
+                                        trailColor: 'transparent',
+                                        strokeLinecap: 'round',
+                                      })}
+                                    />
+                                  </div>
+                                )}
                                 <input
                                   type="checkbox"
                                   checked={selectedServices.includes(service)}
                                   onChange={() => handleServiceChange(service)}
-                                  style={{ marginRight: '10px' }}
+                                  style={{
+                                    marginRight: '10px',
+                                    marginLeft: serviceLoadingStates[service]
+                                      ? '20px'
+                                      : '0',
+                                  }}
                                 />
                                 <div
                                   style={{
@@ -452,19 +521,18 @@ function ImprovedBenchmarkApp() {
                                     boxShadow: `0 0 0 2px ${getColor(service)}`,
                                   }}
                                 >
-                                  {selectedServices.includes(service) && (
-                                    <Check
-                                      size={10}
-                                      color="white"
-                                      style={{
-                                        position: 'relative',
-                                        top: '1px',
-                                        left: '1px',
-                                      }}
-                                    />
-                                  )}
+                                  {selectedServices.includes(service) }
                                 </div>
-                                <span style={{ color: colorPalette.text }}>
+                                <span
+                                  style={{
+                                    color: selectedServices.includes(service)
+                                      ? 'white'
+                                      : colorPalette.text,
+                                  }}
+                                >
+                                  
+
+                                  {/* Text label */}
                                   {service
                                     .replace('no_db_test', '')
                                     .replace('db_test', '')
@@ -531,16 +599,43 @@ function ImprovedBenchmarkApp() {
                                   borderRadius: '4px',
                                   transition: 'background-color 0.2s',
                                   backgroundColor: selectedServices.includes(service)
-                                    ? colorPalette.gray
+                                    ? colorPalette.accent
                                     : 'transparent',
+                                  fontWeight: selectedServices.includes(service)
+                                    ? 'bold'
+                                    : 'normal',
                                   cursor: 'pointer',
                                 }}
                               >
+                                {serviceLoadingStates[service] && (
+                                  <div
+                                    style={{
+                                      position: 'absolute',
+                                      top: '50%',
+                                      left: '2px',
+                                      transform: 'translateY(-50%)',
+                                    }}
+                                  >
+                                    <CircularProgressbar
+                                      value={100}
+                                      styles={buildStyles({
+                                        pathColor: getColor(service),
+                                        trailColor: 'transparent',
+                                        strokeLinecap: 'round',
+                                      })}
+                                    />
+                                  </div>
+                                )}
                                 <input
                                   type="checkbox"
                                   checked={selectedServices.includes(service)}
                                   onChange={() => handleServiceChange(service)}
-                                  style={{ marginRight: '10px' }}
+                                  style={{
+                                    marginRight: '10px',
+                                    marginLeft: serviceLoadingStates[service]
+                                      ? '20px'
+                                      : '0',
+                                  }}
                                 />
                                 <div
                                   style={{
@@ -553,19 +648,18 @@ function ImprovedBenchmarkApp() {
                                     boxShadow: `0 0 0 2px ${getColor(service)}`,
                                   }}
                                 >
-                                  {selectedServices.includes(service) && (
-                                    <Check
-                                      size={10}
-                                      color="white"
-                                      style={{
-                                        position: 'relative',
-                                        top: '1px',
-                                        left: '1px',
-                                      }}
-                                    />
-                                  )}
+                                
                                 </div>
-                                <span style={{ color: colorPalette.text }}>
+                                <span
+                                  style={{
+                                    color: selectedServices.includes(service)
+                                      ? 'white'
+                                      : colorPalette.text,
+                                  }}
+                                >
+                                 
+
+                                  {/* Text label */}
                                   {service
                                     .replace('no_db_test', '')
                                     .replace('db_test', '')
@@ -602,7 +696,7 @@ function ImprovedBenchmarkApp() {
                     }}
                   >
                     <div className="tooltip">
-                      <Info size={20} />
+                      <Filter size={20} />
                       {sidebarExpanded === false && (
                         <span className="tooltiptext">Fields</span>
                       )}
@@ -641,14 +735,12 @@ function ImprovedBenchmarkApp() {
                         onChange={() => handleFieldChange('all')}
                         style={{ marginRight: '10px' }}
                       />
-                      <span style={{ color: colorPalette.text }}>
-                        All Fields
-                      </span>
+                      <span style={{ color: colorPalette.text }}>All Fields</span>
                     </div>
 
                     {/* Individual Field Checkboxes */}
                     {selectedServices.length > 0 &&
-                      Object.keys(data[selectedServices[0]].data[0])
+                      Object.keys(data[selectedServices[0]]?.data[0] || {})
                         .filter(
                           (field) =>
                             ![
@@ -671,8 +763,11 @@ function ImprovedBenchmarkApp() {
                               borderRadius: '4px',
                               transition: 'background-color 0.2s',
                               backgroundColor: selectedFields.includes(field)
-                                ? colorPalette.gray
+                                ? colorPalette.accent
                                 : 'transparent',
+                              fontWeight: selectedFields.includes(field)
+                                ? 'bold'
+                                : 'normal',
                               cursor: 'pointer',
                             }}
                           >
@@ -693,19 +788,17 @@ function ImprovedBenchmarkApp() {
                                 marginRight: '10px',
                               }}
                             >
-                              {selectedFields.includes(field) && (
-                                <Check
-                                  size={10}
-                                  color="white"
-                                  style={{
-                                    position: 'relative',
-                                    top: '1px',
-                                    left: '1px',
-                                  }}
-                                />
-                              )}
+                              {selectedFields.includes(field) }
                             </div>
-                            <span style={{ color: colorPalette.text }}>
+                            <span
+                              style={{
+                                color: selectedFields.includes(field)
+                                  ? 'white'
+                                  : colorPalette.text,
+                              }}
+                            >
+                             
+                              {/* Text label */}
                               {field}
                             </span>
                           </div>
@@ -748,18 +841,26 @@ function ImprovedBenchmarkApp() {
                 }}
               >
                 {selectedFields.map((field) => {
-                  const chartRef = React.createRef(); // Create a ref for each chart
+                  const chartRef = React.createRef();
+
+                  // Check if any of the selected services have an error for this field
+                  const hasError = selectedServices.some(
+                    (service) => data[service]?.error
+                  );
+
+                  if (hasError) {
+                    return (
+                      <div key={field} className="chart-card">
+                        <h2>{field}</h2>
+                        <p className="error-message">
+                          Error loading data for one or more selected services.
+                        </p>
+                      </div>
+                    );
+                  }
 
                   return (
-                    <div
-                      key={field}
-                      style={{
-                        backgroundColor: 'white',
-                        borderRadius: '10px',
-                        padding: '20px',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                      }}
-                    >
+                    <div key={field} className="chart-card">
                       <div
                         style={{
                           display: 'flex',
@@ -782,19 +883,38 @@ function ImprovedBenchmarkApp() {
                           onClick={() => downloadChart(chartRef, field)}
                           style={{
                             background: 'none',
-                            border: '1px solid #ccc',
+                            border: `1px solid ${
+                              theme === 'light'
+                                ? colorPalette.text
+                                : colorPalette.background
+                            }`,
                             borderRadius: '5px',
                             padding: '5px 10px',
                             cursor: 'pointer',
                             fontSize: '0.9rem',
+                            color:
+                              theme === 'light'
+                                ? colorPalette.text
+                                : colorPalette.background,
                           }}
                         >
                           Download Chart
                         </button>
                       </div>
+                      {/* Summary Statistics */}
+                      {/* <div className="summary-stats">
+                        <p>
+                          Avg:{' '}
+                          <span>
+                            {calculateAverage(
+                              generateChartDataForField(field).datasets
+                            )}
+                          </span>
+                        </p>
+                      </div> */}
                       <div style={{ height: '600px' }}>
                         <Line
-                          ref={chartRef} // Assign the ref to the Line component
+                          ref={chartRef}
                           data={generateChartDataForField(field)}
                           options={{
                             responsive: true,
@@ -803,14 +923,19 @@ function ImprovedBenchmarkApp() {
                               legend: {
                                 position: 'bottom',
                                 labels: {
-                                  color: colorPalette.text,
+                                  color:
+                                    theme === 'light'
+                                      ? colorPalette.text
+                                      : 'white',
                                   boxWidth: 20,
                                   padding: 20,
                                 },
                               },
                               title: {
-                                display: true,
-                                // text: `${selectedServices.join(' vs ')} - ${field}`,
+                                display: false,
+                                text: `${selectedServices.join(
+                                  ' vs '
+                                )} - ${field}`,
                                 color: colorPalette.text,
                                 font: {
                                   size: 16,
@@ -818,6 +943,31 @@ function ImprovedBenchmarkApp() {
                                 },
                                 padding: {
                                   bottom: 20,
+                                },
+                              },
+                              tooltip: {
+                                enabled: true, // Enable tooltips
+                                mode: 'index', // Show tooltips for all datasets at a specific x-value
+                                intersect: false, // Tooltips appear even when not directly over a data point
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)', // Customize tooltip appearance
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: 'rgba(0, 0, 0, 0.2)',
+                                borderWidth: 1,
+                              },
+                              zoom: {
+                                zoom: {
+                                  wheel: {
+                                    enabled: true, // Enable zooming with the mouse wheel
+                                  },
+                                  pinch: {
+                                    enabled: true, // Enable pinch-to-zoom on touch devices
+                                  },
+                                  mode: 'x', // Allow zooming only on the x-axis (time)
+                                },
+                                pan: {
+                                  enabled: true, // Enable panning (dragging)
+                                  mode: 'x', // Allow panning only on the x-axis
                                 },
                               },
                             },
@@ -835,10 +985,16 @@ function ImprovedBenchmarkApp() {
                                 ticks: {
                                   autoSkip: true,
                                   maxTicksLimit: 10,
-                                  color: colorPalette.text,
+                                  color:
+                                    theme === 'light'
+                                      ? colorPalette.text
+                                      : 'white', // Dynamic axis tick color
                                 },
                                 grid: {
-                                  color: colorPalette.gray,
+                                  color:
+                                    theme === 'light'
+                                      ? colorPalette.gray
+                                      : 'rgba(255, 255, 255, 0.2)', // Dynamic grid color
                                 },
                               },
                               y: {
@@ -853,10 +1009,16 @@ function ImprovedBenchmarkApp() {
                                 },
                                 beginAtZero: false,
                                 ticks: {
-                                  color: colorPalette.text,
+                                  color:
+                                    theme === 'light'
+                                      ? colorPalette.text
+                                      : 'white', // Dynamic axis tick color
                                 },
                                 grid: {
-                                  color: colorPalette.gray,
+                                  color:
+                                    theme === 'light'
+                                      ? colorPalette.gray
+                                      : 'rgba(255, 255, 255, 0.2)', // Dynamic grid color
                                 },
                               },
                             },
@@ -876,7 +1038,11 @@ function ImprovedBenchmarkApp() {
                   height: '100%',
                 }}
               >
-                <h2>Please select services and fields to compare.</h2>
+                <h2>
+                  {selectedServices.length === 0
+                    ? 'Select services from the sidebar to start comparing.'
+                    : 'Select fields to compare the selected services.'}
+                </h2>
               </div>
             )}
           </div>
