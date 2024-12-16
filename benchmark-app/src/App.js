@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import axios from 'axios';
-import { Line } from 'react-chartjs-2';
-import 'chart.js/auto';
-import './App.css';
-import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
-import 'react-circular-progressbar/dist/styles.css';
+import React, { useEffect, useState, useMemo } from "react";
+import axios from "axios";
+import { Line } from "react-chartjs-2";
+import "chart.js/auto";
+import "./App.css";
+import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
+import "react-circular-progressbar/dist/styles.css";
 import {
   Info,
   ChevronDown,
@@ -13,55 +13,55 @@ import {
   Database,
   Cpu,
   Filter,
-} from 'lucide-react';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { saveAs } from 'file-saver';
+} from "lucide-react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { saveAs } from "file-saver";
 
 // --- Enhanced Color Palette ---
 const colorPalette = {
-  primary: '#2c3e50', // Dark blue-gray
-  secondary: '#3498db', // Bright blue
-  accent: '#e74c3c', // Vibrant red
-  background: '#ecf0f1', // Light gray
-  text: '#34495e', // Soft dark gray
-  gray: '#bdc3c7', // Light gray for subtle UI elements
-  success: '#2ecc71', // Green for positive indicators
-  warning: '#f39c12', // Orange for warnings
-  danger: '#e74c3c', // Red for errors or critical alerts
+  primary: "#2c3e50", // Dark blue-gray
+  secondary: "#3498db", // Bright blue
+  accent: "#e74c3c", // Vibrant red
+  background: "#ecf0f1", // Light gray
+  text: "#34495e", // Soft dark gray
+  gray: "#bdc3c7", // Light gray for subtle UI elements
+  success: "#2ecc71", // Green for positive indicators
+  warning: "#f39c12", // Orange for warnings
+  danger: "#e74c3c", // Red for errors or critical alerts
   light: {
-    buttonBg: '#3498db',
-    buttonText: '#fff',
-    buttonHoverBg: '#2980b9',
-    link: '#3498db',
+    buttonBg: "#3498db",
+    buttonText: "#fff",
+    buttonHoverBg: "#2980b9",
+    link: "#3498db",
   },
   dark: {
-    buttonBg: '#bdc3c7',
-    buttonText: '#2c3e50',
-    buttonHoverBg: '#95a5a6',
-    link: '#bdc3c7',
+    buttonBg: "#bdc3c7",
+    buttonText: "#2c3e50",
+    buttonHoverBg: "#95a5a6",
+    link: "#bdc3c7",
   },
 };
 
 // --- Service Color Patterns ---
 const serviceColorPatterns = [
-  { pattern: /python/i, baseColor: '#3776AB' }, // Python (Steel Blue)
-  { pattern: /django/i, baseColor: '#092E20' }, // Django (Dark Green) - more specific
-  { pattern: /fast \s?api/i, baseColor: '#009485' }, // Fast API (Teal) - more specific
-  { pattern: /javascript|js/i, baseColor: '#F0DB4F' }, // JavaScript (Yellow)
-  { pattern: /express/i, baseColor: '#68A063' }, // Express (Light Green) - more specific
-  { pattern: /bun/i, baseColor: '#F0DB4F' }, // Bun (Yellow) - more specific, same as JavaScript
-  { pattern: /node/i, baseColor: '#68A063' }, // Node.js (Light Green) - more specific, same as Express
-  { pattern: /go|golang/i, baseColor: '#00ADD8' }, // Go (Light Blue)
-  { pattern: /mux/i, baseColor: '#00ADD8' }, // Go Mux (Light Blue) - same as Go
-  { pattern: /java/i, baseColor: '#5382A1' }, // Java (Slate Blue)
-  { pattern: /spring/i, baseColor: '#5382A1' }, // Spring (Slate Blue) - same as Java
-  { pattern: /c#|csharp/i, baseColor: '#67217A' }, // C# (Purple)
-  { pattern: /\.net/i, baseColor: '#67217A' }, // .NET (Purple) - same as C#
-  { pattern: /rust/i, baseColor: '#DEA584' }, // Rust (Light Brown)
-  { pattern: /actix/i, baseColor: '#DEA584' }, // Actix (Light Brown) - same as Rust
-  { pattern: /dart/i, baseColor: '#0175C2' }, // Dart (Blue)
-  { pattern: /server\s?pod/i, baseColor: '#0175C2' }, // Server Pod (Blue) - same as Dart
+  { pattern: /python/i, baseColor: "#3776AB" }, // Python (Steel Blue)
+  { pattern: /django/i, baseColor: "#092E20" }, // Django (Dark Green) - more specific
+  { pattern: /fast \s?api/i, baseColor: "#009485" }, // Fast API (Teal) - more specific
+  { pattern: /javascript|js/i, baseColor: "#F0DB4F" }, // JavaScript (Yellow)
+  { pattern: /express/i, baseColor: "#68A063" }, // Express (Light Green) - more specific
+  { pattern: /bun/i, baseColor: "#F0DB4F" }, // Bun (Yellow) - more specific, same as JavaScript
+  { pattern: /node/i, baseColor: "#68A063" }, // Node.js (Light Green) - more specific, same as Express
+  { pattern: /go|golang/i, baseColor: "#00ADD8" }, // Go (Light Blue)
+  { pattern: /mux/i, baseColor: "#00ADD8" }, // Go Mux (Light Blue) - same as Go
+  { pattern: /java/i, baseColor: "#5382A1" }, // Java (Slate Blue)
+  { pattern: /spring/i, baseColor: "#5382A1" }, // Spring (Slate Blue) - same as Java
+  { pattern: /c#|csharp/i, baseColor: "#67217A" }, // C# (Purple)
+  { pattern: /\.net/i, baseColor: "#67217A" }, // .NET (Purple) - same as C#
+  { pattern: /rust/i, baseColor: "#DEA584" }, // Rust (Light Brown)
+  { pattern: /actix/i, baseColor: "#DEA584" }, // Actix (Light Brown) - same as Rust
+  { pattern: /dart/i, baseColor: "#0175C2" }, // Dart (Blue)
+  { pattern: /server\s?pod/i, baseColor: "#0175C2" }, // Server Pod (Blue) - same as Dart
 ];
 
 // --- Helper function to darken a color ---
@@ -75,13 +75,15 @@ function darkenColor(hexColor, factor = 0.6) {
   g = Math.floor(g * factor);
   b = Math.floor(b * factor);
   // Convert back to hex
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  return `#${r.toString(16).padStart(2, "0")}${g
+    .toString(16)
+    .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
 // --- Get Color Function ---
 const getColor = (serviceName) => {
   const lowerCaseServiceName = serviceName.toLowerCase();
-  const isDbService = lowerCaseServiceName.includes('no_db_test');
+  const isDbService = lowerCaseServiceName.includes("no_db_test");
 
   for (const { pattern, baseColor } of serviceColorPatterns) {
     if (pattern.test(lowerCaseServiceName)) {
@@ -108,18 +110,18 @@ function ImprovedBenchmarkApp() {
   const [noDbServicesExpanded, setNoDbServicesExpanded] = useState(true);
   const [fieldsExpanded, setFieldsExpanded] = useState(true);
   const [allFieldsSelected, setAllFieldsSelected] = useState(false);
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState("light");
 
   // --- Theme Toggle Function ---
   const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
+    setTheme(theme === "light" ? "dark" : "light");
   };
 
   // --- Data Fetching with Error Handling and Partial Loading ---
   useEffect(() => {
-    const baseURL = window.location.pathname.includes('backend-benchmark')
-      ? '/backend-benchmark'
-      : '';
+    const baseURL = window.location.pathname.includes("backend-benchmark")
+      ? "/backend-benchmark"
+      : "";
     const source = axios.CancelToken.source();
 
     axios
@@ -139,13 +141,13 @@ function ImprovedBenchmarkApp() {
         setLoading(false);
       })
       .catch((error) => {
-        console.error('Error fetching data:', error);
-        toast.error('Failed to fetch data'); // Toast notification for error
+        console.error("Error fetching data:", error);
+        toast.error("Failed to fetch data"); // Toast notification for error
         setLoading(false);
       });
 
     return () => {
-      source.cancel('Component got unmounted');
+      source.cancel("Component got unmounted");
     };
   }, []);
 
@@ -168,14 +170,20 @@ function ImprovedBenchmarkApp() {
   };
 
   const handleFieldChange = (field) => {
-    if (field === 'all') {
+    if (field === "all") {
       // Handle "All Fields" selection
       setAllFieldsSelected(!allFieldsSelected);
       if (!allFieldsSelected) {
         // Select all fields
         const allFields = Object.keys(data[selectedServices[0]].data[0]).filter(
           (f) =>
-            !['timestamp', 'Timestamp', 'Time Difference', 'Name', 'Type'].includes(f)
+            ![
+              "timestamp",
+              "Timestamp",
+              "Time Difference",
+              "Name",
+              "Type",
+            ].includes(f)
         );
         setSelectedFields(allFields);
       } else {
@@ -191,7 +199,6 @@ function ImprovedBenchmarkApp() {
       );
     }
   };
-
 
   // --- Memoized Chart Data Generation with Smoothing ---
   const generateChartDataForField = useMemo(() => {
@@ -216,7 +223,9 @@ function ImprovedBenchmarkApp() {
           };
         });
 
-      const labels = data[selectedServices[0]].data.map((item) => item.Timestamp);
+      const labels = data[selectedServices[0]].data.map(
+        (item) => item.Timestamp
+      );
 
       return { labels, datasets };
     };
@@ -254,9 +263,9 @@ function ImprovedBenchmarkApp() {
         className="App"
         style={{
           backgroundColor:
-            theme === 'light' ? colorPalette.background : colorPalette.primary,
-          color: theme === 'light' ? colorPalette.text : 'white',
-          fontFamily: 'Arial, sans-serif',
+            theme === "light" ? colorPalette.background : colorPalette.primary,
+          color: theme === "light" ? colorPalette.text : "white",
+          fontFamily: "Arial, sans-serif",
         }}
       >
         <ToastContainer /> {/* Container for toast notifications */}
@@ -264,21 +273,23 @@ function ImprovedBenchmarkApp() {
         <header
           style={{
             backgroundColor:
-              theme === 'light' ? colorPalette.primary : colorPalette.background,
-            color: theme === 'light' ? 'white' : colorPalette.text,
-            padding: '15px 20px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              theme === "light"
+                ? colorPalette.primary
+                : colorPalette.background,
+            color: theme === "light" ? "white" : colorPalette.text,
+            padding: "15px 20px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
             zIndex: 10,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <LineChart size={24} />
-            <h1 style={{ margin: 0, fontWeight: '600' }}>Service Benchmarks</h1>
+            <h1 style={{ margin: 0, fontWeight: "600" }}>Service Benchmarks</h1>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             {/* Theme Toggle Button */}
             {/* <button
               onClick={toggleTheme}
@@ -297,10 +308,10 @@ function ImprovedBenchmarkApp() {
             <button
               onClick={() => setSidebarExpanded(!sidebarExpanded)}
               style={{
-                background: 'none',
-                border: 'none',
-                color: theme === 'light' ? 'white' : colorPalette.text,
-                cursor: 'pointer',
+                background: "none",
+                border: "none",
+                color: theme === "light" ? "white" : colorPalette.text,
+                cursor: "pointer",
               }}
               aria-label="Toggle Sidebar"
             >
@@ -309,21 +320,24 @@ function ImprovedBenchmarkApp() {
           </div>
         </header>
         {/* --- Main Content --- */}
-        <div className="main-content" style={{ display: 'flex', padding: '20px', gap: '20px' }}>
+        <div
+          className="main-content"
+          style={{ display: "flex", padding: "20px", gap: "20px" }}
+        >
           {/* --- Sidebar --- */}
           <div
-            className={`sidebar ${sidebarExpanded ? '' : 'collapsed'}`}
+            className={`sidebar ${sidebarExpanded ? "" : "collapsed"}`}
             style={{
-              width: sidebarExpanded ? '300px' : '60px',
-              backgroundColor: 'white',
-              borderRadius: '10px',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-              transition: 'width 0.3s ease, transform 0.3s ease',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
+              width: sidebarExpanded ? "300px" : "60px",
+              backgroundColor: "white",
+              borderRadius: "10px",
+              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+              transition: "width 0.3s ease, transform 0.3s ease",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
               zIndex: 5,
-              position: 'relative',
+              position: "relative",
             }}
           >
             {/* Sidebar Toggle */}
@@ -331,18 +345,18 @@ function ImprovedBenchmarkApp() {
               className="sidebar-toggle"
               onClick={() => setSidebarExpanded(!sidebarExpanded)}
               style={{
-                position: 'absolute',
-                top: '10px',
-                right: sidebarExpanded ? '-30px' : '10px',
+                position: "absolute",
+                top: "10px",
+                right: sidebarExpanded ? "-30px" : "10px",
                 backgroundColor: colorPalette.primary,
-                width: '30px',
-                height: '30px',
-                borderRadius: '0 10px 10px 0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'right 0.3s ease',
+                width: "30px",
+                height: "30px",
+                borderRadius: "0 10px 10px 0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: "right 0.3s ease",
                 zIndex: 20,
               }}
             >
@@ -350,31 +364,33 @@ function ImprovedBenchmarkApp() {
                 size={20}
                 color="white"
                 style={{
-                  transform: sidebarExpanded ? 'rotate(90deg)' : 'rotate(-90deg)',
-                  transition: 'transform 0.3s ease',
+                  transform: sidebarExpanded
+                    ? "rotate(90deg)"
+                    : "rotate(-90deg)",
+                  transition: "transform 0.3s ease",
                 }}
               />
             </div>
             {/* --- Collapsible Sections --- */}
-            <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+            <div style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
               {/* Services Section */}
               <div className="section">
                 <div
                   className="section-header"
                   onClick={() => setServicesExpanded(!servicesExpanded)}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    marginBottom: '10px',
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    cursor: "pointer",
+                    marginBottom: "10px",
                   }}
                 >
                   <h3
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
                       margin: 0,
                     }}
                   >
@@ -389,8 +405,8 @@ function ImprovedBenchmarkApp() {
                   <ChevronDown
                     size={20}
                     style={{
-                      transform: servicesExpanded ? '' : 'rotate(-90deg)',
-                      transition: 'transform 0.3s ease',
+                      transform: servicesExpanded ? "" : "rotate(-90deg)",
+                      transition: "transform 0.3s ease",
                     }}
                   />
                 </div>
@@ -400,20 +416,22 @@ function ImprovedBenchmarkApp() {
                     <div className="subsection">
                       <div
                         className="subsection-header"
-                        onClick={() => setDbServicesExpanded(!dbServicesExpanded)}
+                        onClick={() =>
+                          setDbServicesExpanded(!dbServicesExpanded)
+                        }
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          cursor: 'pointer',
-                          marginTop: '10px',
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          cursor: "pointer",
+                          marginTop: "10px",
                         }}
                       >
                         <h4
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
                             margin: 0,
                           }}
                         >
@@ -428,8 +446,10 @@ function ImprovedBenchmarkApp() {
                         <ChevronDown
                           size={18}
                           style={{
-                            transform: dbServicesExpanded ? '' : 'rotate(-90deg)',
-                            transition: 'transform 0.3s ease',
+                            transform: dbServicesExpanded
+                              ? ""
+                              : "rotate(-90deg)",
+                            transition: "transform 0.3s ease",
                           }}
                         />
                       </div>
@@ -438,8 +458,8 @@ function ImprovedBenchmarkApp() {
                           {Object.keys(data)
                             .filter(
                               (service) =>
-                                service.includes('db_test') &&
-                                !service.includes('no_db_test')
+                                service.includes("db_test") &&
+                                !service.includes("no_db_test")
                             )
                             .map((service) => (
                               <div
@@ -447,57 +467,56 @@ function ImprovedBenchmarkApp() {
                                 className="option"
                                 onClick={() => handleServiceChange(service)}
                                 style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  padding: '8px',
-                                  borderRadius: '4px',
-                                  transition: 'background-color 0.2s',
-                                  backgroundColor: selectedServices.includes(service)
+                                  display: "flex",
+                                  alignItems: "center",
+                                  padding: "8px",
+                                  borderRadius: "4px",
+                                  transition: "background-color 0.2s",
+                                  backgroundColor: selectedServices.includes(
+                                    service
+                                  )
                                     ? colorPalette.accent
-                                    : 'transparent',
+                                    : "transparent",
                                   fontWeight: selectedServices.includes(service)
-                                    ? 'bold'
-                                    : 'normal',
-                                  cursor: 'pointer',
-                                  position: 'relative',
+                                    ? "bold"
+                                    : "normal",
+                                  cursor: "pointer",
+                                  position: "relative",
                                 }}
                               >
-                                
                                 <input
                                   type="checkbox"
                                   checked={selectedServices.includes(service)}
                                   onChange={() => handleServiceChange(service)}
                                   style={{
-                                    marginRight: '10px',
-                                    marginLeft:  '0',
+                                    marginRight: "10px",
+                                    marginLeft: "0",
                                   }}
                                 />
                                 <div
                                   style={{
-                                    width: '12px',
-                                    height: '12px',
-                                    borderRadius: '50%',
+                                    width: "12px",
+                                    height: "12px",
+                                    borderRadius: "50%",
                                     backgroundColor: getColor(service),
-                                    marginRight: '10px',
-                                    border: '2px solid white',
+                                    marginRight: "10px",
+                                    border: "2px solid white",
                                     boxShadow: `0 0 0 2px ${getColor(service)}`,
                                   }}
                                 >
-                                  {selectedServices.includes(service) }
+                                  {selectedServices.includes(service)}
                                 </div>
                                 <span
                                   style={{
                                     color: selectedServices.includes(service)
-                                      ? 'white'
+                                      ? "white"
                                       : colorPalette.text,
                                   }}
                                 >
-                                  
-
                                   {/* Text label */}
                                   {service
-                                    .replace('no_db_test', '')
-                                    .replace('db_test', '')
+                                    .replace("no_db_test", "")
+                                    .replace("db_test", "")
                                     .trim()}
                                 </span>
                               </div>
@@ -514,25 +533,27 @@ function ImprovedBenchmarkApp() {
                           setNoDbServicesExpanded(!noDbServicesExpanded)
                         }
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          cursor: 'pointer',
-                          marginTop: '10px',
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          cursor: "pointer",
+                          marginTop: "10px",
                         }}
                       >
                         <h4
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
                             margin: 0,
                           }}
                         >
                           <div className="tooltip">
                             <Cpu size={18} />
                             {sidebarExpanded === false && (
-                              <span className="tooltiptext">No DB Services</span>
+                              <span className="tooltiptext">
+                                No DB Services
+                              </span>
                             )}
                           </div>
                           No DB Services
@@ -540,72 +561,70 @@ function ImprovedBenchmarkApp() {
                         <ChevronDown
                           size={18}
                           style={{
-                            transform: noDbServicesExpanded ? '' : 'rotate(-90deg)',
-                            transition: 'transform 0.3s ease',
+                            transform: noDbServicesExpanded
+                              ? ""
+                              : "rotate(-90deg)",
+                            transition: "transform 0.3s ease",
                           }}
                         />
                       </div>
                       {noDbServicesExpanded && (
                         <div className="options">
                           {Object.keys(data)
-                            .filter((service) => service.includes('no_db_test'))
+                            .filter((service) => service.includes("no_db_test"))
                             .map((service) => (
                               <div
                                 key={service}
                                 className="option"
                                 onClick={() => handleServiceChange(service)}
                                 style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  padding: '8px',
-                                  borderRadius: '4px',
-                                  transition: 'background-color 0.2s',
-                                  backgroundColor: selectedServices.includes(service)
+                                  display: "flex",
+                                  alignItems: "center",
+                                  padding: "8px",
+                                  borderRadius: "4px",
+                                  transition: "background-color 0.2s",
+                                  backgroundColor: selectedServices.includes(
+                                    service
+                                  )
                                     ? colorPalette.accent
-                                    : 'transparent',
+                                    : "transparent",
                                   fontWeight: selectedServices.includes(service)
-                                    ? 'bold'
-                                    : 'normal',
-                                  cursor: 'pointer',
+                                    ? "bold"
+                                    : "normal",
+                                  cursor: "pointer",
                                 }}
                               >
-                               
                                 <input
                                   type="checkbox"
                                   checked={selectedServices.includes(service)}
                                   onChange={() => handleServiceChange(service)}
                                   style={{
-                                    marginRight: '10px',
-                                    marginLeft: 
-                                      '0',
+                                    marginRight: "10px",
+                                    marginLeft: "0",
                                   }}
                                 />
                                 <div
                                   style={{
-                                    width: '12px',
-                                    height: '12px',
-                                    borderRadius: '50%',
+                                    width: "12px",
+                                    height: "12px",
+                                    borderRadius: "50%",
                                     backgroundColor: getColor(service),
-                                    marginRight: '10px',
-                                    border: '2px solid white',
+                                    marginRight: "10px",
+                                    border: "2px solid white",
                                     boxShadow: `0 0 0 2px ${getColor(service)}`,
                                   }}
-                                >
-                                
-                                </div>
+                                ></div>
                                 <span
                                   style={{
                                     color: selectedServices.includes(service)
-                                      ? 'white'
+                                      ? "white"
                                       : colorPalette.text,
                                   }}
                                 >
-                                 
-
                                   {/* Text label */}
                                   {service
-                                    .replace('no_db_test', '')
-                                    .replace('db_test', '')
+                                    .replace("no_db_test", "")
+                                    .replace("db_test", "")
                                     .trim()}
                                 </span>
                               </div>
@@ -618,23 +637,23 @@ function ImprovedBenchmarkApp() {
               </div>
 
               {/* Fields Section */}
-              <div className="section" style={{ marginTop: '20px' }}>
+              <div className="section" style={{ marginTop: "20px" }}>
                 <div
                   className="section-header"
                   onClick={() => setFieldsExpanded(!fieldsExpanded)}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    marginBottom: '10px',
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    cursor: "pointer",
+                    marginBottom: "10px",
                   }}
                 >
                   <h3
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
                       margin: 0,
                     }}
                   >
@@ -649,8 +668,8 @@ function ImprovedBenchmarkApp() {
                   <ChevronDown
                     size={20}
                     style={{
-                      transform: fieldsExpanded ? '' : 'rotate(-90deg)',
-                      transition: 'transform 0.3s ease',
+                      transform: fieldsExpanded ? "" : "rotate(-90deg)",
+                      transition: "transform 0.3s ease",
                     }}
                   />
                 </div>
@@ -659,26 +678,28 @@ function ImprovedBenchmarkApp() {
                     {/* All Fields Checkbox */}
                     <div
                       className="option"
-                      onClick={() => handleFieldChange('all')}
+                      onClick={() => handleFieldChange("all")}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '8px',
-                        borderRadius: '4px',
-                        transition: 'background-color 0.2s',
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "8px",
+                        borderRadius: "4px",
+                        transition: "background-color 0.2s",
                         backgroundColor: allFieldsSelected
                           ? colorPalette.gray
-                          : 'transparent',
-                        cursor: 'pointer',
+                          : "transparent",
+                        cursor: "pointer",
                       }}
                     >
                       <input
                         type="checkbox"
                         checked={allFieldsSelected}
-                        onChange={() => handleFieldChange('all')}
-                        style={{ marginRight: '10px' }}
+                        onChange={() => handleFieldChange("all")}
+                        style={{ marginRight: "10px" }}
                       />
-                      <span style={{ color: colorPalette.text }}>All Fields</span>
+                      <span style={{ color: colorPalette.text }}>
+                        All Fields
+                      </span>
                     </div>
 
                     {/* Individual Field Checkboxes */}
@@ -687,11 +708,11 @@ function ImprovedBenchmarkApp() {
                         .filter(
                           (field) =>
                             ![
-                              'timestamp',
-                              'Timestamp',
-                              'Time Difference',
-                              'Name',
-                              'Type',
+                              "timestamp",
+                              "Timestamp",
+                              "Time Difference",
+                              "Name",
+                              "Type",
                             ].includes(field)
                         )
                         .map((field) => (
@@ -700,47 +721,46 @@ function ImprovedBenchmarkApp() {
                             className="option"
                             onClick={() => handleFieldChange(field)}
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              padding: '8px',
-                              borderRadius: '4px',
-                              transition: 'background-color 0.2s',
+                              display: "flex",
+                              alignItems: "center",
+                              padding: "8px",
+                              borderRadius: "4px",
+                              transition: "background-color 0.2s",
                               backgroundColor: selectedFields.includes(field)
                                 ? colorPalette.accent
-                                : 'transparent',
+                                : "transparent",
                               fontWeight: selectedFields.includes(field)
-                                ? 'bold'
-                                : 'normal',
-                              cursor: 'pointer',
+                                ? "bold"
+                                : "normal",
+                              cursor: "pointer",
                             }}
                           >
                             <input
                               type="checkbox"
                               checked={selectedFields.includes(field)}
                               onChange={() => handleFieldChange(field)}
-                              style={{ marginRight: '10px' }}
+                              style={{ marginRight: "10px" }}
                             />
                             <div
                               style={{
-                                width: '12px',
-                                height: '12px',
-                                borderRadius: '50%',
+                                width: "12px",
+                                height: "12px",
+                                borderRadius: "50%",
                                 backgroundColor: selectedFields.includes(field)
                                   ? colorPalette.accent
                                   : colorPalette.gray,
-                                marginRight: '10px',
+                                marginRight: "10px",
                               }}
                             >
-                              {selectedFields.includes(field) }
+                              {selectedFields.includes(field)}
                             </div>
                             <span
                               style={{
                                 color: selectedFields.includes(field)
-                                  ? 'white'
+                                  ? "white"
                                   : colorPalette.text,
                               }}
                             >
-                             
                               {/* Text label */}
                               {field}
                             </span>
@@ -753,34 +773,36 @@ function ImprovedBenchmarkApp() {
           </div>
 
           {/* --- Chart Container --- */}
-          <div className="chart-container" style={{ flex: 1, overflowY: 'auto' }}>
+          <div
+            className="chart-container"
+            style={{ flex: 1, overflowY: "auto" }}
+          >
             {loading ? (
               <div
                 style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  height: '100%',
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "100%",
                 }}
               >
                 <CircularProgressbar
                   value={progress}
                   text={`${progress}%`}
                   styles={buildStyles({
-                    textSize: '16px',
+                    textSize: "16px",
                     pathColor: colorPalette.secondary,
                     textColor: colorPalette.text,
                     trailColor: colorPalette.gray,
                   })}
                 />
               </div>
-            ) : selectedServices.length > 0 &&
-              selectedFields.length > 0 ? (
+            ) : selectedServices.length > 0 && selectedFields.length > 0 ? (
               <div
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))',
-                  gap: '20px',
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(450px, 1fr))",
+                  gap: "20px",
                 }}
               >
                 {selectedFields.map((field) => {
@@ -806,17 +828,17 @@ function ImprovedBenchmarkApp() {
                     <div key={field} className="chart-card">
                       <div
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
                         }}
                       >
                         <h2
                           style={{
-                            textAlign: 'center',
+                            textAlign: "center",
                             color: colorPalette.primary,
-                            marginBottom: '15px',
-                            fontWeight: '600',
+                            marginBottom: "15px",
+                            fontWeight: "600",
                           }}
                         >
                           {field}
@@ -825,18 +847,18 @@ function ImprovedBenchmarkApp() {
                         <button
                           onClick={() => downloadChart(chartRef, field)}
                           style={{
-                            background: 'none',
+                            background: "none",
                             border: `1px solid ${
-                              theme === 'light'
+                              theme === "light"
                                 ? colorPalette.text
                                 : colorPalette.background
                             }`,
-                            borderRadius: '5px',
-                            padding: '5px 10px',
-                            cursor: 'pointer',
-                            fontSize: '0.9rem',
+                            borderRadius: "5px",
+                            padding: "5px 10px",
+                            cursor: "pointer",
+                            fontSize: "0.9rem",
                             color:
-                              theme === 'light'
+                              theme === "light"
                                 ? colorPalette.text
                                 : colorPalette.background,
                           }}
@@ -855,7 +877,7 @@ function ImprovedBenchmarkApp() {
                           </span>
                         </p>
                       </div> */}
-                      <div style={{ height: '600px' }}>
+                      <div style={{ height: "600px" }}>
                         <Line
                           ref={chartRef}
                           data={generateChartDataForField(field)}
@@ -864,12 +886,12 @@ function ImprovedBenchmarkApp() {
                             maintainAspectRatio: false,
                             plugins: {
                               legend: {
-                                position: 'bottom',
+                                position: "bottom",
                                 labels: {
                                   color:
-                                    theme === 'light'
+                                    theme === "light"
                                       ? colorPalette.text
-                                      : 'white',
+                                      : "white",
                                   boxWidth: 20,
                                   padding: 20,
                                 },
@@ -877,12 +899,12 @@ function ImprovedBenchmarkApp() {
                               title: {
                                 display: false,
                                 text: `${selectedServices.join(
-                                  ' vs '
+                                  " vs "
                                 )} - ${field}`,
                                 color: colorPalette.text,
                                 font: {
                                   size: 16,
-                                  weight: 'bold',
+                                  weight: "bold",
                                 },
                                 padding: {
                                   bottom: 20,
@@ -890,12 +912,12 @@ function ImprovedBenchmarkApp() {
                               },
                               tooltip: {
                                 enabled: true, // Enable tooltips
-                                mode: 'index', // Show tooltips for all datasets at a specific x-value
+                                mode: "index", // Show tooltips for all datasets at a specific x-value
                                 intersect: false, // Tooltips appear even when not directly over a data point
-                                backgroundColor: 'rgba(0, 0, 0, 0.8)', // Customize tooltip appearance
-                                titleColor: '#fff',
-                                bodyColor: '#fff',
-                                borderColor: 'rgba(0, 0, 0, 0.2)',
+                                backgroundColor: "rgba(0, 0, 0, 0.8)", // Customize tooltip appearance
+                                titleColor: "#fff",
+                                bodyColor: "#fff",
+                                borderColor: "rgba(0, 0, 0, 0.2)",
                                 borderWidth: 1,
                               },
                               zoom: {
@@ -906,11 +928,11 @@ function ImprovedBenchmarkApp() {
                                   pinch: {
                                     enabled: true, // Enable pinch-to-zoom on touch devices
                                   },
-                                  mode: 'x', // Allow zooming only on the x-axis (time)
+                                  mode: "x", // Allow zooming only on the x-axis (time)
                                 },
                                 pan: {
                                   enabled: true, // Enable panning (dragging)
-                                  mode: 'x', // Allow panning only on the x-axis
+                                  mode: "x", // Allow panning only on the x-axis
                                 },
                               },
                             },
@@ -918,26 +940,26 @@ function ImprovedBenchmarkApp() {
                               x: {
                                 title: {
                                   display: true,
-                                  text: 'Time In Seconds',
+                                  text: "Time In Seconds",
                                   color: colorPalette.text,
                                   font: {
                                     size: 14,
-                                    weight: 'bold',
+                                    weight: "bold",
                                   },
                                 },
                                 ticks: {
                                   autoSkip: true,
                                   maxTicksLimit: 10,
                                   color:
-                                    theme === 'light'
+                                    theme === "light"
                                       ? colorPalette.text
-                                      : 'white', // Dynamic axis tick color
+                                      : "white", // Dynamic axis tick color
                                 },
                                 grid: {
                                   color:
-                                    theme === 'light'
+                                    theme === "light"
                                       ? colorPalette.gray
-                                      : 'rgba(255, 255, 255, 0.2)', // Dynamic grid color
+                                      : "rgba(255, 255, 255, 0.2)", // Dynamic grid color
                                 },
                               },
                               y: {
@@ -947,21 +969,21 @@ function ImprovedBenchmarkApp() {
                                   color: colorPalette.text,
                                   font: {
                                     size: 14,
-                                    weight: 'bold',
+                                    weight: "bold",
                                   },
                                 },
                                 beginAtZero: false,
                                 ticks: {
                                   color:
-                                    theme === 'light'
+                                    theme === "light"
                                       ? colorPalette.text
-                                      : 'white', // Dynamic axis tick color
+                                      : "white", // Dynamic axis tick color
                                 },
                                 grid: {
                                   color:
-                                    theme === 'light'
+                                    theme === "light"
                                       ? colorPalette.gray
-                                      : 'rgba(255, 255, 255, 0.2)', // Dynamic grid color
+                                      : "rgba(255, 255, 255, 0.2)", // Dynamic grid color
                                 },
                               },
                             },
@@ -975,16 +997,16 @@ function ImprovedBenchmarkApp() {
             ) : (
               <div
                 style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  height: '100%',
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "100%",
                 }}
               >
                 <h2>
                   {selectedServices.length === 0
-                    ? 'Select services from the sidebar to start comparing.'
-                    : 'Select fields to compare the selected services.'}
+                    ? "Select services from the sidebar to start comparing."
+                    : "Select fields to compare the selected services."}
                 </h2>
               </div>
             )}
