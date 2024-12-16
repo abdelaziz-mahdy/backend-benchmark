@@ -10,7 +10,6 @@ import {
   ChevronDown,
   LineChart,
   Settings,
-  Check,
   Database,
   Cpu,
   Filter,
@@ -99,7 +98,6 @@ const ThemeContext = React.createContext();
 
 function ImprovedBenchmarkApp() {
   const [data, setData] = useState({});
-  const [serviceLoadingStates, setServiceLoadingStates] = useState({});
   const [selectedServices, setSelectedServices] = useState([]);
   const [selectedFields, setSelectedFields] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -194,22 +192,6 @@ function ImprovedBenchmarkApp() {
     }
   };
 
-  // --- Calculate Average for Summary Stats (example) ---
-  const calculateAverage = useCallback((datasets) => {
-    if (!datasets || datasets.length === 0 || !datasets[0].data) {
-      return 0;
-    }
-
-    const sums = datasets.reduce((acc, dataset) => {
-      dataset.data.forEach((value, index) => {
-        acc[index] = (acc[index] || 0) + value;
-      });
-      return acc;
-    }, []);
-
-    const averages = sums.map((sum) => sum / datasets.length);
-    return averages.reduce((a, b) => a + b, 0).toFixed(2); // Overall average
-  }, []);
 
   // --- Memoized Chart Data Generation with Smoothing ---
   const generateChartDataForField = useMemo(() => {
@@ -480,34 +462,14 @@ function ImprovedBenchmarkApp() {
                                   position: 'relative',
                                 }}
                               >
-                                {serviceLoadingStates[service] && (
-                                  <div
-                                    style={{
-                                      position: 'absolute',
-                                      top: '50%',
-                                      left: '2px',
-                                      transform: 'translateY(-50%)',
-                                    }}
-                                  >
-                                    <CircularProgressbar
-                                      value={100}
-                                      styles={buildStyles({
-                                        pathColor: getColor(service),
-                                        trailColor: 'transparent',
-                                        strokeLinecap: 'round',
-                                      })}
-                                    />
-                                  </div>
-                                )}
+                                
                                 <input
                                   type="checkbox"
                                   checked={selectedServices.includes(service)}
                                   onChange={() => handleServiceChange(service)}
                                   style={{
                                     marginRight: '10px',
-                                    marginLeft: serviceLoadingStates[service]
-                                      ? '20px'
-                                      : '0',
+                                    marginLeft:  '0',
                                   }}
                                 />
                                 <div
@@ -607,34 +569,15 @@ function ImprovedBenchmarkApp() {
                                   cursor: 'pointer',
                                 }}
                               >
-                                {serviceLoadingStates[service] && (
-                                  <div
-                                    style={{
-                                      position: 'absolute',
-                                      top: '50%',
-                                      left: '2px',
-                                      transform: 'translateY(-50%)',
-                                    }}
-                                  >
-                                    <CircularProgressbar
-                                      value={100}
-                                      styles={buildStyles({
-                                        pathColor: getColor(service),
-                                        trailColor: 'transparent',
-                                        strokeLinecap: 'round',
-                                      })}
-                                    />
-                                  </div>
-                                )}
+                               
                                 <input
                                   type="checkbox"
                                   checked={selectedServices.includes(service)}
                                   onChange={() => handleServiceChange(service)}
                                   style={{
                                     marginRight: '10px',
-                                    marginLeft: serviceLoadingStates[service]
-                                      ? '20px'
-                                      : '0',
+                                    marginLeft: 
+                                      '0',
                                   }}
                                 />
                                 <div
