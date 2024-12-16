@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { Line } from 'react-chartjs-2';
 import 'chart.js/auto';
@@ -13,7 +13,11 @@ import {
   Check,
   Database,
   Cpu,
+  Filter,
 } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { saveAs } from 'file-saver';
 
 // --- Enhanced Color Palette ---
 const colorPalette = {
@@ -26,6 +30,18 @@ const colorPalette = {
   success: '#2ecc71', // Green for positive indicators
   warning: '#f39c12', // Orange for warnings
   danger: '#e74c3c', // Red for errors or critical alerts
+  light: {
+    buttonBg: '#3498db',
+    buttonText: '#fff',
+    buttonHoverBg: '#2980b9',
+    link: '#3498db',
+  },
+  dark: {
+    buttonBg: '#bdc3c7',
+    buttonText: '#2c3e50',
+    buttonHoverBg: '#95a5a6',
+    link: '#bdc3c7',
+  },
 };
 
 // --- Service Color Patterns ---
@@ -55,16 +71,12 @@ function darkenColor(hexColor, factor = 0.6) {
   let r = parseInt(hexColor.slice(1, 3), 16);
   let g = parseInt(hexColor.slice(3, 5), 16);
   let b = parseInt(hexColor.slice(5, 7), 16);
-
   // Darken each component
   r = Math.floor(r * factor);
   g = Math.floor(g * factor);
   b = Math.floor(b * factor);
-
   // Convert back to hex
-  return `#${r.toString(16).padStart(2, '0')}${g
-    .toString(16)
-    .padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
 // --- Get Color Function ---
@@ -82,21 +94,30 @@ const getColor = (serviceName) => {
   return colorPalette.gray; // Default to gray if no pattern matches
 };
 
+// --- Theme Context ---
+const ThemeContext = React.createContext();
 
 function ImprovedBenchmarkApp() {
   const [data, setData] = useState({});
+  const [serviceLoadingStates, setServiceLoadingStates] = useState({});
   const [selectedServices, setSelectedServices] = useState([]);
   const [selectedFields, setSelectedFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [servicesExpanded, setServicesExpanded] = useState(true);
-  const [dbServicesExpanded, setDbServicesExpanded] = useState(true); // State for DB services section
-  const [noDbServicesExpanded, setNoDbServicesExpanded] =
-    useState(true); // State for No DB services section
+  const [dbServicesExpanded, setDbServicesExpanded] = useState(true);
+  const [noDbServicesExpanded, setNoDbServicesExpanded] = useState(true);
   const [fieldsExpanded, setFieldsExpanded] = useState(true);
+  const [allFieldsSelected, setAllFieldsSelected] = useState(false);
+  const [theme, setTheme] = useState('light');
 
-  // --- Data Fetching ---
+  // --- Theme Toggle Function ---
+  const toggleTheme = () => {
+    setTheme(theme === 'light' ? 'dark' : 'light');
+  };
+
+  // --- Data Fetching with Error Handling and Partial Loading ---
   useEffect(() => {
     const baseURL = window.location.pathname.includes('backend-benchmark')
       ? '/backend-benchmark'
@@ -121,6 +142,7 @@ function ImprovedBenchmarkApp() {
       })
       .catch((error) => {
         console.error('Error fetching data:', error);
+        toast.error('Failed to fetch data'); // Toast notification for error
         setLoading(false);
       });
 
@@ -129,48 +151,94 @@ function ImprovedBenchmarkApp() {
     };
   }, []);
 
-  // --- Selection Handlers ---
+  // --- Selection Handlers with Checkboxes ---
   const handleServiceChange = (service) => {
-    setSelectedServices((prev) =>
-      prev.includes(service)
+    setSelectedServices((prev) => {
+      const updatedServices = prev.includes(service)
         ? prev.filter((s) => s !== service)
-        : [...prev, service]
-    );
+        : [...prev, service];
+
+      // // If a service is deselected, also deselect all its fields
+      // if (!prev.includes(service)) {
+      //   setSelectedFields((prevFields) =>
+      //     prevFields.filter((field) => !data[service]?.data[0]?.hasOwnProperty(field))
+      //   );
+      // }
+
+      return updatedServices;
+    });
   };
 
   const handleFieldChange = (field) => {
-    setSelectedFields((prev) =>
-      prev.includes(field)
-        ? prev.filter((f) => f !== field)
-        : [...prev, field]
-    );
+    if (field === 'all') {
+      // Handle "All Fields" selection
+      setAllFieldsSelected(!allFieldsSelected);
+      if (!allFieldsSelected) {
+        // Select all fields
+        const allFields = Object.keys(data[selectedServices[0]].data[0]).filter(
+          (f) =>
+            !['timestamp', 'Timestamp', 'Time Difference', 'Name', 'Type'].includes(f)
+        );
+        setSelectedFields(allFields);
+      } else {
+        // Deselect all fields
+        setSelectedFields([]);
+      }
+    } else {
+      // Handle individual field selection
+      setSelectedFields((prev) =>
+        prev.includes(field)
+          ? prev.filter((f) => f !== field)
+          : [...prev, field]
+      );
+    }
   };
 
-  // --- Chart Data Generation with Smoothing ---
-  const generateChartDataForField = (field) => {
-    const datasets = selectedServices.map((service) => {
-      const rawData = data[service].data.map((item) => item[field]);
-      const smoothedData = smoothData(rawData); // Apply smoothing to the data
+  // --- Calculate Average for Summary Stats (example) ---
+  const calculateAverage = useCallback((datasets) => {
+    if (!datasets || datasets.length === 0 || !datasets[0].data) {
+      return 0;
+    }
 
-      return {
-        label: `${service} - ${field}`,
-        data: smoothedData, // Use smoothed data here
-        fill: false,
-        borderColor: getColor(service),
-        tension: 0.4, // Increased tension for smoother curves
-        pointBackgroundColor: getColor(service),
-        pointBorderColor: colorPalette.background,
-        pointBorderWidth: 2,
-        pointRadius: 0, // Set pointRadius to 0 to hide data points
-        pointHoverRadius: 6,
-      };
-    });
+    const sums = datasets.reduce((acc, dataset) => {
+      dataset.data.forEach((value, index) => {
+        acc[index] = (acc[index] || 0) + value;
+      });
+      return acc;
+    }, []);
 
-    const labels = data[selectedServices[0]].data.map(
-      (item) => item.Timestamp
-    );
-    return { labels, datasets };
-  };
+    const averages = sums.map((sum) => sum / datasets.length);
+    return averages.reduce((a, b) => a + b, 0).toFixed(2); // Overall average
+  }, []);
+
+  // --- Memoized Chart Data Generation with Smoothing ---
+  const generateChartDataForField = useMemo(() => {
+    return (field) => {
+      const datasets = selectedServices
+        .filter((service) => !data[service]?.error) // Exclude services with errors
+        .map((service) => {
+          const rawData = data[service].data.map((item) => item[field]);
+          const smoothedData = smoothData(rawData);
+
+          return {
+            label: `${service}`,
+            data: smoothedData,
+            fill: false,
+            borderColor: getColor(service),
+            tension: 0.4,
+            pointBackgroundColor: getColor(service),
+            pointBorderColor: colorPalette.background,
+            pointBorderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 6,
+          };
+        });
+
+      const labels = data[selectedServices[0]].data.map((item) => item.Timestamp);
+
+      return { labels, datasets };
+    };
+  }, [selectedServices, data]);
 
   // --- Data Smoothing Function ---
   const smoothData = (data) => {
@@ -190,461 +258,581 @@ function ImprovedBenchmarkApp() {
     return smoothed;
   };
 
-  return (
-    <div
-      className="App"
-      style={{
-        backgroundColor: colorPalette.background,
-        color: colorPalette.text,
-        fontFamily: 'Arial, sans-serif',
-      }}
-    >
-      {/* --- Header --- */}
-      <header
-        style={{
-          backgroundColor: colorPalette.primary,
-          color: 'white',
-          padding: '15px 20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-          zIndex: 10,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <LineChart size={24} />
-          <h1 style={{ margin: 0, fontWeight: '600' }}>
-            Service Benchmarks
-          </h1>
-        </div>
-        <div>
-          <button
-            onClick={() => setSidebarExpanded(!sidebarExpanded)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'white',
-              cursor: 'pointer',
-            }}
-          >
-            <Settings size={24} />
-          </button>
-        </div>
-      </header>
+  // --- Download Chart Function ---
+  const downloadChart = (chartRef, field) => {
+    if (chartRef.current) {
+      const chartCanvas = chartRef.current.toBase64Image();
+      saveAs(chartCanvas, `chart-${field}.png`);
+    }
+  };
 
-      {/* --- Main Content --- */}
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
       <div
-        className="main-content"
+        className="App"
         style={{
-          display: 'flex',
-          padding: '20px',
-          gap: '20px',
+          backgroundColor:
+            theme === 'light' ? colorPalette.background : colorPalette.primary,
+          color: theme === 'light' ? colorPalette.text : 'white',
+          fontFamily: 'Arial, sans-serif',
         }}
       >
-        {/* --- Sidebar --- */}
-        <div
-          className={`sidebar ${sidebarExpanded ? '' : 'collapsed'}`}
+        <ToastContainer /> {/* Container for toast notifications */}
+        {/* --- Header --- */}
+        <header
           style={{
-            width: sidebarExpanded ? '300px' : '60px',
-            backgroundColor: 'white',
-            borderRadius: '10px',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-            transition: 'width 0.3s ease, transform 0.3s ease',
-            overflow: 'hidden',
+            backgroundColor:
+              theme === 'light' ? colorPalette.primary : colorPalette.background,
+            color: theme === 'light' ? 'white' : colorPalette.text,
+            padding: '15px 20px',
             display: 'flex',
-            flexDirection: 'column',
-            zIndex: 5,
-            position: 'relative',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            zIndex: 10,
           }}
         >
-          {/* Sidebar Toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <LineChart size={24} />
+            <h1 style={{ margin: 0, fontWeight: '600' }}>Service Benchmarks</h1>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* Theme Toggle Button */}
+            {/* <button
+              onClick={toggleTheme}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: theme === 'light' ? 'white' : colorPalette.text,
+                cursor: 'pointer',
+              }}
+              aria-label="Toggle Theme"
+            >
+              {theme === 'light' ? '🌙' : '☀️'}
+            </button> */}
+
+            {/* Settings Button */}
+            <button
+              onClick={() => setSidebarExpanded(!sidebarExpanded)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: theme === 'light' ? 'white' : colorPalette.text,
+                cursor: 'pointer',
+              }}
+              aria-label="Toggle Sidebar"
+            >
+              <Settings size={24} />
+            </button>
+          </div>
+        </header>
+        {/* --- Main Content --- */}
+        <div className="main-content" style={{ display: 'flex', padding: '20px', gap: '20px' }}>
+          {/* --- Sidebar --- */}
           <div
-            className="sidebar-toggle"
-            onClick={() => setSidebarExpanded(!sidebarExpanded)}
+            className={`sidebar ${sidebarExpanded ? '' : 'collapsed'}`}
             style={{
-              position: 'absolute',
-              top: '10px',
-              right: sidebarExpanded ? '-30px' : '10px',
-              backgroundColor: colorPalette.primary,
-              width: '30px',
-              height: '30px',
-              borderRadius: '0 10px 10px 0',
+              width: sidebarExpanded ? '300px' : '60px',
+              backgroundColor: 'white',
+              borderRadius: '10px',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+              transition: 'width 0.3s ease, transform 0.3s ease',
+              overflow: 'hidden',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'right 0.3s ease',
-              zIndex: 20,
+              flexDirection: 'column',
+              zIndex: 5,
+              position: 'relative',
             }}
           >
-            <ChevronDown
-              size={20}
-              color="white"
+            {/* Sidebar Toggle */}
+            <div
+              className="sidebar-toggle"
+              onClick={() => setSidebarExpanded(!sidebarExpanded)}
               style={{
-                transform: sidebarExpanded
-                  ? 'rotate(90deg)'
-                  : 'rotate(-90deg)',
-                transition: 'transform 0.3s ease',
+                position: 'absolute',
+                top: '10px',
+                right: sidebarExpanded ? '-30px' : '10px',
+                backgroundColor: colorPalette.primary,
+                width: '30px',
+                height: '30px',
+                borderRadius: '0 10px 10px 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'right 0.3s ease',
+                zIndex: 20,
               }}
-            />
-          </div>
-
-          {/* --- Collapsible Sections --- */}
-          <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
-            {/* Services Section */}
-            <div className="section">
-              <div
-                className="section-header"
-                onClick={() => setServicesExpanded(!servicesExpanded)}
+            >
+              <ChevronDown
+                size={20}
+                color="white"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  cursor: 'pointer',
-                  marginBottom: '10px',
+                  transform: sidebarExpanded ? 'rotate(90deg)' : 'rotate(-90deg)',
+                  transition: 'transform 0.3s ease',
                 }}
-              >
-                <h3
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    margin: 0,
-                  }}
-                >
-                  <Info size={20} />
-                  Services
-                </h3>
-                <ChevronDown
-                  size={20}
-                  style={{
-                    transform: servicesExpanded ? '' : 'rotate(-90deg)',
-                    transition: 'transform 0.3s ease',
-                  }}
-                />
-              </div>
-              {servicesExpanded && (
-                <>
-                  {/* DB Services */}
-                  <div className="subsection">
-                    <div
-                      className="subsection-header"
-                      onClick={() => setDbServicesExpanded(!dbServicesExpanded)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        marginTop: '10px',
-                      }}
-                    >
-                      <h4
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          margin: 0,
-                        }}
-                      >
-                        <Database size={18} />
-                        DB Services
-                      </h4>
-                      <ChevronDown
-                        size={18}
-                        style={{
-                          transform: dbServicesExpanded ? '' : 'rotate(-90deg)',
-                          transition: 'transform 0.3s ease',
-                        }}
-                      />
-                    </div>
-                    {dbServicesExpanded && (
-                      <div className="options">
-                        {Object.keys(data)
-                          .filter(
-                            (service) =>
-                              service.includes('db_test') &&
-                              !service.includes('no_db_test')
-                          )
-                          .map((service) => (
-                            <div
-                              key={service}
-                              className="option"
-                              onClick={() => handleServiceChange(service)}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                padding: '8px',
-                                borderRadius: '4px',
-                                transition: 'background-color 0.2s',
-                                backgroundColor:
-                                  selectedServices.includes(service)
-                                    ? colorPalette.gray
-                                    : 'transparent',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {/* ... (rest of the option content) */}
-                              <div
-                                style={{
-                                  width: '12px',
-                                  height: '12px',
-                                  borderRadius: '50%',
-                                  backgroundColor: getColor(service),
-                                  marginRight: '10px',
-                                  border: '2px solid white',
-                                  boxShadow: `0 0 0 2px ${getColor(service)}`,
-                                }}
-                              >
-                                {selectedServices.includes(service) && (
-                                  <Check
-                                    size={10}
-                                    color="white"
-                                    style={{
-                                      position: 'relative',
-                                      top: '1px',
-                                      left: '1px',
-                                    }}
-                                  />
-                                )}
-                              </div>
-                              <span style={{ color: colorPalette.text }}>
-                                {service.replace('no_db_test', '')
-                                  .replace('db_test', '')
-                                  
-                                  .trim()}
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* No DB Services */}
-                  <div className="subsection">
-                    <div
-                      className="subsection-header"
-                      onClick={() =>
-                        setNoDbServicesExpanded(!noDbServicesExpanded)
-                      }
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        marginTop: '10px',
-                      }}
-                    >
-                      <h4
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          margin: 0,
-                        }}
-                      >
-                        <Cpu size={18} />
-                        No DB Services
-                      </h4>
-                      <ChevronDown
-                        size={18}
-                        style={{
-                          transform: noDbServicesExpanded
-                            ? ''
-                            : 'rotate(-90deg)',
-                          transition: 'transform 0.3s ease',
-                        }}
-                      />
-                    </div>
-                    {noDbServicesExpanded && (
-                      <div className="options">
-                        {Object.keys(data)
-                          .filter((service) => service.includes('no_db_test'))
-                          .map((service) => (
-                            <div
-                              key={service}
-                              className="option"
-                              onClick={() => handleServiceChange(service)}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                padding: '8px',
-                                borderRadius: '4px',
-                                transition: 'background-color 0.2s',
-                                backgroundColor:
-                                  selectedServices.includes(service)
-                                    ? colorPalette.gray
-                                    : 'transparent',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {/* ... (rest of the option content) */}
-                              <div
-                                style={{
-                                  width: '12px',
-                                  height: '12px',
-                                  borderRadius: '50%',
-                                  backgroundColor: getColor(service),
-                                  marginRight: '10px',
-                                  border: '2px solid white',
-                                  boxShadow: `0 0 0 2px ${getColor(service)}`,
-                                }}
-                              >
-                                {selectedServices.includes(service) && (
-                                  <Check
-                                    size={10}
-                                    color="white"
-                                    style={{
-                                      position: 'relative',
-                                      top: '1px',
-                                      left: '1px',
-                                    }}
-                                  />
-                                )}
-                              </div>
-                              <span style={{ color: colorPalette.text }}>
-                                {service
-                                  .replace('no_db_test', '')
-                                  .replace('db_test', '')
-                                  .trim()}
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
+              />
             </div>
-
-            {/* Fields Section */}
-            <div className="section" style={{ marginTop: '20px' }}>
-              <div
-                className="section-header"
-                onClick={() => setFieldsExpanded(!fieldsExpanded)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  cursor: 'pointer',
-                  marginBottom: '10px',
-                }}
-              >
-                <h3
+            {/* --- Collapsible Sections --- */}
+            <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+              {/* Services Section */}
+              <div className="section">
+                <div
+                  className="section-header"
+                  onClick={() => setServicesExpanded(!servicesExpanded)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
-                    margin: 0,
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    marginBottom: '10px',
                   }}
                 >
-                  <Info size={20} />
-                  Fields
-                </h3>
-                <ChevronDown
-                  size={20}
-                  style={{
-                    transform: fieldsExpanded ? '' : 'rotate(-90deg)',
-                    transition: 'transform 0.3s ease',
-                  }}
-                />
-              </div>
-              {fieldsExpanded && (
-                <div className="options">
-                  {selectedServices.length > 0 &&
-                    Object.keys(data[selectedServices[0]].data[0])
-                      .filter(
-                        (field) =>
-                          ![
-                            'timestamp',
-                            'Timestamp',
-                            'Time Difference',
-                            'Name',
-                            'Type',
-                          ].includes(field)
-                      )
-                      .map((field) => (
-                        <div
-                          key={field}
-                          className="option"
-                          onClick={() => handleFieldChange(field)}
+                  <h3
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      margin: 0,
+                    }}
+                  >
+                    <div className="tooltip">
+                      <Info size={20} />
+                      {sidebarExpanded === false && (
+                        <span className="tooltiptext">Services</span>
+                      )}
+                    </div>
+                    Services
+                  </h3>
+                  <ChevronDown
+                    size={20}
+                    style={{
+                      transform: servicesExpanded ? '' : 'rotate(-90deg)',
+                      transition: 'transform 0.3s ease',
+                    }}
+                  />
+                </div>
+                {servicesExpanded && (
+                  <>
+                    {/* DB Services */}
+                    <div className="subsection">
+                      <div
+                        className="subsection-header"
+                        onClick={() => setDbServicesExpanded(!dbServicesExpanded)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                          marginTop: '10px',
+                        }}
+                      >
+                        <h4
                           style={{
                             display: 'flex',
                             alignItems: 'center',
-                            padding: '8px',
-                            borderRadius: '4px',
-                            transition: 'background-color 0.2s',
-                            backgroundColor: selectedFields.includes(field)
-                              ? colorPalette.gray
-                              : 'transparent',
-                            cursor: 'pointer',
+                            gap: '10px',
+                            margin: 0,
                           }}
                         >
-                          <div
-                            style={{
-                              width: '12px',
-                              height: '12px',
-                              borderRadius: '50%',
-                              backgroundColor: selectedFields.includes(field)
-                                ? colorPalette.accent
-                                : colorPalette.gray,
-                              marginRight: '10px',
-                            }}
-                          >
-                            {selectedFields.includes(field) && (
-                              <Check
-                                size={10}
-                                color="white"
-                                style={{
-                                  position: 'relative',
-                                  top: '1px',
-                                  left: '1px',
-                                }}
-                              />
+                          <div className="tooltip">
+                            <Database size={18} />
+                            {sidebarExpanded === false && (
+                              <span className="tooltiptext">DB Services</span>
                             )}
                           </div>
-                          <span style={{ color: colorPalette.text }}>
-                            {field}
-                          </span>
+                          DB Services
+                        </h4>
+                        <ChevronDown
+                          size={18}
+                          style={{
+                            transform: dbServicesExpanded ? '' : 'rotate(-90deg)',
+                            transition: 'transform 0.3s ease',
+                          }}
+                        />
+                      </div>
+                      {dbServicesExpanded && (
+                        <div className="options">
+                          {Object.keys(data)
+                            .filter(
+                              (service) =>
+                                service.includes('db_test') &&
+                                !service.includes('no_db_test')
+                            )
+                            .map((service) => (
+                              <div
+                                key={service}
+                                className="option"
+                                onClick={() => handleServiceChange(service)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  padding: '8px',
+                                  borderRadius: '4px',
+                                  transition: 'background-color 0.2s',
+                                  backgroundColor: selectedServices.includes(service)
+                                    ? colorPalette.accent
+                                    : 'transparent',
+                                  fontWeight: selectedServices.includes(service)
+                                    ? 'bold'
+                                    : 'normal',
+                                  cursor: 'pointer',
+                                  position: 'relative',
+                                }}
+                              >
+                                {serviceLoadingStates[service] && (
+                                  <div
+                                    style={{
+                                      position: 'absolute',
+                                      top: '50%',
+                                      left: '2px',
+                                      transform: 'translateY(-50%)',
+                                    }}
+                                  >
+                                    <CircularProgressbar
+                                      value={100}
+                                      styles={buildStyles({
+                                        pathColor: getColor(service),
+                                        trailColor: 'transparent',
+                                        strokeLinecap: 'round',
+                                      })}
+                                    />
+                                  </div>
+                                )}
+                                <input
+                                  type="checkbox"
+                                  checked={selectedServices.includes(service)}
+                                  onChange={() => handleServiceChange(service)}
+                                  style={{
+                                    marginRight: '10px',
+                                    marginLeft: serviceLoadingStates[service]
+                                      ? '20px'
+                                      : '0',
+                                  }}
+                                />
+                                <div
+                                  style={{
+                                    width: '12px',
+                                    height: '12px',
+                                    borderRadius: '50%',
+                                    backgroundColor: getColor(service),
+                                    marginRight: '10px',
+                                    border: '2px solid white',
+                                    boxShadow: `0 0 0 2px ${getColor(service)}`,
+                                  }}
+                                >
+                                  {selectedServices.includes(service) }
+                                </div>
+                                <span
+                                  style={{
+                                    color: selectedServices.includes(service)
+                                      ? 'white'
+                                      : colorPalette.text,
+                                  }}
+                                >
+                                  
+
+                                  {/* Text label */}
+                                  {service
+                                    .replace('no_db_test', '')
+                                    .replace('db_test', '')
+                                    .trim()}
+                                </span>
+                              </div>
+                            ))}
                         </div>
-                      ))}
+                      )}
+                    </div>
+
+                    {/* No DB Services */}
+                    <div className="subsection">
+                      <div
+                        className="subsection-header"
+                        onClick={() =>
+                          setNoDbServicesExpanded(!noDbServicesExpanded)
+                        }
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                          marginTop: '10px',
+                        }}
+                      >
+                        <h4
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            margin: 0,
+                          }}
+                        >
+                          <div className="tooltip">
+                            <Cpu size={18} />
+                            {sidebarExpanded === false && (
+                              <span className="tooltiptext">No DB Services</span>
+                            )}
+                          </div>
+                          No DB Services
+                        </h4>
+                        <ChevronDown
+                          size={18}
+                          style={{
+                            transform: noDbServicesExpanded ? '' : 'rotate(-90deg)',
+                            transition: 'transform 0.3s ease',
+                          }}
+                        />
+                      </div>
+                      {noDbServicesExpanded && (
+                        <div className="options">
+                          {Object.keys(data)
+                            .filter((service) => service.includes('no_db_test'))
+                            .map((service) => (
+                              <div
+                                key={service}
+                                className="option"
+                                onClick={() => handleServiceChange(service)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  padding: '8px',
+                                  borderRadius: '4px',
+                                  transition: 'background-color 0.2s',
+                                  backgroundColor: selectedServices.includes(service)
+                                    ? colorPalette.accent
+                                    : 'transparent',
+                                  fontWeight: selectedServices.includes(service)
+                                    ? 'bold'
+                                    : 'normal',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {serviceLoadingStates[service] && (
+                                  <div
+                                    style={{
+                                      position: 'absolute',
+                                      top: '50%',
+                                      left: '2px',
+                                      transform: 'translateY(-50%)',
+                                    }}
+                                  >
+                                    <CircularProgressbar
+                                      value={100}
+                                      styles={buildStyles({
+                                        pathColor: getColor(service),
+                                        trailColor: 'transparent',
+                                        strokeLinecap: 'round',
+                                      })}
+                                    />
+                                  </div>
+                                )}
+                                <input
+                                  type="checkbox"
+                                  checked={selectedServices.includes(service)}
+                                  onChange={() => handleServiceChange(service)}
+                                  style={{
+                                    marginRight: '10px',
+                                    marginLeft: serviceLoadingStates[service]
+                                      ? '20px'
+                                      : '0',
+                                  }}
+                                />
+                                <div
+                                  style={{
+                                    width: '12px',
+                                    height: '12px',
+                                    borderRadius: '50%',
+                                    backgroundColor: getColor(service),
+                                    marginRight: '10px',
+                                    border: '2px solid white',
+                                    boxShadow: `0 0 0 2px ${getColor(service)}`,
+                                  }}
+                                >
+                                
+                                </div>
+                                <span
+                                  style={{
+                                    color: selectedServices.includes(service)
+                                      ? 'white'
+                                      : colorPalette.text,
+                                  }}
+                                >
+                                 
+
+                                  {/* Text label */}
+                                  {service
+                                    .replace('no_db_test', '')
+                                    .replace('db_test', '')
+                                    .trim()}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Fields Section */}
+              <div className="section" style={{ marginTop: '20px' }}>
+                <div
+                  className="section-header"
+                  onClick={() => setFieldsExpanded(!fieldsExpanded)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    marginBottom: '10px',
+                  }}
+                >
+                  <h3
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      margin: 0,
+                    }}
+                  >
+                    <div className="tooltip">
+                      <Filter size={20} />
+                      {sidebarExpanded === false && (
+                        <span className="tooltiptext">Fields</span>
+                      )}
+                    </div>
+                    Fields
+                  </h3>
+                  <ChevronDown
+                    size={20}
+                    style={{
+                      transform: fieldsExpanded ? '' : 'rotate(-90deg)',
+                      transition: 'transform 0.3s ease',
+                    }}
+                  />
                 </div>
-              )}
+                {fieldsExpanded && (
+                  <div className="options">
+                    {/* All Fields Checkbox */}
+                    <div
+                      className="option"
+                      onClick={() => handleFieldChange('all')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '8px',
+                        borderRadius: '4px',
+                        transition: 'background-color 0.2s',
+                        backgroundColor: allFieldsSelected
+                          ? colorPalette.gray
+                          : 'transparent',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={allFieldsSelected}
+                        onChange={() => handleFieldChange('all')}
+                        style={{ marginRight: '10px' }}
+                      />
+                      <span style={{ color: colorPalette.text }}>All Fields</span>
+                    </div>
+
+                    {/* Individual Field Checkboxes */}
+                    {selectedServices.length > 0 &&
+                      Object.keys(data[selectedServices[0]]?.data[0] || {})
+                        .filter(
+                          (field) =>
+                            ![
+                              'timestamp',
+                              'Timestamp',
+                              'Time Difference',
+                              'Name',
+                              'Type',
+                            ].includes(field)
+                        )
+                        .map((field) => (
+                          <div
+                            key={field}
+                            className="option"
+                            onClick={() => handleFieldChange(field)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '8px',
+                              borderRadius: '4px',
+                              transition: 'background-color 0.2s',
+                              backgroundColor: selectedFields.includes(field)
+                                ? colorPalette.accent
+                                : 'transparent',
+                              fontWeight: selectedFields.includes(field)
+                                ? 'bold'
+                                : 'normal',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedFields.includes(field)}
+                              onChange={() => handleFieldChange(field)}
+                              style={{ marginRight: '10px' }}
+                            />
+                            <div
+                              style={{
+                                width: '12px',
+                                height: '12px',
+                                borderRadius: '50%',
+                                backgroundColor: selectedFields.includes(field)
+                                  ? colorPalette.accent
+                                  : colorPalette.gray,
+                                marginRight: '10px',
+                              }}
+                            >
+                              {selectedFields.includes(field) }
+                            </div>
+                            <span
+                              style={{
+                                color: selectedFields.includes(field)
+                                  ? 'white'
+                                  : colorPalette.text,
+                              }}
+                            >
+                             
+                              {/* Text label */}
+                              {field}
+                            </span>
+                          </div>
+                        ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* --- Chart Container --- */}
-        <div
-          className="chart-container"
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-          }}
-        >
-          {loading ? (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100%',
-              }}
-            >
-              <CircularProgressbar
-                value={progress}
-                text={`${progress}%`}
-                styles={buildStyles({
-                  textSize: '16px',
-                  pathColor: colorPalette.secondary,
-                  textColor: colorPalette.text,
-                  trailColor: colorPalette.gray,
-                })}
-              />
-            </div>
-          ) : (
-            selectedServices.length > 0 &&
-            selectedFields.length > 0 && (
+          {/* --- Chart Container --- */}
+          <div className="chart-container" style={{ flex: 1, overflowY: 'auto' }}>
+            {loading ? (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                }}
+              >
+                <CircularProgressbar
+                  value={progress}
+                  text={`${progress}%`}
+                  styles={buildStyles({
+                    textSize: '16px',
+                    pathColor: colorPalette.secondary,
+                    textColor: colorPalette.text,
+                    trailColor: colorPalette.gray,
+                  })}
+                />
+              </div>
+            ) : selectedServices.length > 0 &&
+              selectedFields.length > 0 ? (
               <div
                 style={{
                   display: 'grid',
@@ -652,74 +840,215 @@ function ImprovedBenchmarkApp() {
                   gap: '20px',
                 }}
               >
-                {selectedFields.map((field) => (
-                  <div
-                    key={field}
-                    style={{
-                      backgroundColor: 'white',
-                      borderRadius: '10px',
-                      padding: '20px',
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                    }}
-                  >
-                    <h2
-                      style={{
-                        textAlign: 'center',
-                        color: colorPalette.primary,
-                        marginBottom: '15px',
-                        fontWeight: '600',
-                      }}
-                    >
-                      {field}
-                    </h2>
-                    <div style={{ height: '350px' }}>
-                      <Line
-                        data={generateChartDataForField(field)}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: {
-                              position: 'bottom',
-                              labels: {
-                                color: colorPalette.text,
-                                boxWidth: 20,
-                                padding: 20,
-                              },
-                            },
-                          },
-                          scales: {
-                            x: {
-                              ticks: {
-                                autoSkip: true,
-                                maxTicksLimit: 10,
-                                color: colorPalette.text,
-                              },
-                              grid: {
-                                color: colorPalette.gray,
-                              },
-                            },
-                            y: {
-                              beginAtZero: false,
-                              ticks: {
-                                color: colorPalette.text,
-                              },
-                              grid: {
-                                color: colorPalette.gray,
-                              },
-                            },
-                          },
+                {selectedFields.map((field) => {
+                  const chartRef = React.createRef();
+
+                  // Check if any of the selected services have an error for this field
+                  const hasError = selectedServices.some(
+                    (service) => data[service]?.error
+                  );
+
+                  if (hasError) {
+                    return (
+                      <div key={field} className="chart-card">
+                        <h2>{field}</h2>
+                        <p className="error-message">
+                          Error loading data for one or more selected services.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={field} className="chart-card">
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
                         }}
-                      />
+                      >
+                        <h2
+                          style={{
+                            textAlign: 'center',
+                            color: colorPalette.primary,
+                            marginBottom: '15px',
+                            fontWeight: '600',
+                          }}
+                        >
+                          {field}
+                        </h2>
+                        {/* Download Button */}
+                        <button
+                          onClick={() => downloadChart(chartRef, field)}
+                          style={{
+                            background: 'none',
+                            border: `1px solid ${
+                              theme === 'light'
+                                ? colorPalette.text
+                                : colorPalette.background
+                            }`,
+                            borderRadius: '5px',
+                            padding: '5px 10px',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            color:
+                              theme === 'light'
+                                ? colorPalette.text
+                                : colorPalette.background,
+                          }}
+                        >
+                          Download Chart
+                        </button>
+                      </div>
+                      {/* Summary Statistics */}
+                      {/* <div className="summary-stats">
+                        <p>
+                          Avg:{' '}
+                          <span>
+                            {calculateAverage(
+                              generateChartDataForField(field).datasets
+                            )}
+                          </span>
+                        </p>
+                      </div> */}
+                      <div style={{ height: '600px' }}>
+                        <Line
+                          ref={chartRef}
+                          data={generateChartDataForField(field)}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: {
+                                position: 'bottom',
+                                labels: {
+                                  color:
+                                    theme === 'light'
+                                      ? colorPalette.text
+                                      : 'white',
+                                  boxWidth: 20,
+                                  padding: 20,
+                                },
+                              },
+                              title: {
+                                display: false,
+                                text: `${selectedServices.join(
+                                  ' vs '
+                                )} - ${field}`,
+                                color: colorPalette.text,
+                                font: {
+                                  size: 16,
+                                  weight: 'bold',
+                                },
+                                padding: {
+                                  bottom: 20,
+                                },
+                              },
+                              tooltip: {
+                                enabled: true, // Enable tooltips
+                                mode: 'index', // Show tooltips for all datasets at a specific x-value
+                                intersect: false, // Tooltips appear even when not directly over a data point
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)', // Customize tooltip appearance
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: 'rgba(0, 0, 0, 0.2)',
+                                borderWidth: 1,
+                              },
+                              zoom: {
+                                zoom: {
+                                  wheel: {
+                                    enabled: true, // Enable zooming with the mouse wheel
+                                  },
+                                  pinch: {
+                                    enabled: true, // Enable pinch-to-zoom on touch devices
+                                  },
+                                  mode: 'x', // Allow zooming only on the x-axis (time)
+                                },
+                                pan: {
+                                  enabled: true, // Enable panning (dragging)
+                                  mode: 'x', // Allow panning only on the x-axis
+                                },
+                              },
+                            },
+                            scales: {
+                              x: {
+                                title: {
+                                  display: true,
+                                  text: 'Time In Seconds',
+                                  color: colorPalette.text,
+                                  font: {
+                                    size: 14,
+                                    weight: 'bold',
+                                  },
+                                },
+                                ticks: {
+                                  autoSkip: true,
+                                  maxTicksLimit: 10,
+                                  color:
+                                    theme === 'light'
+                                      ? colorPalette.text
+                                      : 'white', // Dynamic axis tick color
+                                },
+                                grid: {
+                                  color:
+                                    theme === 'light'
+                                      ? colorPalette.gray
+                                      : 'rgba(255, 255, 255, 0.2)', // Dynamic grid color
+                                },
+                              },
+                              y: {
+                                title: {
+                                  display: true,
+                                  text: field,
+                                  color: colorPalette.text,
+                                  font: {
+                                    size: 14,
+                                    weight: 'bold',
+                                  },
+                                },
+                                beginAtZero: false,
+                                ticks: {
+                                  color:
+                                    theme === 'light'
+                                      ? colorPalette.text
+                                      : 'white', // Dynamic axis tick color
+                                },
+                                grid: {
+                                  color:
+                                    theme === 'light'
+                                      ? colorPalette.gray
+                                      : 'rgba(255, 255, 255, 0.2)', // Dynamic grid color
+                                },
+                              },
+                            },
+                          }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            )
-          )}
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                }}
+              >
+                <h2>
+                  {selectedServices.length === 0
+                    ? 'Select services from the sidebar to start comparing.'
+                    : 'Select fields to compare the selected services.'}
+                </h2>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </ThemeContext.Provider>
   );
 }
 
