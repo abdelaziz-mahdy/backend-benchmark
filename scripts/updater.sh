@@ -23,8 +23,8 @@ update_dependencies() {
       cd "${backend_path}" || exit 1
       find . -name "*.csproj" -print0 | while IFS= read -r -d $'\0' csproj_file; do
         dotnet list "${csproj_file}" package --outdated
-        #Consider adding `dotnet outdated` if you have it installed for a more advanced way to update.
-        #dotnet restore "${csproj_file}" # Restore to fetch the latest versions mentioned in the .csproj
+        # Consider adding `dotnet outdated` if you have it installed
+        # dotnet restore "${csproj_file}" # Restore for latest versions
       done
       cd - || exit 1
       ;;
@@ -35,18 +35,19 @@ update_dependencies() {
       ;;
     "python")
       cd "${backend_path}" || exit 1
-      # Using pip-review to update packages (install it if you don't have it: pip install pip-review)
-      pip install pip-review
-      pip-review --auto
+      if [ -f "update_requirements.sh" ]; then
+        bash ./update_requirements.sh
+      else
+        echo "update_requirements.sh not found in ${backend_path}"
+      fi
       cd - || exit 1
       ;;
     "javascript")
-        cd "${backend_path}" || exit 1
-        npx npm-check-updates -u
-        npm install
-        cd - || exit 1
-        ;;
-
+      cd "${backend_path}" || exit 1
+      npx npm-check-updates -u
+      npm install
+      cd - || exit 1
+      ;;
     *)
       echo "Unsupported backend type: ${backend_type}"
       ;;
@@ -54,9 +55,9 @@ update_dependencies() {
 }
 
 # Main script
-
-echo "Starting dependency update process..."
 cd ..
+echo "Starting dependency update process..."
+
 # --- Rust ---
 echo "Processing Rust backends..."
 find backends/rust -mindepth 2 -maxdepth 2 -type d -print0 | while IFS= read -r -d $'\0' rust_backend; do
