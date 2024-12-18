@@ -27,6 +27,7 @@ record_env_and_hashes() {
     echo "RECORDED_LOCUST_RUNTIME='$LOCUST_RUNTIME'" >> "$env_file"
     echo "RECORDED_LOCUST_USERS='$LOCUST_USERS'" >> "$env_file"
     echo "RECORDED_LOCUST_SPAWN_RATE='$LOCUST_SPAWN_RATE'" >> "$env_file"
+    
 }
 
 # Function to check if the current environment and hashes match the recorded ones
@@ -108,7 +109,7 @@ mkdir -p results
 
 
 # Write header to the CSV file with added memory usage columns
-echo "timestamp,benchmark_cpu_usage,benchmark_mem_usage,db_cpu_usage,db_mem_usage" > "$output_file"
+echo "timestamp,benchmark_cpu_usage,benchmark_mem_usage_mb,db_cpu_usage,db_mem_usage_mb" > "$output_file"
 
 # Function to record CPU and memory usage for both benchmark and database services
 record_cpu_mem_usage() {
@@ -119,15 +120,25 @@ record_cpu_mem_usage() {
             break
         fi
 
-        # Get CPU and memory usage of the 'benchmark' service
-        benchmark_stats=$(docker stats --no-stream --format "{{.Name}},{{.CPUPerc}},{{.MemPerc}}" | grep "benchmark" | cut -d ',' -f2,3)
-        benchmark_cpu_usage=$(echo $benchmark_stats | cut -d ',' -f1)
-        benchmark_mem_usage=$(echo $benchmark_stats | cut -d ',' -f2)
+        # Get CPU and memory usage of all services
+        stats=$(docker stats --no-stream --format "{{.Name}},{{.CPUPerc}},{{.MemUsage}}")
 
-        # Get CPU and memory usage of the database service
-        db_stats=$(docker stats --no-stream --format "{{.Name}},{{.CPUPerc}},{{.MemPerc}}" | grep "db" | cut -d ',' -f2,3)
-        db_cpu_usage=$(echo $db_stats | cut -d ',' -f1)
-        db_mem_usage=$(echo $db_stats | cut -d ',' -f2)
+        # Extract benchmark stats
+        benchmark_stats=$(echo "$stats" | grep "benchmark")
+        benchmark_cpu_usage=$(echo "$benchmark_stats" | cut -d ',' -f2)
+        benchmark_mem_usage=$(echo "$benchmark_stats" | cut -d ',' -f3 | awk '{split($1,a," "); print a[1]}')
+
+        # Extract database stats
+        db_stats=$(echo "$stats" | grep "db")
+        db_cpu_usage=$(echo "$db_stats" | cut -d ',' -f2)
+        db_mem_usage=$(echo "$db_stats" | cut -d ',' -f3 | awk '{split($1,a," "); print a[1]}')
+
+        # Print results
+        # echo "Benchmark CPU Usage: $benchmark_cpu_usage"
+        # echo "Benchmark Memory Usage: $benchmark_mem_usage"
+        # echo "Database CPU Usage: $db_cpu_usage"
+        # echo "Database Memory Usage: $db_mem_usage"
+
 
         # Get the current timestamp
         timestamp=$(date +%s)
