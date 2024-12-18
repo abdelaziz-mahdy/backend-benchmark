@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide explains how to contribute to the backend benchmarking project by adding or removing frameworks, running tests, and configuring the benchmarking environment.
+This guide provides details on how to contribute to the backend benchmarking project by adding or removing frameworks, running tests, and configuring the benchmarking environment. It also explains how to use the `start_tests.sh` script to include specific frameworks for testing.
 
 ---
 
@@ -12,7 +12,7 @@ To add a new framework:
 
 1. **Create the Framework Directory Structure**:
    - Use an existing framework directory as a reference.
-   - For example:
+   - Example structure:
      ```
      backends/<language>/<framework_name>
      backends/<language>/<framework_name>/<the app>
@@ -23,7 +23,7 @@ To add a new framework:
 
 2. **Prepare Scripts**:
    - Copy the `docker_build_and_run.sh` from an existing framework. Minimal edits are needed to adjust paths.
-   - Prepare a `docker-compose.yml` file with standard services:
+   - Prepare a `docker-compose.yml` file with the required services:
      - Database
      - Benchmark
      - Tester (e.g., Locust)
@@ -72,29 +72,77 @@ To add a new framework:
   ```
   backends/<language>/<framework_name>
   ```
-- **Option 2**: Mark the framework directory to be ignored in `scripts/start_tests.sh`.
+- **Option 2**: Modify the `INCLUDE` variable in the `start_tests.sh` script to exclude the framework by not listing it.
 
 ---
 
 ## Running Tests
 
-The main script for launching tests is `scripts/start_tests.sh`.
+The benchmarking process is managed using the `scripts/start_tests.sh` script. This script identifies frameworks to test and supports running all frameworks or only specific frameworks specified in the `INCLUDE` variable.
 
-- **Run All Benchmarks**:
-  ```bash
-  bash scripts/start_tests.sh
-  ```
+### Using `start_tests.sh`
 
-- **Customize Runtime**:
-  - Example: Run benchmarks with a runtime of 10 seconds.
+- **Purpose**: Runs benchmarks for all frameworks or only the ones specified in the `INCLUDE` variable.
+
+---
+
+### Examples
+
+#### 1. Running All Frameworks
+
+If you want to run all frameworks, do not set the `INCLUDE` variable.
+
+**Command**:
+```bash
+bash scripts/start_tests.sh
+```
+
+**Output**:
+```
+Warning: INCLUDE variable not set. All scripts will be included.
+Found 10 scripts in total:
+./backends/go/mux/docker_build_and_run.sh
+./backends/python/flask/docker_build_and_run.sh
+...
+```
+
+---
+
+#### 2. Including Specific Frameworks
+
+To run tests for only specific frameworks or languages, set the `INCLUDE` variable with a comma-separated list of patterns to match.
+
+**Command**:
+```bash
+INCLUDE="python,go" bash scripts/start_tests.sh
+```
+
+**Output**:
+```
+Found 10 scripts in total:
+./backends/go/mux/docker_build_and_run.sh
+./backends/python/flask/docker_build_and_run.sh
+Including ./backends/go/mux/docker_build_and_run.sh as it matches include pattern go
+Including ./backends/python/flask/docker_build_and_run.sh as it matches include pattern python
+Found scripts 10 and after filtering 2 scripts to run:
+./backends/go/mux/docker_build_and_run.sh
+./backends/python/flask/docker_build_and_run.sh
+```
+
+---
+
+### Customizing Test Configurations
+
+- **LOCUST_RUNTIME**:
+  - Defines the runtime for each test in seconds.
+  - Example:
     ```bash
     LOCUST_RUNTIME=10 bash scripts/start_tests.sh
     ```
 
-- **Set Locust Variables**:
-  - Adjust the following environment variables as needed:
-    - `LOCUST_USERS`: Number of simulated users. Default: 10,000.
-    - `LOCUST_SPAWN_RATE`: User spawn rate per second. Default: 10.
+- **Other LOCUST Variables**:
+  - `LOCUST_USERS`: Number of simulated users (Default: 10,000).
+  - `LOCUST_SPAWN_RATE`: User spawn rate per second (Default: 10).
 
   Example:
   ```bash
@@ -107,7 +155,7 @@ The main script for launching tests is `scripts/start_tests.sh`.
 
 - The environment variables required for tests are set by `internal_scripts/set_required_envs.sh`.
   - [Link to `set_required_envs.sh`](https://github.com/abdelaziz-mahdy/backend-benchmark/blob/main/internal_scripts/set_required_envs.sh)
-  - Pass the required variables to `start_tests.sh`:
+  - Pass the required variables to any script:
     ```bash
     source internal_scripts/set_required_envs.sh
     ```
@@ -138,9 +186,41 @@ backends/go/mux/
 
 ---
 
-## Notes
+## Notes on Scripts
 
-- The `internal_scripts` directory contains reusable scripts that prevent duplication across frameworks.
-- Example `docker-compose.yml` configurations should be identical except for framework-specific paths or environment variables.
+### `start_tests.sh`
+
+- **Includes logic to**:
+  - Search for all `docker_build_and_run.sh` files.
+  - Include scripts matching patterns in the `INCLUDE` variable.
+  - Run the filtered scripts for `db_test` and `no_db_test`.
+
+---
+
+## Example Workflow
+
+### Running All Tests:
+```bash
+bash scripts/start_tests.sh
+```
+
+### Including Specific Frameworks:
+To include only `python` and `go` frameworks:
+```bash
+INCLUDE="python,go" bash scripts/start_tests.sh
+```
+
+---
+
+## Contribution Guidelines
+
+- **Adding a Framework**:
+  - Place the `docker_build_and_run.sh` script in the corresponding language directory.
+  - Example structure:
+    ```
+    backends/<language>/<framework>/docker_build_and_run.sh
+    ```
+
+---
 
 Contributions that follow this guide will ensure consistency and maintainability. If you encounter any issues, feel free to raise them in the project's repository!
