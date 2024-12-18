@@ -20,6 +20,10 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "${SERVICE_CPU_CORE_LIMIT:-1.0}" # Use the SERVICE_CPU_CORE_LIMIT environment variable, defaulting to 1.0
   db:
     image: postgres:16.1
     ports:
