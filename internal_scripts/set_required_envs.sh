@@ -2,7 +2,7 @@
 #!/bin/bash
 
 # Define default variables (you can change these values as needed)
-DEFAULT_RUNTIME_MINUTES=5  # Runtime in minutes
+DEFAULT_RUNTIME_MINUTES=2  # Runtime in minutes
 DEFAULT_USERS=10000        # Maximum number of users
 
 # Convert runtime to seconds

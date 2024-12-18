@@ -312,7 +312,7 @@ def merge_data_and_cpu(data, cpu, print_data=False):
     
     # Initialize the columns in data for CPU usage and memory usage
     data['benchmark_cpu_usage'] = np.nan
-    data['benchmark_mem_usage'] = np.nan
+    data['benchmark_mem_usage_mb'] = np.nan
     data['db_cpu_usage'] = np.nan
     data['db_mem_usage'] = np.nan
     
@@ -349,7 +349,7 @@ def merge_data_and_cpu(data, cpu, print_data=False):
             if print_data and cpu_index < 5:
                 print("merging")
             data.at[index, 'benchmark_cpu_usage'] = cpu.loc[cpu_index, 'benchmark_cpu_usage']
-            data.at[index, 'benchmark_mem_usage'] = str(cpu.loc[cpu_index, 'benchmark_mem_usage'])
+            data.at[index, 'benchmark_mem_usage_mb'] = str(cpu.loc[cpu_index, 'benchmark_mem_usage_mb'])
             data.at[index, 'db_cpu_usage'] = cpu.loc[cpu_index, 'db_cpu_usage']
             data.at[index, 'db_mem_usage'] = str(cpu.loc[cpu_index, 'db_mem_usage'])
     
@@ -362,7 +362,7 @@ def merge_data_and_cpu(data, cpu, print_data=False):
     
     # Initialize the columns in data for CPU usage and memory usage
     data['benchmark_cpu_usage'] = None
-    data['benchmark_mem_usage'] = None
+    data['benchmark_mem_usage_mb'] = None
     data['db_cpu_usage'] = None
     data['db_mem_usage'] = None
     
@@ -382,13 +382,13 @@ def merge_data_and_cpu(data, cpu, print_data=False):
             # Use the previous CPU index for merging as its timestamp is less than the data timestamp
             prev_cpu_index = cpu_index - 1
             data.at[index, 'benchmark_cpu_usage'] = cpu.loc[prev_cpu_index, 'benchmark_cpu_usage']
-            data.at[index, 'benchmark_mem_usage'] = str(cpu.loc[prev_cpu_index, 'benchmark_mem_usage'])
+            data.at[index, 'benchmark_mem_usage_mb'] = str(cpu.loc[prev_cpu_index, 'benchmark_mem_usage_mb'])
             data.at[index, 'db_cpu_usage'] = cpu.loc[prev_cpu_index, 'db_cpu_usage']
             data.at[index, 'db_mem_usage'] = str(cpu.loc[prev_cpu_index, 'db_mem_usage'])
         else:
             # Remove the CPU and memory fields by setting them to None
             data.at[index, 'benchmark_cpu_usage'] = None
-            data.at[index, 'benchmark_mem_usage'] = None
+            data.at[index, 'benchmark_mem_usage_mb'] = None
             data.at[index, 'db_cpu_usage'] = None
             data.at[index, 'db_mem_usage'] = None
     return data

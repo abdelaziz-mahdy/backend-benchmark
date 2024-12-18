@@ -1,3 +1,1 @@
 Method,Name,Error,Occurrences
-GET,/api/no_db_endpoint/,"RetriesExceeded('http://benchmark:8000/api/no_db_endpoint/', 0, original=timed out)",2042
-GET,/api/no_db_endpoint2/,"RetriesExceeded('http://benchmark:8000/api/no_db_endpoint2/', 0, original=timed out)",2024
