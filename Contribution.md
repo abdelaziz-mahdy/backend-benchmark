@@ -1,3 +1,4 @@
+
 # Contribution Guide for Backend Benchmark Frameworks
 
 ## Overview
@@ -108,13 +109,16 @@ Found 10 scripts in total:
 
 ---
 
-#### 2. Including Specific Frameworks
+#### 2. Including Specific Frameworks or Languages
 
-To run tests for only specific frameworks or languages, set the `INCLUDE` variable with a comma-separated list of patterns to match.
+The `INCLUDE` variable can be used to include tests for a specific language, a specific framework, or a combination of both.
+
+##### Example 1: Include Specific Frameworks
+To include only tests for `fast-api` and `mux` frameworks:
 
 **Command**:
 ```bash
-INCLUDE="python,go" bash scripts/start_tests.sh
+INCLUDE="fast-api,mux" bash scripts/start_tests.sh
 ```
 
 **Output**:
@@ -122,13 +126,20 @@ INCLUDE="python,go" bash scripts/start_tests.sh
 Found 10 scripts in total:
 ./backends/go/mux/docker_build_and_run.sh
 ./backends/python/flask/docker_build_and_run.sh
-Including ./backends/go/mux/docker_build_and_run.sh as it matches include pattern go
-Including ./backends/python/flask/docker_build_and_run.sh as it matches include pattern python
+Including ./backends/go/mux/docker_build_and_run.sh as it matches include pattern mux
+Including ./backends/python/flask/docker_build_and_run.sh as it matches include pattern flask
 Found scripts 10 and after filtering 2 scripts to run:
 ./backends/go/mux/docker_build_and_run.sh
 ./backends/python/flask/docker_build_and_run.sh
 ```
 
+##### Example 2: Include Specific Languages
+To include only tests for `python` and `go` languages:
+
+**Command**:
+```bash
+INCLUDE="python,go" bash scripts/start_tests.sh
+```
 ---
 
 ### Customizing Test Configurations
@@ -204,10 +215,10 @@ backends/go/mux/
 bash scripts/start_tests.sh
 ```
 
-### Including Specific Frameworks:
-To include only `python` and `go` frameworks:
+### Including Specific Frameworks or Languages:
+To include only `python` and `mux` frameworks:
 ```bash
-INCLUDE="python,go" bash scripts/start_tests.sh
+INCLUDE="python,mux" bash scripts/start_tests.sh
 ```
 
 ---
