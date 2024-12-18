@@ -31,7 +31,10 @@ if [[ $found -eq 0 ]]; then
     exit 1
 fi
 
-cd ..
+# Move up from the scripts directory
+if [[ $(basename $dir) == "scripts" ]]; then
+    cd ..
+fi
 
 # Check if INCLUDE variable is set
 if [[ -z "$INCLUDE" ]]; then
