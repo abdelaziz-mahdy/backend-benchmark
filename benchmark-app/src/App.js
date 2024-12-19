@@ -146,9 +146,9 @@ function ImprovedBenchmarkApp() {
         setLoading(false);
       });
 
-    return () => {
-      source.cancel("Component got unmounted");
-    };
+    // return () => {
+    //   source.cancel("Component got unmounted");
+    // };
   }, []);
 
   // --- Selection Handlers with Checkboxes ---
@@ -919,6 +919,9 @@ function ImprovedBenchmarkApp() {
                                 bodyColor: "#fff",
                                 borderColor: "rgba(0, 0, 0, 0.2)",
                                 borderWidth: 1,
+                                itemSort: function (a, b) {
+                                  return b.raw - a.raw;
+                                },
                               },
                               zoom: {
                                 zoom: {
