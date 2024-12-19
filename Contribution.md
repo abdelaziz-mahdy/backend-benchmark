@@ -25,9 +25,9 @@ To add a new framework:
 2. **Prepare Scripts**:
    - Copy the `docker_build_and_run.sh` from an existing framework. Minimal edits are needed to adjust paths.
    - Prepare a `docker-compose.yml` file with the required services:
-     - Database
-     - Benchmark
-     - Tester (e.g., Locust)
+     - Database, all services uses postgres and its name should be `db`
+     - Benchmark, it should be the main app and name should be `benchmark`
+     - Tester, same configuration as the any other framework and name should be `tester`
 
 3. **Dockerfile for the App**:
    - Place the `Dockerfile` inside the source directory of the framework (e.g., `src`).
