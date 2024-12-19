@@ -73,8 +73,8 @@ Benchmarks are categorized into:
 
 - **Configuration:**
   - Users: 10000
-  - Spawn Rate: 10 users/second
-  - Test Duration: 1000 seconds
+  - Spawn Rate: 83.33 users/second
+  - Test Duration: 120 seconds
 
 ## Benchmark Visualization
 
