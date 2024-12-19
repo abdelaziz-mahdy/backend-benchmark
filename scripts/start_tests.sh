@@ -31,8 +31,12 @@ if [[ $found -eq 0 ]]; then
     exit 1
 fi
 
+current_dir=$(pwd)
 # Move up from the scripts directory
-if [[ $(basename $dir) == "scripts" ]]; then
+echo "Current directory: $current_dir, pwd is $(pwd)"
+if [[ $(basename $current_dir) == "scripts" ]]; then
+    echo "Moving up from scripts directory"
+
     cd ..
 fi
 
