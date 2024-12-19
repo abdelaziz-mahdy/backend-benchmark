@@ -1,1 +1,3 @@
 Method,Name,Error,Occurrences
+GET,/api/notes/no_db_endpoint/,"RetriesExceeded('http://benchmark:8000/api/notes/no_db_endpoint/', 0, original=timed out)",35
+GET,/api/notes/no_db_endpoint2/,"RetriesExceeded('http://benchmark:8000/api/notes/no_db_endpoint2/', 0, original=timed out)",25

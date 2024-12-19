@@ -11,10 +11,10 @@ public class NoteController {
 
     @Autowired
     private NoteRepository noteRepository;
-
+    
     @GetMapping("/notes/")
     public List<Note> getAllNotes() {
-        return noteRepository.findAll();
+        return noteRepository.findTop100ByOrderByIdDesc();
     }
 
     @PostMapping("/notes/")

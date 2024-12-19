@@ -62,7 +62,10 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
-
+    deploy:
+      resources:
+        limits:
+          cpus: "${SERVICE_CPU_CORE_LIMIT:-1.0}" # Use the SERVICE_CPU_CORE_LIMIT environment variable, defaulting to 1.0
   tester:
     image: locustio/locust
     volumes:

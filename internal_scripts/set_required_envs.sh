@@ -1,7 +1,21 @@
 # Default values
-DEFAULT_RUNTIME=1000
-DEFAULT_USERS=10000
-DEFAULT_SPAWN_RATE=10
+#!/bin/bash
+
+# Define default variables (you can change these values as needed)
+DEFAULT_RUNTIME_MINUTES=2  # Runtime in minutes
+DEFAULT_USERS=10000        # Maximum number of users
+
+# Convert runtime to seconds
+DEFAULT_RUNTIME=$((DEFAULT_RUNTIME_MINUTES * 60))
+
+# Calculate spawn rate to reach max users within the runtime
+DEFAULT_SPAWN_RATE=$(echo "scale=2; $DEFAULT_USERS / $DEFAULT_RUNTIME" | bc)
+
+# # Print the results
+# echo "Default Runtime: $DEFAULT_RUNTIME_SECONDS seconds"
+# echo "Default Users: $DEFAULT_USERS"
+# echo "Spawn Rate: $DEFAULT_SPAWN_RATE users/second"
+
 # DEFAULT_LOCUST_ARGS="--processes -1"
 DEFAULT_LOCUST_ARGS=""
 # Check for LOCUST_ARGS

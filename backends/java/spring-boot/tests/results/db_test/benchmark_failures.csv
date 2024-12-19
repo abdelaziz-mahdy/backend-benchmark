@@ -1,3 +1,1 @@
 Method,Name,Error,Occurrences
-POST,/notes/,"RetriesExceeded('http://benchmark:8080/notes/', 0, original=timed out)",27198
-GET,/notes/,"RetriesExceeded('http://benchmark:8080/notes/', 0, original=timed out)",27020
