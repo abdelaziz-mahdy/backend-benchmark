@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "/app/csharp-crud-api.csproj": {}
+    "/Users/AbdelazizMahdy/flutter_projects/backend-benchmark/backends/c_sharp/dot-net/benchmark/csharp-crud-api.csproj": {}
   },
   "projects": {
-    "/app/csharp-crud-api.csproj": {
+    "/Users/AbdelazizMahdy/flutter_projects/backend-benchmark/backends/c_sharp/dot-net/benchmark/csharp-crud-api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/app/csharp-crud-api.csproj",
+        "projectUniqueName": "/Users/AbdelazizMahdy/flutter_projects/backend-benchmark/backends/c_sharp/dot-net/benchmark/csharp-crud-api.csproj",
         "projectName": "csharp-crud-api",
-        "projectPath": "/app/csharp-crud-api.csproj",
-        "packagesPath": "/root/.nuget/packages/",
-        "outputPath": "/app/obj/",
+        "projectPath": "/Users/AbdelazizMahdy/flutter_projects/backend-benchmark/backends/c_sharp/dot-net/benchmark/csharp-crud-api.csproj",
+        "packagesPath": "/Users/AbdelazizMahdy/.nuget/packages/",
+        "outputPath": "/Users/AbdelazizMahdy/flutter_projects/backend-benchmark/backends/c_sharp/dot-net/benchmark/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/root/.nuget/NuGet/NuGet.Config"
+          "/Users/AbdelazizMahdy/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
@@ -32,7 +32,13 @@
           "warnAsError": [
             "NU1605"
           ]
-        }
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.100"
       },
       "frameworks": {
         "net8.0": {
@@ -40,17 +46,17 @@
           "dependencies": {
             "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
-              "version": "[7.0.3, )"
+              "version": "[8.0.0, )"
             },
             "Microsoft.EntityFrameworkCore.Design": {
               "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "suppressParent": "All",
               "target": "Package",
-              "version": "[7.0.5, )"
+              "version": "[8.0.0, )"
             },
             "Npgsql.EntityFrameworkCore.PostgreSQL": {
               "target": "Package",
-              "version": "[7.0.3, )"
+              "version": "[8.0.0, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
@@ -68,6 +74,20 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.osx-arm64",
+              "version": "[8.0.11, 8.0.11]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.11, 8.0.11]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.AspNetCore.App": {
               "privateAssets": "none"
@@ -76,7 +96,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/8.0.101/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.101/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
