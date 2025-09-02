@@ -7,14 +7,14 @@
 // ignore_for_file: public_member_api_docs
 // ignore_for_file: type_literal_in_constant_pattern
 // ignore_for_file: use_super_parameters
+// ignore_for_file: invalid_use_of_internal_member
 
-library protocol; // ignore_for_file: no_leading_underscores_for_library_prefixes
-
+// ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod_client/serverpod_client.dart' as _i1;
-import 'example.dart' as _i2;
+import 'greeting.dart' as _i2;
 import 'note.dart' as _i3;
 import 'package:benchmark_client/src/protocol/note.dart' as _i4;
-export 'example.dart';
+export 'greeting.dart';
 export 'note.dart';
 export 'client.dart';
 
@@ -31,21 +31,20 @@ class Protocol extends _i1.SerializationManager {
     Type? t,
   ]) {
     t ??= T;
-    if (t == _i2.Example) {
-      return _i2.Example.fromJson(data) as T;
+    if (t == _i2.Greeting) {
+      return _i2.Greeting.fromJson(data) as T;
     }
     if (t == _i3.Note) {
       return _i3.Note.fromJson(data) as T;
     }
-    if (t == _i1.getType<_i2.Example?>()) {
-      return (data != null ? _i2.Example.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i2.Greeting?>()) {
+      return (data != null ? _i2.Greeting.fromJson(data) : null) as T;
     }
     if (t == _i1.getType<_i3.Note?>()) {
       return (data != null ? _i3.Note.fromJson(data) : null) as T;
     }
     if (t == List<_i4.Note>) {
-      return (data as List).map((e) => deserialize<_i4.Note>(e)).toList()
-          as dynamic;
+      return (data as List).map((e) => deserialize<_i4.Note>(e)).toList() as T;
     }
     return super.deserialize<T>(data, t);
   }
@@ -54,21 +53,25 @@ class Protocol extends _i1.SerializationManager {
   String? getClassNameForObject(Object? data) {
     String? className = super.getClassNameForObject(data);
     if (className != null) return className;
-    if (data is _i2.Example) {
-      return 'Example';
-    }
-    if (data is _i3.Note) {
-      return 'Note';
+    switch (data) {
+      case _i2.Greeting():
+        return 'Greeting';
+      case _i3.Note():
+        return 'Note';
     }
     return null;
   }
 
   @override
   dynamic deserializeByClassName(Map<String, dynamic> data) {
-    if (data['className'] == 'Example') {
-      return deserialize<_i2.Example>(data['data']);
+    var dataClassName = data['className'];
+    if (dataClassName is! String) {
+      return super.deserializeByClassName(data);
     }
-    if (data['className'] == 'Note') {
+    if (dataClassName == 'Greeting') {
+      return deserialize<_i2.Greeting>(data['data']);
+    }
+    if (dataClassName == 'Note') {
       return deserialize<_i3.Note>(data['data']);
     }
     return super.deserializeByClassName(data);

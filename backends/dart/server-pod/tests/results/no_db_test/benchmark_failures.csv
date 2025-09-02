@@ -1,3 +1,0 @@
-Method,Name,Error,Occurrences
-POST,/note/noDbEndpoint2/,"RetriesExceeded('http://benchmark:8000/note/noDbEndpoint2/', 0, original=timed out)",1034
-POST,/note/noDbEndpoint/,"RetriesExceeded('http://benchmark:8000/note/noDbEndpoint/', 0, original=timed out)",1016

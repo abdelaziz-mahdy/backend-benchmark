@@ -1,11 +1,9 @@
-import 'dart:io';
-
-import 'package:benchmark_server/src/web/widgets/default_page_widget.dart';
+import 'package:benchmark_server/src/web/widgets/built_with_serverpod_page.dart';
 import 'package:serverpod/serverpod.dart';
 
-class RouteRoot extends WidgetRoute {
+class RootRoute extends WidgetRoute {
   @override
-  Future<Widget> build(Session session, HttpRequest request) async {
-    return DefaultPageWidget();
+  Future<TemplateWidget> build(Session session, Request request) async {
+    return BuiltWithServerpodPageWidget();
   }
 }

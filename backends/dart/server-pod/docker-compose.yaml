@@ -1,4 +1,3 @@
-
 services:
   db:
     image: postgres:16.1
@@ -7,19 +6,19 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_DB: benchmark
-      POSTGRES_PASSWORD: "5GTzDZoK5Ntnm8nimI_gG_2nifEhQhP8"
+      POSTGRES_PASSWORD: "N9MPXnuXsZyLJ4VD-8Z407mXO7B2ER4I"
     # volumes:
     #   - benchmark_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
-      retries: 5      
+      retries: 5
   redis:
     image: redis:6.2.6
     # ports:
     #   - '8091:6379'
-    command: redis-server --requirepass "7W8rZScp3Df0KooszKNbRQe4b-HdSgjr"
+    command: redis-server --requirepass "Rb0TWO_mvS31ASm5-a1K6llHi2Xc9FH3"
     environment:
       - REDIS_REPLICATION_MODE=master
   benchmark:
@@ -82,6 +81,5 @@ services:
     depends_on:
       benchmark:
         condition: service_healthy
-
 # volumes:
 #   benchmark_data:
