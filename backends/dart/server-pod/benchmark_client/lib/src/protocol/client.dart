@@ -7,26 +7,14 @@
 // ignore_for_file: public_member_api_docs
 // ignore_for_file: type_literal_in_constant_pattern
 // ignore_for_file: use_super_parameters
+// ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod_client/serverpod_client.dart' as _i1;
 import 'dart:async' as _i2;
 import 'package:benchmark_client/src/protocol/note.dart' as _i3;
-import 'protocol.dart' as _i4;
-
-/// {@category Endpoint}
-class EndpointExample extends _i1.EndpointRef {
-  EndpointExample(_i1.EndpointCaller caller) : super(caller);
-
-  @override
-  String get name => 'example';
-
-  _i2.Future<String> hello(String name) => caller.callServerEndpoint<String>(
-        'example',
-        'hello',
-        {'name': name},
-      );
-}
+import 'package:benchmark_client/src/protocol/greeting.dart' as _i4;
+import 'protocol.dart' as _i5;
 
 /// {@category Endpoint}
 class EndpointNote extends _i1.EndpointRef {
@@ -61,6 +49,24 @@ class EndpointNote extends _i1.EndpointRef {
       );
 }
 
+/// This is an example endpoint that returns a greeting message through
+/// its [hello] method.
+/// {@category Endpoint}
+class EndpointGreeting extends _i1.EndpointRef {
+  EndpointGreeting(_i1.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'greeting';
+
+  /// Returns a personalized greeting message: "Hello {name}".
+  _i2.Future<_i4.Greeting> hello(String name) =>
+      caller.callServerEndpoint<_i4.Greeting>(
+        'greeting',
+        'hello',
+        {'name': name},
+      );
+}
+
 class Client extends _i1.ServerpodClientShared {
   Client(
     String host, {
@@ -77,7 +83,7 @@ class Client extends _i1.ServerpodClientShared {
     bool? disconnectStreamsOnLostInternetConnection,
   }) : super(
           host,
-          _i4.Protocol(),
+          _i5.Protocol(),
           securityContext: securityContext,
           authenticationKeyManager: authenticationKeyManager,
           streamingConnectionTimeout: streamingConnectionTimeout,
@@ -87,18 +93,18 @@ class Client extends _i1.ServerpodClientShared {
           disconnectStreamsOnLostInternetConnection:
               disconnectStreamsOnLostInternetConnection,
         ) {
-    example = EndpointExample(this);
     note = EndpointNote(this);
+    greeting = EndpointGreeting(this);
   }
-
-  late final EndpointExample example;
 
   late final EndpointNote note;
 
+  late final EndpointGreeting greeting;
+
   @override
   Map<String, _i1.EndpointRef> get endpointRefLookup => {
-        'example': example,
         'note': note,
+        'greeting': greeting,
       };
 
   @override

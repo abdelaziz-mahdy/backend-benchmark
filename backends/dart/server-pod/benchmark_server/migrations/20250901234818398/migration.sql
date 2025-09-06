@@ -14,9 +14,9 @@ CREATE TABLE "note" (
 -- MIGRATION VERSION FOR benchmark
 --
 INSERT INTO "serverpod_migrations" ("module", "version", "timestamp")
-    VALUES ('benchmark', '20240924014505402', now())
+    VALUES ('benchmark', '20250901234818398', now())
     ON CONFLICT ("module")
-    DO UPDATE SET "version" = '20240924014505402', "timestamp" = now();
+    DO UPDATE SET "version" = '20250901234818398', "timestamp" = now();
 
 --
 -- MIGRATION VERSION FOR serverpod

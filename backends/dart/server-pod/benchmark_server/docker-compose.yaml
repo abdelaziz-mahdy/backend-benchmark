@@ -1,22 +1,44 @@
-version: '3.7'
-
 services:
+  # Development services
   postgres:
-    image: postgres:16.3
+    image: pgvector/pgvector:pg16
     ports:
-      - '8090:5432'
+      - "8090:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_DB: benchmark
-      POSTGRES_PASSWORD: "Et0PWXdIhiKbFKYezGbC_RlHYFF57Bgj"
+      POSTGRES_PASSWORD: "N9MPXnuXsZyLJ4VD-8Z407mXO7B2ER4I"
     volumes:
       - benchmark_data:/var/lib/postgresql/data
+
   redis:
     image: redis:6.2.6
     ports:
-      - '8091:6379'
-    command: redis-server --requirepass "Z8gpzy0WdyGaj2-40zHpPHBT6lOykkAG"
+      - "8091:6379"
+    command: redis-server --requirepass "Rb0TWO_mvS31ASm5-a1K6llHi2Xc9FH3"
     environment:
       - REDIS_REPLICATION_MODE=master
+
+  # Test services
+  postgres_test:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "9090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: benchmark_test
+      POSTGRES_PASSWORD: "u0vhoUVaxPoHbUFWRsbKI66kJm6T7542"
+    volumes:
+      - benchmark_test_data:/var/lib/postgresql/data
+
+  redis_test:
+    image: redis:6.2.6
+    ports:
+      - "9091:6379"
+    command: redis-server --requirepass "uX8UQFHaU6M6P8LxS1fi-MDykaKxYwW-"
+    environment:
+      - REDIS_REPLICATION_MODE=master
+
 volumes:
   benchmark_data:
+  benchmark_test_data:

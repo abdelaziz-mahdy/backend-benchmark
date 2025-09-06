@@ -241,9 +241,9 @@ ALTER TABLE ONLY "serverpod_query_log"
 -- MIGRATION VERSION FOR benchmark
 --
 INSERT INTO "serverpod_migrations" ("module", "version", "timestamp")
-    VALUES ('benchmark', '20240924014145685', now())
+    VALUES ('benchmark', '20250901234241061', now())
     ON CONFLICT ("module")
-    DO UPDATE SET "version" = '20240924014145685', "timestamp" = now();
+    DO UPDATE SET "version" = '20250901234241061', "timestamp" = now();
 
 --
 -- MIGRATION VERSION FOR serverpod

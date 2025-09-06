@@ -58,7 +58,7 @@ jobs:
         env:
           PROJECT_NAME: benchmark
           AWS_NAME: benchmark
-          DEPLOYMENT_BUCKET: benchmark-deployment-8411995
+          DEPLOYMENT_BUCKET: benchmark-deployment-584463
           TARGET: ${{ github.event.inputs.target }}
         run: |
           # Deploy server to AWS
