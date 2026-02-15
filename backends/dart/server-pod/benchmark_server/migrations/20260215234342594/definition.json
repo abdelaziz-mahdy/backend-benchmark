@@ -1387,7 +1387,7 @@
     {
       "__className__": "serverpod.DatabaseMigrationVersion",
       "module": "benchmark",
-      "version": "20260215190031443"
+      "version": "20260215234342594"
     },
     {
       "__className__": "serverpod.DatabaseMigrationVersion",
