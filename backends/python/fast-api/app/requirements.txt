@@ -1,8 +1,8 @@
-fastapi
-uvicorn
-sqlalchemy
-asyncpg
-pydantic
-alembic
+fastapi==0.115.12
+uvicorn==0.34.2
+sqlalchemy==2.0.41
+asyncpg==0.30.0
+pydantic==2.11.3
+alembic==1.15.2
 python-dotenv
-psycopg2-binary
+psycopg2-binary==2.9.10
