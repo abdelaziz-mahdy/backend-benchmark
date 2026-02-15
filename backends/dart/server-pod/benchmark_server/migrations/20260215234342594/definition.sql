@@ -1,6 +1,15 @@
 BEGIN;
 
 --
+-- Class Note as table note
+--
+CREATE TABLE "note" (
+    "id" bigserial PRIMARY KEY,
+    "title" text NOT NULL,
+    "content" text NOT NULL
+);
+
+--
 -- Class CloudStorageEntry as table serverpod_cloud_storage
 --
 CREATE TABLE "serverpod_cloud_storage" (
@@ -197,12 +206,14 @@ CREATE TABLE "serverpod_session_log" (
     "error" text,
     "stackTrace" text,
     "authenticatedUserId" bigint,
+    "userId" text,
     "isOpen" boolean,
     "touched" timestamp without time zone NOT NULL
 );
 
 -- Indexes
 CREATE INDEX "serverpod_session_log_serverid_idx" ON "serverpod_session_log" USING btree ("serverId");
+CREATE INDEX "serverpod_session_log_time_idx" ON "serverpod_session_log" USING btree ("time");
 CREATE INDEX "serverpod_session_log_touched_idx" ON "serverpod_session_log" USING btree ("touched");
 CREATE INDEX "serverpod_session_log_isopen_idx" ON "serverpod_session_log" USING btree ("isOpen");
 
@@ -241,17 +252,17 @@ ALTER TABLE ONLY "serverpod_query_log"
 -- MIGRATION VERSION FOR benchmark
 --
 INSERT INTO "serverpod_migrations" ("module", "version", "timestamp")
-    VALUES ('benchmark', '20240924014145685', now())
+    VALUES ('benchmark', '20260215234342594', now())
     ON CONFLICT ("module")
-    DO UPDATE SET "version" = '20240924014145685', "timestamp" = now();
+    DO UPDATE SET "version" = '20260215234342594', "timestamp" = now();
 
 --
 -- MIGRATION VERSION FOR serverpod
 --
 INSERT INTO "serverpod_migrations" ("module", "version", "timestamp")
-    VALUES ('serverpod', '20240516151843329', now())
+    VALUES ('serverpod', '20260129180959368', now())
     ON CONFLICT ("module")
-    DO UPDATE SET "version" = '20240516151843329', "timestamp" = now();
+    DO UPDATE SET "version" = '20260129180959368', "timestamp" = now();
 
 
 COMMIT;

@@ -7,6 +7,7 @@
 // ignore_for_file: public_member_api_docs
 // ignore_for_file: type_literal_in_constant_pattern
 // ignore_for_file: use_super_parameters
+// ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _i1;
@@ -42,17 +43,17 @@ class Endpoints extends _i1.EndpointDispatch {
               name: 'name',
               type: _i1.getType<String>(),
               nullable: false,
-            )
+            ),
           },
-          call: (
-            _i1.Session session,
-            Map<String, dynamic> params,
-          ) async =>
-              (endpoints['example'] as _i2.ExampleEndpoint).hello(
-            session,
-            params['name'],
-          ),
-        )
+          call:
+              (
+                _i1.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['example'] as _i2.ExampleEndpoint).hello(
+                session,
+                params['name'],
+              ),
+        ),
       },
     );
     connectors['note'] = _i1.EndpointConnector(
@@ -66,43 +67,47 @@ class Endpoints extends _i1.EndpointDispatch {
               name: 'note',
               type: _i1.getType<_i4.Note>(),
               nullable: false,
-            )
+            ),
           },
-          call: (
-            _i1.Session session,
-            Map<String, dynamic> params,
-          ) async =>
-              (endpoints['note'] as _i3.NoteEndpoint).createNote(
-            session,
-            params['note'],
-          ),
+          call:
+              (
+                _i1.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['note'] as _i3.NoteEndpoint).createNote(
+                session,
+                params['note'],
+              ),
         ),
         'getAllNotes': _i1.MethodConnector(
           name: 'getAllNotes',
           params: {},
-          call: (
-            _i1.Session session,
-            Map<String, dynamic> params,
-          ) async =>
-              (endpoints['note'] as _i3.NoteEndpoint).getAllNotes(session),
+          call:
+              (
+                _i1.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['note'] as _i3.NoteEndpoint).getAllNotes(session),
         ),
         'noDbEndpoint': _i1.MethodConnector(
           name: 'noDbEndpoint',
           params: {},
-          call: (
-            _i1.Session session,
-            Map<String, dynamic> params,
-          ) async =>
-              (endpoints['note'] as _i3.NoteEndpoint).noDbEndpoint(session),
+          call:
+              (
+                _i1.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['note'] as _i3.NoteEndpoint).noDbEndpoint(session),
         ),
         'noDbEndpoint2': _i1.MethodConnector(
           name: 'noDbEndpoint2',
           params: {},
-          call: (
-            _i1.Session session,
-            Map<String, dynamic> params,
-          ) async =>
-              (endpoints['note'] as _i3.NoteEndpoint).noDbEndpoint2(session),
+          call:
+              (
+                _i1.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['note'] as _i3.NoteEndpoint).noDbEndpoint2(
+                session,
+              ),
         ),
       },
     );

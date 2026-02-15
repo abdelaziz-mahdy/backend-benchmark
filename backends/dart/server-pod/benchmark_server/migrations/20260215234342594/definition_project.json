@@ -1,13 +1,16 @@
 {
+  "__className__": "serverpod.DatabaseDefinition",
   "moduleName": "benchmark",
   "tables": [
     {
+      "__className__": "serverpod.TableDefinition",
       "name": "note",
       "dartName": "Note",
       "module": "benchmark",
       "schema": "public",
       "columns": [
         {
+          "__className__": "serverpod.ColumnDefinition",
           "name": "id",
           "columnType": 6,
           "isNullable": false,
@@ -15,12 +18,14 @@
           "dartType": "int?"
         },
         {
+          "__className__": "serverpod.ColumnDefinition",
           "name": "title",
           "columnType": 0,
           "isNullable": false,
           "dartType": "String"
         },
         {
+          "__className__": "serverpod.ColumnDefinition",
           "name": "content",
           "columnType": 0,
           "isNullable": false,
@@ -30,9 +35,11 @@
       "foreignKeys": [],
       "indexes": [
         {
+          "__className__": "serverpod.IndexDefinition",
           "indexName": "note_pkey",
           "elements": [
             {
+              "__className__": "serverpod.IndexElementDefinition",
               "type": 0,
               "definition": "id"
             }
@@ -47,12 +54,9 @@
   ],
   "installedModules": [
     {
+      "__className__": "serverpod.DatabaseMigrationVersion",
       "module": "serverpod",
-      "version": "20240516151843329"
-    },
-    {
-      "module": "benchmark",
-      "version": "20240924014145685"
+      "version": "20260129180959368"
     }
   ],
   "migrationApiVersion": 1

@@ -1,3 +1,4 @@
 **/node_modules
 .DS_Store
+**/__pycache__/
 backends/c_sharp/dot-net/benchmark/obj
