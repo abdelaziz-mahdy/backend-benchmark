@@ -99,6 +99,15 @@ for script in "${filtered_scripts[@]}"; do
         minutes=$((total_remaining_seconds / 60))
         seconds=$((total_remaining_seconds % 60))
 
+        # Get the directory of the script to check if the test file exists
+        script_dir=$(dirname "$script")
+        test_file="$script_dir/tests/${test_type}.py"
+        if [[ ! -f "$test_file" ]]; then
+            echo "Skipping $script with test_type=$test_type (no $test_file found)"
+            ((counter++))
+            continue
+        fi
+
         echo "Running script $counter out of $total_scripts: $script with test_type=$test_type"
         echo "Estimated remaining time: $minutes minutes, $seconds seconds"
 
