@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A multi-language backend benchmarking suite that compares framework performance using Locust load testing against Dockerized services with PostgreSQL. Results are visualized via a React web app deployed to GitHub Pages.
+A multi-language backend benchmarking suite that compares framework performance using Locust load testing against Dockerized services with PostgreSQL. Results are visualized via a Flutter web app deployed to GitHub Pages.
 
 ## Running Benchmarks
 
@@ -39,7 +39,7 @@ bash create_graphs.sh
 This builds a Docker image that runs `graph_generator.py` (matplotlib/pandas), which:
 - Reads `benchmark_stats_history.csv` and `cpu_usage.csv` from each backend's `tests/results/{db_test,no_db_test}/`
 - Generates per-backend graphs and comparison graphs at repo root
-- Writes merged JSON data to `benchmark-app/public/data.json`
+- Writes merged JSON data to `benchmark-app/assets/data.json`
 - Regenerates `README.md` from `README_template.md` with updated graph paths
 
 ## Architecture
@@ -66,14 +66,14 @@ Each backend follows this convention at `backends/<language>/<framework>/`:
 
 ### Benchmark Web App
 
-React app in `benchmark-app/` (Create React App). Reads `data.json` to display interactive charts (Chart.js).
+Flutter web app in `benchmark-app/`. Reads `web/data.json` to display interactive charts (fl_chart). Uses Provider for state management.
 
 ```bash
 cd benchmark-app
-npm install
-npm start        # Dev server
-npm run build    # Production build
-npm run deploy   # Deploy to GitHub Pages
+flutter pub get
+flutter run -d chrome    # Dev server
+flutter build web --base-href /backend-benchmark/  # Production build
+# Deployment is automated via GitHub Actions on push to main
 ```
 
 ## Adding a New Backend
