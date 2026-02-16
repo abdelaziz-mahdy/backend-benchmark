@@ -492,7 +492,7 @@ def data_json(all_summaries, all_data, all_cpu):
 
     try:
         all_data_json = json.dumps(combined_data, default=custom_serializer)
-        with open('/mnt/data/benchmark-app/public/data.json', 'w') as file:
+        with open('/mnt/data/benchmark-app/assets/data.json', 'w') as file:
             file.write(all_data_json)
 
         print("JSON data successfully written to file.")
