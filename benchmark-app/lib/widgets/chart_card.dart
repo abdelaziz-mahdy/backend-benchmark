@@ -154,16 +154,21 @@ class ChartCard extends StatelessWidget {
           touchTooltipData: LineTouchTooltipData(
             fitInsideHorizontally: true,
             fitInsideVertically: true,
-            maxContentWidth: 240,
+            maxContentWidth: 300,
+            getTooltipColor: (_) => const Color(0xF0222222),
             getTooltipItems: (touchedSpots) {
-              return touchedSpots.map((spot) {
+              // Sort by value descending
+              final sorted = List<LineBarSpot>.from(touchedSpots)
+                ..sort((a, b) => b.y.compareTo(a.y));
+              return sorted.map((spot) {
                 final name = selectedServices.elementAt(spot.barIndex);
+                final color = spot.bar.color ?? Colors.white;
                 return LineTooltipItem(
-                  '$name: ${_formatNumber(spot.y)}',
+                  '● $name: ${_formatNumber(spot.y)}',
                   TextStyle(
-                    color: spot.bar.color,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 );
               }).toList();
