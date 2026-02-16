@@ -1,3 +1,16 @@
+double? _toDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
+}
+
+int _toInt(dynamic value) {
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
 class DataPoint {
   final double timestamp;
   final int userCount;
@@ -65,46 +78,42 @@ class DataPoint {
 
   factory DataPoint.fromJson(Map<String, dynamic> json) {
     return DataPoint(
-      timestamp: (json['Timestamp'] as num?)?.toDouble() ?? 0,
-      userCount: (json['User Count'] as num?)?.toInt() ?? 0,
-      requestsPerSec: (json['Requests/s'] as num?)?.toDouble() ?? 0,
-      failuresPerSec: (json['Failures/s'] as num?)?.toDouble() ?? 0,
-      responsesPerSec: (json['Responses/s'] as num?)?.toDouble() ?? 0,
-      p50: (json['50%'] as num?)?.toDouble() ?? 0,
-      p66: (json['66%'] as num?)?.toDouble() ?? 0,
-      p75: (json['75%'] as num?)?.toDouble() ?? 0,
-      p80: (json['80%'] as num?)?.toDouble() ?? 0,
-      p90: (json['90%'] as num?)?.toDouble() ?? 0,
-      p95: (json['95%'] as num?)?.toDouble() ?? 0,
-      p98: (json['98%'] as num?)?.toDouble() ?? 0,
-      p99: (json['99%'] as num?)?.toDouble() ?? 0,
-      p999: (json['99.9%'] as num?)?.toDouble() ?? 0,
-      p9999: (json['99.99%'] as num?)?.toDouble() ?? 0,
-      p100: (json['100%'] as num?)?.toDouble() ?? 0,
-      totalRequestCount:
-          (json['Total Request Count'] as num?)?.toDouble() ?? 0,
-      totalFailureCount:
-          (json['Total Failure Count'] as num?)?.toDouble() ?? 0,
+      timestamp: _toDouble(json['Timestamp']) ?? 0,
+      userCount: _toInt(json['User Count']),
+      requestsPerSec: _toDouble(json['Requests/s']) ?? 0,
+      failuresPerSec: _toDouble(json['Failures/s']) ?? 0,
+      responsesPerSec: _toDouble(json['Responses/s']) ?? 0,
+      p50: _toDouble(json['50%']) ?? 0,
+      p66: _toDouble(json['66%']) ?? 0,
+      p75: _toDouble(json['75%']) ?? 0,
+      p80: _toDouble(json['80%']) ?? 0,
+      p90: _toDouble(json['90%']) ?? 0,
+      p95: _toDouble(json['95%']) ?? 0,
+      p98: _toDouble(json['98%']) ?? 0,
+      p99: _toDouble(json['99%']) ?? 0,
+      p999: _toDouble(json['99.9%']) ?? 0,
+      p9999: _toDouble(json['99.99%']) ?? 0,
+      p100: _toDouble(json['100%']) ?? 0,
+      totalRequestCount: _toDouble(json['Total Request Count']) ?? 0,
+      totalFailureCount: _toDouble(json['Total Failure Count']) ?? 0,
       totalMedianResponseTime:
-          (json['Total Median Response Time'] as num?)?.toDouble() ?? 0,
+          _toDouble(json['Total Median Response Time']) ?? 0,
       totalAverageResponseTime:
-          (json['Total Average Response Time'] as num?)?.toDouble() ?? 0,
+          _toDouble(json['Total Average Response Time']) ?? 0,
       totalMinResponseTime:
-          (json['Total Min Response Time'] as num?)?.toDouble() ?? 0,
+          _toDouble(json['Total Min Response Time']) ?? 0,
       totalMaxResponseTime:
-          (json['Total Max Response Time'] as num?)?.toDouble() ?? 0,
+          _toDouble(json['Total Max Response Time']) ?? 0,
       totalAverageContentSize:
-          (json['Total Average Content Size'] as num?)?.toDouble() ?? 0,
-      timeDifference: (json['Time Difference'] as num?)?.toDouble() ?? 0,
+          _toDouble(json['Total Average Content Size']) ?? 0,
+      timeDifference: _toDouble(json['Time Difference']) ?? 0,
       responsesPerSecSmoothed:
-          (json['Responses/s Smoothed'] as num?)?.toDouble() ?? 0,
-      responseTime: (json['Response Time'] as num?)?.toDouble() ?? 0,
-      benchmarkCpuUsage:
-          (json['benchmark_cpu_usage'] as num?)?.toDouble(),
-      benchmarkMemUsageMb:
-          (json['benchmark_mem_usage_mb'] as num?)?.toDouble(),
-      dbCpuUsage: (json['db_cpu_usage'] as num?)?.toDouble(),
-      dbMemUsageMb: (json['db_mem_usage_mb'] as num?)?.toDouble(),
+          _toDouble(json['Responses/s Smoothed']) ?? 0,
+      responseTime: _toDouble(json['Response Time']) ?? 0,
+      benchmarkCpuUsage: _toDouble(json['benchmark_cpu_usage']),
+      benchmarkMemUsageMb: _toDouble(json['benchmark_mem_usage_mb']),
+      dbCpuUsage: _toDouble(json['db_cpu_usage']),
+      dbMemUsageMb: _toDouble(json['db_mem_usage_mb']),
     );
   }
 
@@ -187,7 +196,7 @@ class BenchmarkService {
     final summaryMap = <String, double>{};
     final rawSummary = json['summary'] as Map<String, dynamic>;
     for (final entry in rawSummary.entries) {
-      summaryMap[entry.key] = (entry.value as num?)?.toDouble() ?? 0;
+      summaryMap[entry.key] = _toDouble(entry.value) ?? 0;
     }
 
     final dataList = (json['data'] as List)
