@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 
 class ServiceColors {
+  // Bright, high-contrast colors that are easily distinguishable
   static final Map<String, Color> _baseColors = {
-    'python django sync': const Color(0xFF092E20),
-    'python django async': const Color(0xFF0C4B33),
-    'python fast api': const Color(0xFF009485),
-    'go mux': const Color(0xFF00ADD8),
-    'java spring boot': const Color(0xFF5382A1),
-    'c_sharp dot net': const Color(0xFF67217A),
-    'rust actix web': const Color(0xFFDEA584),
-    'dart server pod': const Color(0xFF0175C2),
-    'javascript express node': const Color(0xFF68A063),
-    'javascript express bun': const Color(0xFFF0DB4F),
+    'go mux': const Color(0xFF00B4D8), // Bright cyan
+    'rust actix web': const Color(0xFFE85D26), // Rust orange
+    'javascript express bun': const Color(0xFFF5A623), // Amber/gold
+    'javascript express node': const Color(0xFF8BC34A), // Lime green
+    'c_sharp dot net': const Color(0xFF9B59B6), // Purple
+    'java spring boot': const Color(0xFF3F51B5), // Indigo
+    'python fast api': const Color(0xFF00BFA5), // Teal
+    'python django sync': const Color(0xFFE91E63), // Pink
+    'python django async': const Color(0xFFFF5722), // Deep orange
+    'dart server pod': const Color(0xFF2196F3), // Blue
   };
 
   static Color getColor(String serviceName) {
@@ -24,11 +25,15 @@ class ServiceColors {
     final baseColor = _baseColors[baseName] ?? Colors.grey;
 
     if (isNoDb) {
+      // Lighter variant for no_db — shift toward white by 40%
+      final r = (baseColor.r * 255).round();
+      final g = (baseColor.g * 255).round();
+      final b = (baseColor.b * 255).round();
       return Color.fromARGB(
-        baseColor.a.toInt(),
-        (baseColor.r * 0.6).toInt(),
-        (baseColor.g * 0.6).toInt(),
-        (baseColor.b * 0.6).toInt(),
+        255,
+        r + ((255 - r) * 0.4).toInt(),
+        g + ((255 - g) * 0.4).toInt(),
+        b + ((255 - b) * 0.4).toInt(),
       );
     }
 

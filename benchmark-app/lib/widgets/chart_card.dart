@@ -63,13 +63,15 @@ class ChartCard extends StatelessWidget {
       if (spots.isEmpty) continue;
 
       final color = ServiceColors.getColor(name);
+      final isNoDb = name.contains('no_db_test');
       lines.add(
         LineChartBarData(
           spots: spots,
           isCurved: true,
           curveSmoothness: 0.2,
           color: color,
-          barWidth: 2,
+          barWidth: isNoDb ? 1.5 : 2.5,
+          dashArray: isNoDb ? [8, 4] : null,
           dotData: const FlDotData(show: false),
           belowBarData: BarAreaData(show: false),
         ),
