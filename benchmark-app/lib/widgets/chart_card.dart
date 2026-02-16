@@ -119,10 +119,8 @@ class ChartCard extends StatelessWidget {
           show: true,
           drawVerticalLine: false,
           horizontalInterval: null,
-          getDrawingHorizontalLine: (value) => FlLine(
-            color: const Color(0xFF21262D),
-            strokeWidth: 1,
-          ),
+          getDrawingHorizontalLine: (value) =>
+              FlLine(color: const Color(0xFF21262D), strokeWidth: 1),
         ),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
@@ -188,20 +186,32 @@ class ChartCard extends StatelessWidget {
             maxContentWidth: 220,
             getTooltipColor: (_) => const Color(0xF0161B22),
             getTooltipItems: (touchedSpots) {
-              // Sort by value descending, take top 5
-              final sorted = List<LineBarSpot>.from(touchedSpots)
+              // Rank spots by value descending to find top 5
+              final ranked = List<LineBarSpot>.from(touchedSpots)
                 ..sort((a, b) => b.y.compareTo(a.y));
-              final display = sorted.take(5).toList();
-              final hasMore = sorted.length > 5;
+              final top5Indices = ranked.take(5).map((s) => s.barIndex).toSet();
+              final hiddenCount = touchedSpots.length - top5Indices.length;
 
-              final items = display.map((spot) {
+              // Must return exactly one item per touchedSpot (null to hide)
+              return touchedSpots.asMap().entries.map((entry) {
+                final spot = entry.value;
+                if (!top5Indices.contains(spot.barIndex)) return null;
+
                 final idx = spot.barIndex;
                 final name = idx < serviceNames.length
                     ? BenchmarkProvider.frameworkName(serviceNames[idx])
                     : '?';
                 final color = spot.bar.color ?? Colors.white;
+
+                // Append "+N more" to the last visible item
+                final isLastVisible =
+                    spot.barIndex == ranked.take(5).last.barIndex;
+                final suffix = (isLastVisible && hiddenCount > 0)
+                    ? '\n+$hiddenCount more'
+                    : '';
+
                 return LineTooltipItem(
-                  '$name: ${_formatNumber(spot.y)}',
+                  '$name: ${_formatNumber(spot.y)}$suffix',
                   TextStyle(
                     color: color,
                     fontSize: 11,
@@ -210,21 +220,6 @@ class ChartCard extends StatelessWidget {
                   ),
                 );
               }).toList();
-
-              if (hasMore) {
-                items.add(
-                  LineTooltipItem(
-                    '+${sorted.length - 5} more',
-                    const TextStyle(
-                      color: Color(0xFF484F58),
-                      fontSize: 10,
-                      fontStyle: FontStyle.italic,
-                      height: 1.4,
-                    ),
-                  ),
-                );
-              }
-              return items;
             },
           ),
         ),

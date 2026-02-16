@@ -95,7 +95,7 @@ class _ChartGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount = constraints.maxWidth > 1200 ? 2 : 1;
-        final aspectRatio = constraints.maxWidth > 1200 ? 1.8 : 2.4;
+        final aspectRatio = constraints.maxWidth > 1200 ? 1.4 : 1.8;
 
         return GridView.builder(
           padding: const EdgeInsets.all(12),
