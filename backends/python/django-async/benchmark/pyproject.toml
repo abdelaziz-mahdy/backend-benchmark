@@ -5,13 +5,13 @@ description = ""
 authors = ["Your Name <you@example.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.12"
-django = "*"
-djangorestframework = "*"
-psycopg2 = "*"
-daphne = "*"
-adrf = "*"
-[tool.poetry.dev-dependencies]
+python = "^3.13"
+django = "^5.2"
+djangorestframework = "^3.15"
+psycopg2-binary = "^2.9"
+daphne = "^4.1"
+adrf = "^0.1"
+[tool.poetry.group.dev.dependencies]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
