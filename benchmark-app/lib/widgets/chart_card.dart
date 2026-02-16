@@ -80,8 +80,27 @@ class ChartCard extends StatelessWidget {
       return const Center(child: Text('No data to display'));
     }
 
+    // Compute dynamic Y range from actual data
+    double minY = double.infinity;
+    double maxY = double.negativeInfinity;
+    for (final line in lines) {
+      for (final spot in line.spots) {
+        if (spot.y < minY) minY = spot.y;
+        if (spot.y > maxY) maxY = spot.y;
+      }
+    }
+    if (minY == double.infinity) minY = 0;
+    if (maxY == double.negativeInfinity) maxY = 1;
+
+    // Add 10% padding
+    final range = maxY - minY;
+    final paddedMin = (minY - range * 0.1).clamp(0, double.infinity);
+    final paddedMax = maxY + range * 0.1;
+
     return LineChart(
       LineChartData(
+        minY: range == 0 ? 0.0 : paddedMin.toDouble(),
+        maxY: range == 0 ? maxY * 1.1 : paddedMax,
         lineBarsData: lines,
         gridData: FlGridData(
           show: true,
@@ -133,6 +152,8 @@ class ChartCard extends StatelessWidget {
         borderData: FlBorderData(show: false),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
+            fitInsideHorizontally: true,
+            fitInsideVertically: true,
             maxContentWidth: 240,
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
