@@ -3,12 +3,12 @@ FROM python:3.13
 WORKDIR /app
 
 # Copy the requirements file into the container at /app
-COPY poetry.lock pyproject.toml /app/
+COPY pyproject.toml /app/
 
 # Install Poetry and project dependencies
 RUN pip install poetry && \
     poetry config virtualenvs.create false && \
-    poetry lock && poetry install --no-dev --no-root
+    poetry lock && poetry install --only main --no-root
 
 COPY . .
 
