@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/benchmark_data.dart';
 import '../services/data_service.dart';
 
+enum TestTypeFilter { db, noDb, all }
+
 class BenchmarkProvider extends ChangeNotifier {
   Map<String, BenchmarkService>? data;
   Set<String> selectedServices = {};
@@ -10,12 +12,38 @@ class BenchmarkProvider extends ChangeNotifier {
   bool isLoading = false;
   double progress = 0;
   bool sidebarExpanded = true;
+  TestTypeFilter testTypeFilter = TestTypeFilter.db;
 
   List<String> get dbServices =>
-      data?.keys.where((k) => k.contains('db_test') && !k.contains('no_db_test')).toList() ?? [];
+      data?.keys
+          .where((k) => k.contains('db_test') && !k.contains('no_db_test'))
+          .toList() ??
+      [];
 
   List<String> get noDbServices =>
       data?.keys.where((k) => k.contains('no_db_test')).toList() ?? [];
+
+  /// Returns the framework base name (e.g. "go mux") from a full service name
+  static String frameworkName(String serviceName) {
+    return serviceName
+        .replaceAll(' db_test', '')
+        .replaceAll(' no_db_test', '')
+        .trim();
+  }
+
+  /// Services filtered by current test type filter
+  Set<String> get filteredServices {
+    return selectedServices.where((s) {
+      switch (testTypeFilter) {
+        case TestTypeFilter.db:
+          return s.contains('db_test') && !s.contains('no_db_test');
+        case TestTypeFilter.noDb:
+          return s.contains('no_db_test');
+        case TestTypeFilter.all:
+          return true;
+      }
+    }).toSet();
+  }
 
   Future<void> loadData() async {
     isLoading = true;
@@ -41,12 +69,27 @@ class BenchmarkProvider extends ChangeNotifier {
     }
   }
 
+  void setTestTypeFilter(TestTypeFilter filter) {
+    testTypeFilter = filter;
+    notifyListeners();
+  }
+
   void toggleService(String service) {
     if (selectedServices.contains(service)) {
       selectedServices.remove(service);
     } else {
       selectedServices.add(service);
     }
+    notifyListeners();
+  }
+
+  void selectAllServices() {
+    selectedServices = data!.keys.toSet();
+    notifyListeners();
+  }
+
+  void deselectAllServices() {
+    selectedServices.clear();
     notifyListeners();
   }
 

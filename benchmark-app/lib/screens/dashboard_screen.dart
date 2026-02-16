@@ -59,36 +59,58 @@ class _ChartGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fields = provider.selectedFields.toList();
+    final filtered = provider.filteredServices;
 
     if (fields.isEmpty) {
-      return const Center(child: Text('Select at least one field'));
+      return const Center(
+        child: Text(
+          'Select at least one metric',
+          style: TextStyle(color: Color(0xFF8B949E)),
+        ),
+      );
     }
 
-    if (provider.selectedServices.isEmpty) {
-      return const Center(child: Text('Select at least one service'));
+    if (filtered.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.filter_list_off,
+                size: 48, color: Color(0xFF30363D)),
+            const SizedBox(height: 12),
+            Text(
+              'No services match the current filter',
+              style: TextStyle(color: const Color(0xFF8B949E), fontSize: 14),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Try selecting different services or changing the test type',
+              style: TextStyle(color: const Color(0xFF484F58), fontSize: 12),
+            ),
+          ],
+        ),
+      );
     }
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 1200
-            ? 2
-            : 1;
-        final aspectRatio = constraints.maxWidth > 1200 ? 1.6 : 2.0;
+        final crossAxisCount = constraints.maxWidth > 1200 ? 2 : 1;
+        final aspectRatio = constraints.maxWidth > 1200 ? 1.8 : 2.4;
 
         return GridView.builder(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             childAspectRatio: aspectRatio,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
           ),
           itemCount: fields.length,
           itemBuilder: (context, index) {
             return ChartCard(
               fieldName: fields[index],
               services: provider.data!,
-              selectedServices: provider.selectedServices,
+              selectedServices: filtered,
             );
           },
         );

@@ -16,18 +16,16 @@ class SidebarWidget extends StatelessWidget {
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          width: expanded ? 300 : 60,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 4,
-                offset: const Offset(2, 0),
-              ),
-            ],
+          width: expanded ? 260 : 48,
+          decoration: const BoxDecoration(
+            color: Color(0xFF161B22),
+            border: Border(
+              right: BorderSide(color: Color(0xFF30363D)),
+            ),
           ),
-          child: expanded ? _buildExpanded(provider) : _buildCollapsed(context),
+          child: expanded
+              ? _buildExpanded(provider)
+              : _buildCollapsed(context),
         );
       },
     );
@@ -38,7 +36,8 @@ class SidebarWidget extends StatelessWidget {
       children: [
         const SizedBox(height: 8),
         IconButton(
-          icon: const Icon(Icons.chevron_right),
+          icon: const Icon(Icons.chevron_right,
+              color: Color(0xFF8B949E), size: 18),
           onPressed: () => context.read<BenchmarkProvider>().toggleSidebar(),
         ),
       ],
@@ -49,59 +48,146 @@ class SidebarWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.all(12),
-          child: Text(
-            'Services',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+        // Header with select all/none
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 8, 4),
+          child: Row(
             children: [
-              _ServiceSection(
-                title: 'DB Services',
-                services: provider.dbServices,
-                selectedServices: provider.selectedServices,
-                onToggle: provider.toggleService,
-              ),
-              const SizedBox(height: 8),
-              _ServiceSection(
-                title: 'No-DB Services',
-                services: provider.noDbServices,
-                selectedServices: provider.selectedServices,
-                onToggle: provider.toggleService,
-              ),
-              const Divider(height: 24),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: Text(
-                  'Fields',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              const Text(
+                'Frameworks',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF8B949E),
+                  letterSpacing: 0.5,
                 ),
               ),
-              CheckboxListTile(
-                dense: true,
-                title: const Text('All Fields', style: TextStyle(fontSize: 13)),
-                value:
-                    provider.selectedFields.length == availableFields.length,
-                onChanged: (_) => provider.toggleAllFields(),
-                controlAffinity: ListTileControlAffinity.leading,
+              const Spacer(),
+              _MiniButton(
+                label: 'All',
+                onTap: provider.selectAllServices,
               ),
-              ...availableFields.map(
-                (field) => CheckboxListTile(
-                  dense: true,
-                  title: Text(field, style: const TextStyle(fontSize: 13)),
-                  value: provider.selectedFields.contains(field),
-                  onChanged: (_) => provider.toggleField(field),
-                  controlAffinity: ListTileControlAffinity.leading,
-                ),
+              const SizedBox(width: 4),
+              _MiniButton(
+                label: 'None',
+                onTap: provider.deselectAllServices,
               ),
             ],
           ),
         ),
+        const Divider(color: Color(0xFF30363D), height: 1),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            children: [
+              _ServiceSection(
+                title: 'DB Test',
+                services: provider.dbServices,
+                selectedServices: provider.selectedServices,
+                onToggle: provider.toggleService,
+              ),
+              const SizedBox(height: 2),
+              _ServiceSection(
+                title: 'No-DB Test',
+                services: provider.noDbServices,
+                selectedServices: provider.selectedServices,
+                onToggle: provider.toggleService,
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                child: Divider(color: Color(0xFF30363D), height: 1),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 8, 4),
+                child: Text(
+                  'Metrics',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF8B949E),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              _FieldChips(provider: provider),
+            ],
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _MiniButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _MiniButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: const Color(0xFF30363D)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            color: Color(0xFF8B949E),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldChips extends StatelessWidget {
+  final BenchmarkProvider provider;
+
+  const _FieldChips({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: availableFields.map((field) {
+          final isSelected = provider.selectedFields.contains(field);
+          return GestureDetector(
+            onTap: () => provider.toggleField(field),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFF1F6FEB).withValues(alpha: 0.2)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF1F6FEB)
+                      : const Color(0xFF30363D),
+                ),
+              ),
+              child: Text(
+                field,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isSelected
+                      ? const Color(0xFF58A6FF)
+                      : const Color(0xFF8B949E),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }
@@ -134,19 +220,29 @@ class _ServiceSectionState extends State<_ServiceSection> {
         InkWell(
           onTap: () => setState(() => _expanded = !_expanded),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             child: Row(
               children: [
                 Icon(
                   _expanded ? Icons.expand_more : Icons.chevron_right,
-                  size: 18,
+                  size: 14,
+                  color: const Color(0xFF8B949E),
                 ),
                 const SizedBox(width: 4),
                 Text(
                   widget.title,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
+                    color: Color(0xFFC9D1D9),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${widget.services.where((s) => widget.selectedServices.contains(s)).length}/${widget.services.length}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Color(0xFF484F58),
                   ),
                 ),
               ],
@@ -156,31 +252,62 @@ class _ServiceSectionState extends State<_ServiceSection> {
         if (_expanded)
           ...widget.services.map((service) {
             final color = ServiceColors.getColor(service);
-            return CheckboxListTile(
-              dense: true,
-              title: Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
+            final isSelected = widget.selectedServices.contains(service);
+            final displayName = BenchmarkProvider.frameworkName(service);
+
+            return InkWell(
+              onTap: () => widget.onToggle(service),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(
+                          color: isSelected
+                              ? color
+                              : const Color(0xFF30363D),
+                          width: 1.5,
+                        ),
+                        color: isSelected
+                            ? color.withValues(alpha: 0.15)
+                            : Colors.transparent,
+                      ),
+                      child: isSelected
+                          ? Icon(Icons.check, size: 10, color: color)
+                          : null,
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      service,
-                      style: const TextStyle(fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 3,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? color
+                            : const Color(0xFF30363D),
+                        borderRadius: BorderRadius.circular(1.5),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        displayName,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isSelected
+                              ? const Color(0xFFC9D1D9)
+                              : const Color(0xFF484F58),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              value: widget.selectedServices.contains(service),
-              onChanged: (_) => widget.onToggle(service),
-              controlAffinity: ListTileControlAffinity.leading,
             );
           }),
       ],

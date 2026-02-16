@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../models/benchmark_data.dart';
+import '../providers/benchmark_provider.dart';
 import '../utils/colors.dart';
 import '../utils/data_smoother.dart';
 
@@ -20,22 +21,22 @@ class ChartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: Colors.white,
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               fieldName,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFC9D1D9),
+                letterSpacing: -0.2,
+              ),
             ),
-            const SizedBox(height: 12),
-            Expanded(child: _buildChart()),
             const SizedBox(height: 8),
-            _buildLegend(),
+            Expanded(child: _buildChart()),
           ],
         ),
       ),
@@ -44,6 +45,7 @@ class ChartCard extends StatelessWidget {
 
   Widget _buildChart() {
     final lines = <LineChartBarData>[];
+    final serviceNames = <String>[];
 
     for (final name in selectedServices) {
       final service = services[name];
@@ -70,19 +72,28 @@ class ChartCard extends StatelessWidget {
           isCurved: true,
           curveSmoothness: 0.2,
           color: color,
-          barWidth: isNoDb ? 1.5 : 2.5,
-          dashArray: isNoDb ? [8, 4] : null,
+          barWidth: isNoDb ? 1.5 : 2,
+          dashArray: isNoDb ? [6, 3] : null,
           dotData: const FlDotData(show: false),
-          belowBarData: BarAreaData(show: false),
+          belowBarData: BarAreaData(
+            show: true,
+            color: color.withValues(alpha: 0.04),
+          ),
+        ),
+      );
+      serviceNames.add(name);
+    }
+
+    if (lines.isEmpty) {
+      return const Center(
+        child: Text(
+          'No data',
+          style: TextStyle(color: Color(0xFF484F58), fontSize: 12),
         ),
       );
     }
 
-    if (lines.isEmpty) {
-      return const Center(child: Text('No data to display'));
-    }
-
-    // Compute dynamic Y range from actual data
+    // Compute dynamic Y range
     double minY = double.infinity;
     double maxY = double.negativeInfinity;
     for (final line in lines) {
@@ -94,22 +105,22 @@ class ChartCard extends StatelessWidget {
     if (minY == double.infinity) minY = 0;
     if (maxY == double.negativeInfinity) maxY = 1;
 
-    // Add 10% padding
     final range = maxY - minY;
-    final paddedMin = (minY - range * 0.1).clamp(0, double.infinity);
-    final paddedMax = maxY + range * 0.1;
+    final paddedMin = (minY - range * 0.05).clamp(0.0, double.infinity);
+    final paddedMax = maxY + range * 0.05;
 
     return LineChart(
       LineChartData(
-        minY: range == 0 ? 0.0 : paddedMin.toDouble(),
+        minY: range == 0 ? 0.0 : paddedMin,
         maxY: range == 0 ? maxY * 1.1 : paddedMax,
         lineBarsData: lines,
+        clipData: const FlClipData.all(),
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
           horizontalInterval: null,
           getDrawingHorizontalLine: (value) => FlLine(
-            color: Colors.grey.withValues(alpha: 0.2),
+            color: const Color(0xFF21262D),
             strokeWidth: 1,
           ),
         ),
@@ -117,14 +128,20 @@ class ChartCard extends StatelessWidget {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 60,
+              reservedSize: 52,
               getTitlesWidget: (value, meta) {
                 if (value == meta.max || value == meta.min) {
                   return const SizedBox.shrink();
                 }
-                return Text(
-                  _formatNumber(value),
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Text(
+                    _formatNumber(value),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF484F58),
+                    ),
+                  ),
                 );
               },
             ),
@@ -132,14 +149,20 @@ class ChartCard extends StatelessWidget {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 28,
+              reservedSize: 24,
               getTitlesWidget: (value, meta) {
                 if (value == meta.max || value == meta.min) {
                   return const SizedBox.shrink();
                 }
-                return Text(
-                  '${value.toInt()}s',
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    '${value.toInt()}s',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF484F58),
+                    ),
+                  ),
                 );
               },
             ),
@@ -151,55 +174,61 @@ class ChartCard extends StatelessWidget {
             sideTitles: SideTitles(showTitles: false),
           ),
         ),
-        borderData: FlBorderData(show: false),
+        borderData: FlBorderData(
+          show: true,
+          border: const Border(
+            bottom: BorderSide(color: Color(0xFF21262D)),
+            left: BorderSide(color: Color(0xFF21262D)),
+          ),
+        ),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
             fitInsideHorizontally: true,
             fitInsideVertically: true,
-            maxContentWidth: 300,
-            getTooltipColor: (_) => const Color(0xF0222222),
+            maxContentWidth: 220,
+            getTooltipColor: (_) => const Color(0xF0161B22),
             getTooltipItems: (touchedSpots) {
-              // Sort by value descending
+              // Sort by value descending, take top 5
               final sorted = List<LineBarSpot>.from(touchedSpots)
                 ..sort((a, b) => b.y.compareTo(a.y));
-              return sorted.map((spot) {
-                final name = selectedServices.elementAt(spot.barIndex);
+              final display = sorted.take(5).toList();
+              final hasMore = sorted.length > 5;
+
+              final items = display.map((spot) {
+                final idx = spot.barIndex;
+                final name = idx < serviceNames.length
+                    ? BenchmarkProvider.frameworkName(serviceNames[idx])
+                    : '?';
                 final color = spot.bar.color ?? Colors.white;
                 return LineTooltipItem(
-                  '● $name: ${_formatNumber(spot.y)}',
+                  '$name: ${_formatNumber(spot.y)}',
                   TextStyle(
                     color: color,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
                   ),
                 );
               }).toList();
+
+              if (hasMore) {
+                items.add(
+                  LineTooltipItem(
+                    '+${sorted.length - 5} more',
+                    const TextStyle(
+                      color: Color(0xFF484F58),
+                      fontSize: 10,
+                      fontStyle: FontStyle.italic,
+                      height: 1.4,
+                    ),
+                  ),
+                );
+              }
+              return items;
             },
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildLegend() {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 4,
-      children: selectedServices.where((s) => services.containsKey(s)).map((name) {
-        final color = ServiceColors.getColor(name);
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 4),
-            Text(name, style: const TextStyle(fontSize: 11)),
-          ],
-        );
-      }).toList(),
     );
   }
 
