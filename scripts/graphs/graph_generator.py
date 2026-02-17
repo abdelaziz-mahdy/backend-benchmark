@@ -491,7 +491,12 @@ def data_json(all_summaries, all_data, all_cpu):
             if isinstance(all_summaries[parent_dir][path], pd.DataFrame):
                 all_summaries[parent_dir][path].fillna(0, inplace=True)
             if isinstance(all_cpu[parent_dir][path], pd.DataFrame):
-                all_cpu[parent_dir][path].fillna(0, inplace=True)
+                cpu_df = all_cpu[parent_dir][path]
+                for col in cpu_df.columns:
+                    if cpu_df[col].dtype == 'object' or isinstance(cpu_df[col].dtype, pd.StringDtype):
+                        cpu_df[col] = cpu_df[col].fillna('0')
+                    else:
+                        cpu_df[col] = cpu_df[col].fillna(0)
 
             merged_data = merge_data_and_cpu(
                 data, all_cpu[parent_dir][path], print_data)
