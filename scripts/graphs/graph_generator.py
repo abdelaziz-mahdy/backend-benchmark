@@ -10,6 +10,22 @@ import numpy as np
 import pandas as pd
 
 
+def parse_mem_to_mb(value):
+    """Convert Docker memory string (e.g., '123.4MiB', '1.004GiB') to float in MB."""
+    s = str(value).strip()
+    if s.endswith('GiB'):
+        return float(s.rstrip('GiB')) * 1024
+    elif s.endswith('MiB'):
+        return float(s.rstrip('MiB'))
+    elif s.endswith('KiB'):
+        return float(s.rstrip('KiB')) / 1024
+    else:
+        try:
+            return float(s)
+        except ValueError:
+            return float('nan')
+
+
 def process_file(file_path):
     # Load the data from the provided file
     data = pd.read_csv(file_path, on_bad_lines='skip')
@@ -149,15 +165,13 @@ def compare_and_plot(all_data, all_summaries, all_cpu, custom_result_file_name=N
 
         # Add server memory usage chart
         axs[11].plot(all_cpu[file_path]['Timestamp'],
-                     all_cpu[file_path]['benchmark_mem_usage_mb'].str.rstrip(
-            'MiB').astype(float),
+                     all_cpu[file_path]['benchmark_mem_usage_mb'].apply(parse_mem_to_mb),
             label=f'{file_name} - Server Memory Usage (MB)',
             color=color)
 
         # Add database memory usage chart
         axs[12].plot(all_cpu[file_path]['Timestamp'],
-                     all_cpu[file_path]['db_mem_usage_mb'].str.rstrip(
-            'MiB').astype(float),
+                     all_cpu[file_path]['db_mem_usage_mb'].apply(parse_mem_to_mb),
             label=f'{file_name} - Database Memory Usage (MB)',
             color=color)
 
@@ -411,10 +425,10 @@ def merge_data_and_cpu(data, cpu, print_data=False):
                 print("merging")
             data.at[index, 'benchmark_cpu_usage'] = cpu.loc[cpu_index,
                                                             'benchmark_cpu_usage']
-            data.at[index, 'benchmark_mem_usage_mb'] = float(cpu.loc[cpu_index, 'benchmark_mem_usage_mb'].rstrip('MiB'))
+            data.at[index, 'benchmark_mem_usage_mb'] = parse_mem_to_mb(cpu.loc[cpu_index, 'benchmark_mem_usage_mb'])
 
             data.at[index, 'db_cpu_usage'] = cpu.loc[cpu_index, 'db_cpu_usage']
-            data.at[index, 'db_mem_usage_mb'] = float(cpu.loc[cpu_index, 'db_mem_usage_mb'].rstrip('MiB'))
+            data.at[index, 'db_mem_usage_mb'] = parse_mem_to_mb(cpu.loc[cpu_index, 'db_mem_usage_mb'])
 
 
     return data
@@ -448,10 +462,9 @@ def merge_data_and_cpu(data, cpu, print_data=False):
             prev_cpu_index = cpu_index - 1
             data.at[index, 'benchmark_cpu_usage'] = cpu.loc[prev_cpu_index,
                                                             'benchmark_cpu_usage']
-            data.at[index, 'benchmark_mem_usage_mb'] = str(
-                cpu.loc[prev_cpu_index, 'benchmark_mem_usage_mb']).rstrip('MiB')
+            data.at[index, 'benchmark_mem_usage_mb'] = parse_mem_to_mb(cpu.loc[prev_cpu_index, 'benchmark_mem_usage_mb'])
             data.at[index, 'db_cpu_usage'] = cpu.loc[prev_cpu_index, 'db_cpu_usage']
-            data.at[index, 'db_mem_usage_mb'] = float(str(cpu.loc[cpu_index, 'db_mem_usage_mb']).rstrip('MiB'))
+            data.at[index, 'db_mem_usage_mb'] = parse_mem_to_mb(cpu.loc[cpu_index, 'db_mem_usage_mb'])
         else:
             # Remove the CPU and memory fields by setting them to None
             data.at[index, 'benchmark_cpu_usage'] = None
