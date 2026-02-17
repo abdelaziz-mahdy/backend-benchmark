@@ -1,3 +1,3 @@
 Method,Name,Error,Occurrences
-POST,/api/notes/,"RetriesExceeded('http://benchmark:8000/api/notes/', 0, original=timed out)",385
-GET,/api/notes/,"RetriesExceeded('http://benchmark:8000/api/notes/', 0, original=timed out)",2795
+POST,/api/notes/,"RetriesExceeded('http://benchmark:8000/api/notes/', 0, original=timed out)",404
+GET,/api/notes/,"RetriesExceeded('http://benchmark:8000/api/notes/', 0, original=timed out)",3002
