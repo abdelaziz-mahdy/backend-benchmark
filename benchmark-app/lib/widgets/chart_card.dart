@@ -5,6 +5,8 @@ import '../models/benchmark_data.dart';
 import '../providers/benchmark_provider.dart';
 import '../utils/colors.dart';
 import '../utils/data_smoother.dart';
+import '../utils/formatters.dart';
+import '../utils/theme_constants.dart';
 
 class ChartCard extends StatelessWidget {
   final String fieldName;
@@ -31,7 +33,7 @@ class ChartCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFFC9D1D9),
+                color: kTextSecondary,
                 letterSpacing: -0.2,
               ),
             ),
@@ -88,7 +90,7 @@ class ChartCard extends StatelessWidget {
       return const Center(
         child: Text(
           'No data',
-          style: TextStyle(color: Color(0xFF484F58), fontSize: 12),
+          style: TextStyle(color: kTextDim, fontSize: 12),
         ),
       );
     }
@@ -120,7 +122,7 @@ class ChartCard extends StatelessWidget {
           drawVerticalLine: false,
           horizontalInterval: null,
           getDrawingHorizontalLine: (value) =>
-              FlLine(color: const Color(0xFF21262D), strokeWidth: 1),
+              FlLine(color: kGridLine, strokeWidth: 1),
         ),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
@@ -134,10 +136,10 @@ class ChartCard extends StatelessWidget {
                 return Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: Text(
-                    _formatNumber(value),
+                    formatNumber(value),
                     style: const TextStyle(
                       fontSize: 10,
-                      color: Color(0xFF484F58),
+                      color: kTextDim,
                     ),
                   ),
                 );
@@ -158,7 +160,7 @@ class ChartCard extends StatelessWidget {
                     '${value.toInt()}s',
                     style: const TextStyle(
                       fontSize: 10,
-                      color: Color(0xFF484F58),
+                      color: kTextDim,
                     ),
                   ),
                 );
@@ -175,8 +177,8 @@ class ChartCard extends StatelessWidget {
         borderData: FlBorderData(
           show: true,
           border: const Border(
-            bottom: BorderSide(color: Color(0xFF21262D)),
-            left: BorderSide(color: Color(0xFF21262D)),
+            bottom: BorderSide(color: kGridLine),
+            left: BorderSide(color: kGridLine),
           ),
         ),
         lineTouchData: LineTouchData(
@@ -184,7 +186,7 @@ class ChartCard extends StatelessWidget {
             fitInsideHorizontally: true,
             fitInsideVertically: true,
             maxContentWidth: 220,
-            getTooltipColor: (_) => const Color(0xF0161B22),
+            getTooltipColor: (_) => kCardBg.withValues(alpha: 0.94),
             getTooltipItems: (touchedSpots) {
               // Rank spots by value descending to find top 5
               final ranked = List<LineBarSpot>.from(touchedSpots)
@@ -211,7 +213,7 @@ class ChartCard extends StatelessWidget {
                     : '';
 
                 return LineTooltipItem(
-                  '$name: ${_formatNumber(spot.y)}$suffix',
+                  '$name: ${formatNumber(spot.y)}$suffix',
                   TextStyle(
                     color: color,
                     fontSize: 11,
@@ -225,12 +227,5 @@ class ChartCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatNumber(double value) {
-    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
-    if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
-    if (value == value.roundToDouble()) return value.toInt().toString();
-    return value.toStringAsFixed(1);
   }
 }

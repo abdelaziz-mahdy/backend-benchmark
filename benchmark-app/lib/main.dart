@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/benchmark_provider.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() {
   runApp(const BenchmarkApp());
@@ -39,7 +39,7 @@ class BenchmarkApp extends StatelessWidget {
             elevation: 0,
           ),
         ),
-        home: const DashboardScreen(),
+        home: const HomeScreen(),
       ),
     );
   }
