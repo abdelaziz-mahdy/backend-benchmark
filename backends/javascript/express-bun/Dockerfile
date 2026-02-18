@@ -1,5 +1,5 @@
 # Use the official Node.js image as the base image
-FROM oven/bun:1.2
+FROM oven/bun:1.3
 
 # Set the working directory inside the container
 WORKDIR /app

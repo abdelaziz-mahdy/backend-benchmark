@@ -97,8 +97,41 @@ if check_env_and_hashes; then
     exit 0
 fi
 
-docker compose build
-docker compose up -d
+docker compose build 2>&1
+if [ $? -ne 0 ]; then
+    echo "ERROR: Docker build failed! Skipping this backend."
+    exit 1
+fi
+
+docker compose up -d 2>&1
+
+# Wait for benchmark container to become healthy (max 60s)
+echo "Waiting for benchmark service to become healthy..."
+healthy=false
+for i in $(seq 1 60); do
+    status=$(docker compose ps benchmark --format "{{.Health}}" 2>/dev/null)
+    if [ "$status" = "healthy" ]; then
+        healthy=true
+        echo "Benchmark service is healthy."
+        break
+    fi
+    # Check if container exited/crashed
+    running=$(docker compose ps benchmark --format "{{.State}}" 2>/dev/null)
+    if [ "$running" = "exited" ] || [ "$running" = "dead" ]; then
+        echo "ERROR: Benchmark container crashed! Logs:"
+        docker compose logs benchmark 2>&1 | tail -30
+        docker compose down -v 2>/dev/null
+        exit 1
+    fi
+    sleep 1
+done
+
+if [ "$healthy" != "true" ]; then
+    echo "ERROR: Benchmark service did not become healthy within 60s. Logs:"
+    docker compose logs benchmark 2>&1 | tail -30
+    docker compose down -v 2>/dev/null
+    exit 1
+fi
 #!/bin/bash
 
 # File to store the CPU usage data
