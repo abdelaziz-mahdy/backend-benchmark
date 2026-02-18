@@ -270,6 +270,13 @@ class _RadarSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final normalized = _normalizeRadar(selected, data);
+    // Collect raw values for the value table
+    final rawValues = <String, List<double>>{};
+    for (final service in selected) {
+      rawValues[service] = _radarMetrics
+          .map((m) => data[service]?.summary[m.summaryKey] ?? 0)
+          .toList();
+    }
 
     return Card(
       color: _kCard,
@@ -354,9 +361,15 @@ class _RadarSection extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            // Radar value table — shows actual values for each axis
+            _RadarValueTable(
+              selected: selected,
+              rawValues: rawValues,
+            ),
             const SizedBox(height: 8),
             Text(
-              'Outer edge = best performance. Values normalized across selected frameworks.',
+              'Outer edge = best performance. Values normalized across all frameworks.',
               style: const TextStyle(color: _kDim, fontSize: 11),
             ),
           ],
@@ -365,7 +378,8 @@ class _RadarSection extends StatelessWidget {
     );
   }
 
-  /// Returns map of serviceName -> list of 5 normalized values (0..1).
+  /// Normalizes radar values across ALL frameworks (not just selected)
+  /// so the chart accurately represents relative performance.
   Map<String, List<double>> _normalizeRadar(
       List<String> services, Map<String, BenchmarkService> data) {
     final result = <String, List<double>>{};
@@ -376,33 +390,128 @@ class _RadarSection extends StatelessWidget {
 
     for (var i = 0; i < _radarMetrics.length; i++) {
       final metric = _radarMetrics[i];
-      final values = <String, double>{};
 
-      for (final service in services) {
-        values[service] = data[service]?.summary[metric.summaryKey] ?? 0;
+      // Collect values from ALL frameworks for global normalization
+      final allValues = <double>[];
+      for (final entry in data.entries) {
+        final v = entry.value.summary[metric.summaryKey] ?? 0;
+        if (v > 0) allValues.add(v);
       }
 
-      final allVals = values.values.toList();
-      final minVal = allVals.reduce(math.min);
-      final maxVal = allVals.reduce(math.max);
-      final range = maxVal - minVal;
+      if (allValues.isEmpty) continue;
+
+      final globalMin = allValues.reduce(math.min);
+      final globalMax = allValues.reduce(math.max);
+      final range = globalMax - globalMin;
 
       for (final service in services) {
+        final value = data[service]?.summary[metric.summaryKey] ?? 0;
         double normalized;
         if (range == 0) {
-          normalized = 1.0; // all same value
+          normalized = 1.0;
         } else {
-          normalized = (values[service]! - minVal) / range;
+          normalized = (value - globalMin) / range;
           if (metric.inverted) {
             normalized = 1.0 - normalized;
           }
         }
-        // Clamp to [0.05, 1.0] so the polygon is always visible
         result[service]![i] = normalized.clamp(0.05, 1.0);
       }
     }
 
     return result;
+  }
+}
+
+/// Shows actual raw values for each radar axis per framework.
+class _RadarValueTable extends StatelessWidget {
+  final List<String> selected;
+  final Map<String, List<double>> rawValues;
+
+  const _RadarValueTable({
+    required this.selected,
+    required this.rawValues,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingRowHeight: 32,
+        dataRowMinHeight: 28,
+        dataRowMaxHeight: 28,
+        columnSpacing: 16,
+        headingRowColor: WidgetStateProperty.all(
+          _kBorder.withValues(alpha: 0.2),
+        ),
+        dataRowColor: WidgetStateProperty.all(Colors.transparent),
+        border: TableBorder(
+          horizontalInside: BorderSide(color: _kBorder.withValues(alpha: 0.3)),
+        ),
+        columns: [
+          const DataColumn(
+            label: Text('Metric',
+                style: TextStyle(
+                    color: _kMuted, fontSize: 11, fontWeight: FontWeight.w600)),
+          ),
+          ...selected.map((name) {
+            final color = ServiceColors.getColor(name);
+            return DataColumn(
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration:
+                        BoxDecoration(color: color, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    BenchmarkProvider.frameworkName(name),
+                    style: const TextStyle(
+                        color: _kSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+        rows: List.generate(_radarMetrics.length, (i) {
+          final metric = _radarMetrics[i];
+          // Find best value across selected for highlighting
+          final vals = selected.map((s) => rawValues[s]![i]).toList();
+          final best = metric.inverted
+              ? vals.where((v) => v > 0).fold<double>(double.infinity, math.min)
+              : vals.fold<double>(0, math.max);
+
+          return DataRow(
+            cells: [
+              DataCell(Text(metric.label,
+                  style: const TextStyle(color: _kMuted, fontSize: 11))),
+              ...selected.map((service) {
+                final value = rawValues[service]![i];
+                final isBest = value == best && vals.where((v) => v == best).length < vals.length;
+                return DataCell(
+                  Text(
+                    _formatValue(value),
+                    style: TextStyle(
+                      color: isBest ? _kGreen : _kSecondary,
+                      fontSize: 11,
+                      fontWeight:
+                          isBest ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                );
+              }),
+            ],
+          );
+        }),
+      ),
+    );
   }
 }
 
