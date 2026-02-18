@@ -23,8 +23,9 @@ const _radarMetrics = [
   _MetricDef('Requests/s', 'Average Requests/s'),
   _MetricDef('Avg Response', 'Average Response Time (ms)', inverted: true),
   _MetricDef('P99 Response', 'Average Response Time 99% (ms)', inverted: true),
-  _MetricDef('Server CPU', 'Average Server CPU Usage', inverted: true),
-  _MetricDef('DB CPU', 'Average Database CPU Usage', inverted: true),
+  _MetricDef('CPU Efficiency', 'CPU Efficiency'),
+  _MetricDef('DB Efficiency', 'DB Efficiency'),
+  _MetricDef('Mem Efficiency', 'Memory Efficiency'),
 ];
 
 const _tableMetrics = [
@@ -38,6 +39,10 @@ const _tableMetrics = [
       inverted: true),
   _MetricDef('Server CPU %', 'Average Server CPU Usage', inverted: true),
   _MetricDef('DB CPU %', 'Average Database CPU Usage', inverted: true),
+  _MetricDef('Server Mem (MB)', 'Average Server Memory (MB)', inverted: true),
+  _MetricDef('CPU Efficiency', 'CPU Efficiency'),
+  _MetricDef('DB Efficiency', 'DB Efficiency'),
+  _MetricDef('Memory Efficiency', 'Memory Efficiency'),
   _MetricDef('Failures/s', 'Average Failures/s', inverted: true),
 ];
 
@@ -201,7 +206,16 @@ class _FrameworkSelector extends StatelessWidget {
                 final atMax = selected.length >= 4 && !isSelected;
 
                 return GestureDetector(
-                  onTap: atMax ? null : () => onToggle(name),
+                  onTap: atMax
+                      ? () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Maximum 4 frameworks selected'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        }
+                      : () => onToggle(name),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding:
@@ -216,28 +230,31 @@ class _FrameworkSelector extends StatelessWidget {
                         width: isSelected ? 1.5 : 1,
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: isSelected ? color : kTextDim,
-                            shape: BoxShape.circle,
+                    child: Opacity(
+                      opacity: atMax ? 0.4 : 1.0,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: isSelected ? color : kTextDim,
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          label,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w400,
-                            color: isSelected ? kTextPrimary : kTextMuted,
+                          const SizedBox(width: 6),
+                          Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight:
+                                  isSelected ? FontWeight.w600 : FontWeight.w400,
+                              color: isSelected ? kTextPrimary : kTextMuted,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );
