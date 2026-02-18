@@ -475,7 +475,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
         final v = rows[r].values[col];
         if (colDef.ascendingIsBetter) {
           // Lower is better
-          if (v < bestVal && v > 0) {
+          if (v < bestVal) {
             bestVal = v;
             bestIdx = r;
           }

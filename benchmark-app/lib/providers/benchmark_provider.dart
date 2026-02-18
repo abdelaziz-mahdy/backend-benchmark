@@ -172,7 +172,7 @@ class BenchmarkProvider extends ChangeNotifier {
             : noDbServices;
     for (final name in services) {
       final value = data![name]?.summary[metricKey];
-      if (value != null && value > 0) {
+      if (value != null && (ascending || value > 0)) {
         entries.add(MapEntry(name, value));
       }
     }
