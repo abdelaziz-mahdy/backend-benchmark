@@ -183,6 +183,21 @@ class DetailScreen extends StatelessWidget {
         value: service.summary['Average Database CPU Usage'],
         unit: '%',
       ),
+      _StatItem(
+        label: 'Memory',
+        value: service.summary['Average Server Memory (MB)'],
+        unit: 'MB',
+      ),
+      _StatItem(
+        label: 'CPU Eff',
+        value: service.summary['CPU Efficiency'],
+        unit: 'req/s/%',
+      ),
+      _StatItem(
+        label: 'Mem Eff',
+        value: service.summary['Memory Efficiency'],
+        unit: 'req/s/MB',
+      ),
     ];
 
     return Wrap(
