@@ -65,6 +65,22 @@ class BenchmarkProvider extends ChangeNotifier {
 
       data = await DataService.loadData();
 
+      // Compute efficiency ratios for each service
+      if (data != null) {
+        for (final service in data!.values) {
+          final rps = service.summary['Average Requests/s'] ?? 0;
+          final serverCpu = service.summary['Average Server CPU Usage'] ?? 0;
+          final dbCpu = service.summary['Average Database CPU Usage'] ?? 0;
+          final serverMem = service.summary['Average Server Memory (MB)'] ?? 0;
+
+          service.summary['CPU Efficiency'] =
+              serverCpu > 0 ? rps / serverCpu : 0;
+          service.summary['DB Efficiency'] = dbCpu > 0 ? rps / dbCpu : 0;
+          service.summary['Memory Efficiency'] =
+              serverMem > 0 ? rps / serverMem : 0;
+        }
+      }
+
       progress = 1.0;
       notifyListeners();
 
@@ -88,6 +104,18 @@ class BenchmarkProvider extends ChangeNotifier {
 
   void setTestTypeFilter(TestTypeFilter filter) {
     testTypeFilter = filter;
+    // Auto-select top performer if current detail service is no longer in filter
+    if (selectedDetailService != null && data != null) {
+      final services = filter == TestTypeFilter.all
+          ? data!.keys.toSet()
+          : filter == TestTypeFilter.db
+              ? dbServices.toSet()
+              : noDbServices.toSet();
+      if (!services.contains(selectedDetailService)) {
+        final ranked = getRankedServices('Average Requests/s');
+        selectedDetailService = ranked.isNotEmpty ? ranked.first.key : null;
+      }
+    }
     notifyListeners();
   }
 
