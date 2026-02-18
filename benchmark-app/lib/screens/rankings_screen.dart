@@ -149,12 +149,12 @@ class _RankingsScreenState extends State<RankingsScreen> {
       ),
       _getWinner(
         provider,
-        title: 'Lowest Failure Rate',
-        metricKey: 'Average Failures/s',
+        title: 'Best P99 Latency',
+        metricKey: 'Average Response Time 99% (ms)',
         ascending: true,
         icon: Icons.check_circle,
         color: _teal,
-        unit: '/s',
+        unit: 'ms',
       ),
     ];
 
