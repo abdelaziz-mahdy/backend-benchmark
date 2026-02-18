@@ -6,19 +6,11 @@ import '../models/benchmark_data.dart';
 import '../providers/benchmark_provider.dart';
 import '../utils/colors.dart';
 import '../utils/data_smoother.dart';
+import '../utils/formatters.dart';
+import '../utils/theme_constants.dart';
 
 class DetailScreen extends StatelessWidget {
   const DetailScreen({super.key});
-
-  // Theme colors
-  static const _cardColor = Color(0xFF161B22);
-  static const _border = Color(0xFF30363D);
-  static const _textPrimary = Color(0xFFE6EDF3);
-  static const _textSecondary = Color(0xFFC9D1D9);
-  static const _textMuted = Color(0xFF8B949E);
-  static const _textDim = Color(0xFF484F58);
-  static const _primaryBlue = Color(0xFF58A6FF);
-  static const _gridLine = Color(0xFF21262D);
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +20,7 @@ class DetailScreen extends StatelessWidget {
           return const Center(
             child: Text(
               'No data loaded',
-              style: TextStyle(color: _textMuted, fontSize: 14),
+              style: TextStyle(color: kTextMuted, fontSize: 14),
             ),
           );
         }
@@ -84,9 +76,9 @@ class DetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
-        color: _cardColor,
+        color: kCardBg,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _border),
+        border: Border.all(color: kBorder),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -96,12 +88,12 @@ class DetailScreen extends StatelessWidget {
               : null,
           hint: const Text(
             'Select a framework...',
-            style: TextStyle(color: _textMuted, fontSize: 14),
+            style: TextStyle(color: kTextMuted, fontSize: 14),
           ),
-          dropdownColor: _cardColor,
-          icon: const Icon(Icons.expand_more, color: _textMuted, size: 20),
+          dropdownColor: kCardBg,
+          icon: const Icon(Icons.expand_more, color: kTextMuted, size: 20),
           isExpanded: true,
-          style: const TextStyle(color: _textPrimary, fontSize: 14),
+          style: const TextStyle(color: kTextPrimary, fontSize: 14),
           items: services.map((name) {
             final color = ServiceColors.getColor(name);
             return DropdownMenuItem(
@@ -141,11 +133,11 @@ class DetailScreen extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.analytics_outlined, size: 56, color: _textDim),
+          Icon(Icons.analytics_outlined, size: 56, color: kTextDim),
           SizedBox(height: 16),
           Text(
             'Select a framework to view details',
-            style: TextStyle(color: _textMuted, fontSize: 15),
+            style: TextStyle(color: kTextMuted, fontSize: 15),
           ),
         ],
       ),
@@ -206,7 +198,7 @@ class DetailScreen extends StatelessWidget {
     if (value == null) {
       formatted = 'N/A';
     } else {
-      formatted = _formatNumber(value);
+      formatted = formatNumber(value);
       if (stat.unit != null) formatted += ' ${stat.unit}';
     }
 
@@ -214,9 +206,9 @@ class DetailScreen extends StatelessWidget {
       width: 150,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _cardColor,
+        color: kCardBg,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _border),
+        border: Border.all(color: kBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,7 +217,7 @@ class DetailScreen extends StatelessWidget {
             stat.label,
             style: const TextStyle(
               fontSize: 11,
-              color: _textMuted,
+              color: kTextMuted,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -235,7 +227,7 @@ class DetailScreen extends StatelessWidget {
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: _textPrimary,
+              color: kTextPrimary,
             ),
           ),
         ],
@@ -305,9 +297,9 @@ class DetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
       decoration: BoxDecoration(
-        color: _cardColor,
+        color: kCardBg,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _border),
+        border: Border.all(color: kBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,7 +309,7 @@ class DetailScreen extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: _textSecondary,
+              color: kTextSecondary,
               letterSpacing: -0.2,
             ),
           ),
@@ -327,7 +319,7 @@ class DetailScreen extends StatelessWidget {
                 ? const Center(
                     child: Text(
                       'No data',
-                      style: TextStyle(color: _textDim, fontSize: 12),
+                      style: TextStyle(color: kTextDim, fontSize: 12),
                     ),
                   )
                 : _buildLineChart(spots, color),
@@ -374,7 +366,7 @@ class DetailScreen extends StatelessWidget {
           show: true,
           drawVerticalLine: false,
           getDrawingHorizontalLine: (value) =>
-              FlLine(color: _gridLine, strokeWidth: 1),
+              FlLine(color: kGridLine, strokeWidth: 1),
         ),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
@@ -388,8 +380,8 @@ class DetailScreen extends StatelessWidget {
                 return Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: Text(
-                    _formatNumber(value),
-                    style: const TextStyle(fontSize: 10, color: _textDim),
+                    formatNumber(value),
+                    style: const TextStyle(fontSize: 10, color: kTextDim),
                   ),
                 );
               },
@@ -407,7 +399,7 @@ class DetailScreen extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     '${value.toInt()}s',
-                    style: const TextStyle(fontSize: 10, color: _textDim),
+                    style: const TextStyle(fontSize: 10, color: kTextDim),
                   ),
                 );
               },
@@ -423,19 +415,19 @@ class DetailScreen extends StatelessWidget {
         borderData: FlBorderData(
           show: true,
           border: const Border(
-            bottom: BorderSide(color: _gridLine),
-            left: BorderSide(color: _gridLine),
+            bottom: BorderSide(color: kGridLine),
+            left: BorderSide(color: kGridLine),
           ),
         ),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
             fitInsideHorizontally: true,
             fitInsideVertically: true,
-            getTooltipColor: (_) => const Color(0xF0161B22),
+            getTooltipColor: (_) => kCardBg.withValues(alpha: 0.94),
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
                 return LineTooltipItem(
-                  _formatNumber(spot.y),
+                  formatNumber(spot.y),
                   TextStyle(
                     color: spot.bar.color ?? Colors.white,
                     fontSize: 11,
@@ -516,9 +508,9 @@ class DetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
       decoration: BoxDecoration(
-        color: _cardColor,
+        color: kCardBg,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _border),
+        border: Border.all(color: kBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -528,7 +520,7 @@ class DetailScreen extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: _textSecondary,
+              color: kTextSecondary,
               letterSpacing: -0.2,
             ),
           ),
@@ -545,7 +537,7 @@ class DetailScreen extends StatelessWidget {
                     barRods: [
                       BarChartRodData(
                         toY: validPercentiles[i].value!,
-                        color: _primaryBlue.withValues(alpha: 0.7),
+                        color: kBlue.withValues(alpha: 0.7),
                         width: 28,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(4),
@@ -560,7 +552,7 @@ class DetailScreen extends StatelessWidget {
                   show: true,
                   drawVerticalLine: false,
                   getDrawingHorizontalLine: (value) =>
-                      FlLine(color: _gridLine, strokeWidth: 1),
+                      FlLine(color: kGridLine, strokeWidth: 1),
                 ),
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(
@@ -574,9 +566,9 @@ class DetailScreen extends StatelessWidget {
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: Text(
-                            '${_formatNumber(value)} ms',
+                            '${formatNumber(value)} ms',
                             style:
-                                const TextStyle(fontSize: 10, color: _textDim),
+                                const TextStyle(fontSize: 10, color: kTextDim),
                           ),
                         );
                       },
@@ -596,7 +588,7 @@ class DetailScreen extends StatelessWidget {
                           child: Text(
                             validPercentiles[idx].label,
                             style:
-                                const TextStyle(fontSize: 10, color: _textMuted),
+                                const TextStyle(fontSize: 10, color: kTextMuted),
                           ),
                         );
                       },
@@ -612,21 +604,21 @@ class DetailScreen extends StatelessWidget {
                 borderData: FlBorderData(
                   show: true,
                   border: const Border(
-                    bottom: BorderSide(color: _gridLine),
-                    left: BorderSide(color: _gridLine),
+                    bottom: BorderSide(color: kGridLine),
+                    left: BorderSide(color: kGridLine),
                   ),
                 ),
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
                     fitInsideHorizontally: true,
                     fitInsideVertically: true,
-                    getTooltipColor: (_) => const Color(0xF0161B22),
+                    getTooltipColor: (_) => kCardBg.withValues(alpha: 0.94),
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final label = validPercentiles[group.x].label;
                       return BarTooltipItem(
-                        '$label: ${_formatNumber(rod.toY)} ms',
+                        '$label: ${formatNumber(rod.toY)} ms',
                         const TextStyle(
-                          color: _primaryBlue,
+                          color: kBlue,
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),
@@ -640,17 +632,6 @@ class DetailScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-
-  static String _formatNumber(double value) {
-    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
-    if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
-    if (value == value.roundToDouble()) return value.toInt().toString();
-    return value.toStringAsFixed(1);
   }
 }
 

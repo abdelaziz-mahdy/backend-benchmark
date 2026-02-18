@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/benchmark_data.dart';
 import '../providers/benchmark_provider.dart';
 import '../utils/colors.dart';
+import '../utils/theme_constants.dart';
 
 class SidebarWidget extends StatelessWidget {
   const SidebarWidget({super.key});
@@ -18,9 +19,9 @@ class SidebarWidget extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           width: expanded ? 260 : 48,
           decoration: const BoxDecoration(
-            color: Color(0xFF161B22),
+            color: kCardBg,
             border: Border(
-              right: BorderSide(color: Color(0xFF30363D)),
+              right: BorderSide(color: kBorder),
             ),
           ),
           child: expanded
@@ -37,7 +38,8 @@ class SidebarWidget extends StatelessWidget {
         const SizedBox(height: 8),
         IconButton(
           icon: const Icon(Icons.chevron_right,
-              color: Color(0xFF8B949E), size: 18),
+              color: kTextMuted, size: 18),
+          tooltip: 'Expand sidebar',
           onPressed: () => context.read<BenchmarkProvider>().toggleSidebar(),
         ),
       ],
@@ -58,7 +60,7 @@ class SidebarWidget extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF8B949E),
+                  color: kTextMuted,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -75,7 +77,7 @@ class SidebarWidget extends StatelessWidget {
             ],
           ),
         ),
-        const Divider(color: Color(0xFF30363D), height: 1),
+        const Divider(color: kBorder, height: 1),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -95,7 +97,7 @@ class SidebarWidget extends StatelessWidget {
               ),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                child: Divider(color: Color(0xFF30363D), height: 1),
+                child: Divider(color: kBorder, height: 1),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 0, 8, 4),
@@ -104,7 +106,7 @@ class SidebarWidget extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF8B949E),
+                    color: kTextMuted,
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -132,13 +134,13 @@ class _MiniButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: const Color(0xFF30363D)),
+          border: Border.all(color: kBorder),
         ),
         child: Text(
           label,
           style: const TextStyle(
             fontSize: 10,
-            color: Color(0xFF8B949E),
+            color: kTextMuted,
           ),
         ),
       ),
@@ -172,7 +174,7 @@ class _FieldChips extends StatelessWidget {
                 border: Border.all(
                   color: isSelected
                       ? const Color(0xFF1F6FEB)
-                      : const Color(0xFF30363D),
+                      : kBorder,
                 ),
               ),
               child: Text(
@@ -180,8 +182,8 @@ class _FieldChips extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   color: isSelected
-                      ? const Color(0xFF58A6FF)
-                      : const Color(0xFF8B949E),
+                      ? kBlue
+                      : kTextMuted,
                 ),
               ),
             ),
@@ -226,7 +228,7 @@ class _ServiceSectionState extends State<_ServiceSection> {
                 Icon(
                   _expanded ? Icons.expand_more : Icons.chevron_right,
                   size: 14,
-                  color: const Color(0xFF8B949E),
+                  color: kTextMuted,
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -234,7 +236,7 @@ class _ServiceSectionState extends State<_ServiceSection> {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFFC9D1D9),
+                    color: kTextSecondary,
                   ),
                 ),
                 const Spacer(),
@@ -242,7 +244,7 @@ class _ServiceSectionState extends State<_ServiceSection> {
                   '${widget.services.where((s) => widget.selectedServices.contains(s)).length}/${widget.services.length}',
                   style: const TextStyle(
                     fontSize: 10,
-                    color: Color(0xFF484F58),
+                    color: kTextDim,
                   ),
                 ),
               ],
@@ -270,7 +272,7 @@ class _ServiceSectionState extends State<_ServiceSection> {
                         border: Border.all(
                           color: isSelected
                               ? color
-                              : const Color(0xFF30363D),
+                              : kBorder,
                           width: 1.5,
                         ),
                         color: isSelected
@@ -288,7 +290,7 @@ class _ServiceSectionState extends State<_ServiceSection> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? color
-                            : const Color(0xFF30363D),
+                            : kBorder,
                         borderRadius: BorderRadius.circular(1.5),
                       ),
                     ),
@@ -299,8 +301,8 @@ class _ServiceSectionState extends State<_ServiceSection> {
                         style: TextStyle(
                           fontSize: 12,
                           color: isSelected
-                              ? const Color(0xFFC9D1D9)
-                              : const Color(0xFF484F58),
+                              ? kTextSecondary
+                              : kTextDim,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),

@@ -3,23 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../providers/benchmark_provider.dart';
 import '../utils/colors.dart';
-
-/// Formats a numeric value for display.
-/// >= 1M -> "1.2M", >= 1K -> "1.2K", else 1 decimal place.
-String _formatNumber(double value) {
-  if (value.abs() >= 1000000) {
-    return '${(value / 1000000).toStringAsFixed(1)}M';
-  } else if (value.abs() >= 1000) {
-    return '${(value / 1000).toStringAsFixed(1)}K';
-  } else {
-    return value.toStringAsFixed(1);
-  }
-}
-
-/// Formats a percentage value with 1 decimal + "%".
-String _formatPercent(double value) {
-  return '${value.toStringAsFixed(1)}%';
-}
+import '../utils/formatters.dart';
+import '../utils/theme_constants.dart';
 
 class RankingsScreen extends StatefulWidget {
   const RankingsScreen({super.key});
@@ -32,31 +17,18 @@ class _RankingsScreenState extends State<RankingsScreen> {
   int _sortColumnIndex = 0;
   bool _sortAscending = false;
 
-  // Theme colors
-  static const _background = Color(0xFF0D1117);
-  static const _cardBg = Color(0xFF161B22);
-  static const _border = Color(0xFF30363D);
-  static const _textPrimary = Color(0xFFE6EDF3);
-  static const _textSecondary = Color(0xFFC9D1D9);
-  static const _textMuted = Color(0xFF8B949E);
-  static const _textDim = Color(0xFF484F58);
-  static const _blue = Color(0xFF58A6FF);
-  static const _green = Color(0xFF3FB950);
-  static const _orange = Color(0xFFF78166);
-  static const _teal = Color(0xFF00BFA5);
-
   @override
   Widget build(BuildContext context) {
     return Consumer<BenchmarkProvider>(
       builder: (context, provider, _) {
         if (provider.data == null) {
           return const Center(
-            child: Text('No data', style: TextStyle(color: _textMuted)),
+            child: Text('No data', style: TextStyle(color: kTextMuted)),
           );
         }
 
         return Container(
-          color: _background,
+          color: kBackground,
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -107,8 +79,8 @@ class _RankingsScreenState extends State<RankingsScreen> {
     return Text(
       title,
       style: const TextStyle(
-        color: _textPrimary,
-        fontSize: 18,
+        color: kTextPrimary,
+        fontSize: 16,
         fontWeight: FontWeight.w600,
       ),
     );
@@ -126,7 +98,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
         metricKey: 'Average Requests/s',
         ascending: false,
         icon: Icons.bolt,
-        color: _green,
+        color: kGreen,
         unit: 'req/s',
       ),
       _getWinner(
@@ -135,7 +107,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
         metricKey: 'Average Response Time (ms)',
         ascending: true,
         icon: Icons.timer,
-        color: _blue,
+        color: kBlue,
         unit: 'ms',
       ),
       _getWinner(
@@ -144,7 +116,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
         metricKey: 'Average Server CPU Usage',
         ascending: true,
         icon: Icons.memory,
-        color: _orange,
+        color: kOrange,
         isPercent: true,
       ),
       _getWinner(
@@ -153,7 +125,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
         metricKey: 'Average Response Time 99% (ms)',
         ascending: true,
         icon: Icons.check_circle,
-        color: _teal,
+        color: kTeal,
         unit: 'ms',
       ),
     ];
@@ -188,8 +160,8 @@ class _RankingsScreenState extends State<RankingsScreen> {
     }
     final winner = ranked.first;
     final formatted = isPercent
-        ? _formatPercent(winner.value)
-        : '${_formatNumber(winner.value)} $unit'.trim();
+        ? formatPercent(winner.value)
+        : '${formatNumber(winner.value)} $unit'.trim();
     return _WinnerInfo(
       title: title,
       icon: icon,
@@ -204,10 +176,10 @@ class _RankingsScreenState extends State<RankingsScreen> {
     return SizedBox(
       width: 220,
       child: Card(
-        color: _cardBg,
+        color: kCardBg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: const BorderSide(color: _border),
+          side: const BorderSide(color: kBorder),
         ),
         elevation: 0,
         child: InkWell(
@@ -228,7 +200,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                     Text(
                       info.title,
                       style: const TextStyle(
-                        color: _textMuted,
+                        color: kTextMuted,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -248,7 +220,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                 Text(
                   info.frameworkName,
                   style: const TextStyle(
-                    color: _textSecondary,
+                    color: kTextSecondary,
                     fontSize: 13,
                   ),
                 ),
@@ -281,10 +253,10 @@ class _RankingsScreenState extends State<RankingsScreen> {
         .reduce((a, b) => a > b ? a : b);
 
     return Card(
-      color: _cardBg,
+      color: kCardBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: _border),
+        side: const BorderSide(color: kBorder),
       ),
       elevation: 0,
       child: Padding(
@@ -297,7 +269,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: _textPrimary,
+                    color: kTextPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -305,7 +277,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                 const SizedBox(width: 8),
                 Text(
                   ascending ? '(lower is better)' : '(higher is better)',
-                  style: const TextStyle(color: _textMuted, fontSize: 12),
+                  style: const TextStyle(color: kTextMuted, fontSize: 12),
                 ),
               ],
             ),
@@ -347,7 +319,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                 child: Text(
                   name,
                   style: const TextStyle(
-                    color: _textSecondary,
+                    color: kTextSecondary,
                     fontSize: 13,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -364,7 +336,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                     Container(
                       height: 22,
                       decoration: BoxDecoration(
-                        color: _border.withValues(alpha: 0.3),
+                        color: kBorder.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -387,9 +359,9 @@ class _RankingsScreenState extends State<RankingsScreen> {
           SizedBox(
             width: 90,
             child: Text(
-              '${_formatNumber(value)} $unit',
+              '${formatNumber(value)} $unit',
               style: const TextStyle(
-                color: _textMuted,
+                color: kTextMuted,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -427,7 +399,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
 
     if (services.isEmpty) {
       return const Text('No services available',
-          style: TextStyle(color: _textMuted));
+          style: TextStyle(color: kTextMuted));
     }
 
     // Build rows with all metric values
@@ -500,10 +472,10 @@ class _RankingsScreenState extends State<RankingsScreen> {
     }
 
     return Card(
-      color: _cardBg,
+      color: kCardBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: _border),
+        side: const BorderSide(color: kBorder),
       ),
       elevation: 0,
       clipBehavior: Clip.antiAlias,
@@ -512,15 +484,15 @@ class _RankingsScreenState extends State<RankingsScreen> {
         child: DataTable(
           sortColumnIndex: _sortColumnIndex,
           sortAscending: _sortAscending,
-          headingRowColor: WidgetStateProperty.all(_cardBg),
+          headingRowColor: WidgetStateProperty.all(kCardBg),
           dataRowColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.hovered)) {
-              return _border.withValues(alpha: 0.3);
+              return kBorder.withValues(alpha: 0.3);
             }
-            return _cardBg;
+            return kCardBg;
           }),
           headingTextStyle: const TextStyle(
-            color: _textMuted,
+            color: kTextMuted,
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
@@ -553,7 +525,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
                       child: Text(
                         name,
                         style: const TextStyle(
-                          color: _blue,
+                          color: kBlue,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -567,13 +539,13 @@ class _RankingsScreenState extends State<RankingsScreen> {
                   final isBest = bestIndices[colIdx] == rowIdx;
                   final isWorst = worstIndices[colIdx] == rowIdx;
 
-                  Color textColor = _textSecondary;
-                  if (isBest) textColor = _green;
-                  if (isWorst) textColor = _textDim;
+                  Color textColor = kTextSecondary;
+                  if (isBest) textColor = kGreen;
+                  if (isWorst) textColor = kTextDim;
 
                   final formatted = colDef.isPercent
-                      ? _formatPercent(value)
-                      : _formatNumber(value);
+                      ? formatPercent(value)
+                      : formatNumber(value);
 
                   return DataCell(
                     Text(

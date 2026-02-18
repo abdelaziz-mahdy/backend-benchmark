@@ -7,15 +7,8 @@ import 'package:provider/provider.dart';
 import '../models/benchmark_data.dart';
 import '../providers/benchmark_provider.dart';
 import '../utils/colors.dart';
-
-// Theme constants
-const _kCard = Color(0xFF161B22);
-const _kBorder = Color(0xFF30363D);
-const _kText = Color(0xFFE6EDF3);
-const _kSecondary = Color(0xFFC9D1D9);
-const _kMuted = Color(0xFF8B949E);
-const _kDim = Color(0xFF484F58);
-const _kGreen = Color(0xFF3FB950);
+import '../utils/formatters.dart';
+import '../utils/theme_constants.dart';
 
 /// Metrics used for the radar and comparison charts.
 class _MetricDef {
@@ -132,7 +125,7 @@ class _SectionTitle extends StatelessWidget {
       style: const TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        color: _kText,
+        color: kTextPrimary,
         letterSpacing: -0.3,
       ),
     );
@@ -152,11 +145,11 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: const [
-            Icon(Icons.compare_arrows, size: 48, color: _kBorder),
+            Icon(Icons.compare_arrows, size: 48, color: kBorder),
             SizedBox(height: 12),
             Text(
               'Select at least 2 frameworks to compare',
-              style: TextStyle(color: _kMuted, fontSize: 14),
+              style: TextStyle(color: kTextMuted, fontSize: 14),
             ),
           ],
         ),
@@ -183,10 +176,10 @@ class _FrameworkSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: _kCard,
+      color: kCardBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: _kBorder),
+        side: const BorderSide(color: kBorder),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -195,7 +188,7 @@ class _FrameworkSelector extends StatelessWidget {
           children: [
             Text(
               'Select 2\u20134 frameworks to compare',
-              style: const TextStyle(color: _kDim, fontSize: 12),
+              style: const TextStyle(color: kTextDim, fontSize: 12),
             ),
             const SizedBox(height: 10),
             Wrap(
@@ -219,7 +212,7 @@ class _FrameworkSelector extends StatelessWidget {
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isSelected ? color : _kBorder,
+                        color: isSelected ? color : kBorder,
                         width: isSelected ? 1.5 : 1,
                       ),
                     ),
@@ -230,7 +223,7 @@ class _FrameworkSelector extends StatelessWidget {
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: isSelected ? color : _kDim,
+                            color: isSelected ? color : kTextDim,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -241,7 +234,7 @@ class _FrameworkSelector extends StatelessWidget {
                             fontSize: 12,
                             fontWeight:
                                 isSelected ? FontWeight.w600 : FontWeight.w400,
-                            color: isSelected ? _kText : _kMuted,
+                            color: isSelected ? kTextPrimary : kTextMuted,
                           ),
                         ),
                       ],
@@ -279,10 +272,10 @@ class _RadarSection extends StatelessWidget {
     }
 
     return Card(
-      color: _kCard,
+      color: kCardBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: _kBorder),
+        side: const BorderSide(color: kBorder),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -309,7 +302,7 @@ class _RadarSection extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       BenchmarkProvider.frameworkName(name),
-                      style: const TextStyle(color: _kSecondary, fontSize: 12),
+                      style: const TextStyle(color: kTextSecondary, fontSize: 12),
                     ),
                   ],
                 );
@@ -337,11 +330,11 @@ class _RadarSection extends StatelessWidget {
                   radarBackgroundColor: Colors.transparent,
                   borderData: FlBorderData(show: false),
                   radarBorderData:
-                      const BorderSide(color: _kBorder, width: 0.5),
+                      const BorderSide(color: kBorder, width: 0.5),
                   tickBorderData:
-                      const BorderSide(color: _kBorder, width: 0.5),
+                      const BorderSide(color: kBorder, width: 0.5),
                   gridBorderData:
-                      const BorderSide(color: _kBorder, width: 0.5),
+                      const BorderSide(color: kBorder, width: 0.5),
                   tickCount: 4,
                   ticksTextStyle: const TextStyle(
                     color: Colors.transparent,
@@ -349,7 +342,7 @@ class _RadarSection extends StatelessWidget {
                   ),
                   titlePositionPercentageOffset: 0.2,
                   titleTextStyle: const TextStyle(
-                    color: _kMuted,
+                    color: kTextMuted,
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),
@@ -370,7 +363,7 @@ class _RadarSection extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Outer edge = best performance. Values normalized across all frameworks.',
-              style: const TextStyle(color: _kDim, fontSize: 11),
+              style: const TextStyle(color: kTextDim, fontSize: 11),
             ),
           ],
         ),
@@ -443,17 +436,17 @@ class _RadarValueTable extends StatelessWidget {
         dataRowMaxHeight: 28,
         columnSpacing: 16,
         headingRowColor: WidgetStateProperty.all(
-          _kBorder.withValues(alpha: 0.2),
+          kBorder.withValues(alpha: 0.2),
         ),
         dataRowColor: WidgetStateProperty.all(Colors.transparent),
         border: TableBorder(
-          horizontalInside: BorderSide(color: _kBorder.withValues(alpha: 0.3)),
+          horizontalInside: BorderSide(color: kBorder.withValues(alpha: 0.3)),
         ),
         columns: [
           const DataColumn(
             label: Text('Metric',
                 style: TextStyle(
-                    color: _kMuted, fontSize: 11, fontWeight: FontWeight.w600)),
+                    color: kTextMuted, fontSize: 11, fontWeight: FontWeight.w600)),
           ),
           ...selected.map((name) {
             final color = ServiceColors.getColor(name);
@@ -471,7 +464,7 @@ class _RadarValueTable extends StatelessWidget {
                   Text(
                     BenchmarkProvider.frameworkName(name),
                     style: const TextStyle(
-                        color: _kSecondary,
+                        color: kTextSecondary,
                         fontSize: 11,
                         fontWeight: FontWeight.w600),
                   ),
@@ -491,15 +484,15 @@ class _RadarValueTable extends StatelessWidget {
           return DataRow(
             cells: [
               DataCell(Text(metric.label,
-                  style: const TextStyle(color: _kMuted, fontSize: 11))),
+                  style: const TextStyle(color: kTextMuted, fontSize: 11))),
               ...selected.map((service) {
                 final value = rawValues[service]![i];
                 final isBest = value == best && vals.where((v) => v == best).length < vals.length;
                 return DataCell(
                   Text(
-                    _formatValue(value),
+                    formatNumber(value),
                     style: TextStyle(
-                      color: isBest ? _kGreen : _kSecondary,
+                      color: isBest ? kGreen : kTextSecondary,
                       fontSize: 11,
                       fontWeight:
                           isBest ? FontWeight.w600 : FontWeight.normal,
@@ -528,10 +521,10 @@ class _BarComparisonSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: _kCard,
+      color: kCardBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: _kBorder),
+        side: const BorderSide(color: kBorder),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -579,7 +572,7 @@ class _MetricBarGroup extends StatelessWidget {
               Text(
                 metric.label,
                 style: const TextStyle(
-                  color: _kSecondary,
+                  color: kTextSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -588,7 +581,7 @@ class _MetricBarGroup extends StatelessWidget {
                 const SizedBox(width: 6),
                 const Text(
                   '(lower is better)',
-                  style: TextStyle(color: _kDim, fontSize: 10),
+                  style: TextStyle(color: kTextDim, fontSize: 10),
                 ),
               ],
             ],
@@ -616,7 +609,7 @@ class _MetricBarGroup extends StatelessWidget {
                     child: Text(
                       BenchmarkProvider.frameworkName(service),
                       style: TextStyle(
-                        color: isBest ? _kGreen : _kMuted,
+                        color: isBest ? kGreen : kTextMuted,
                         fontSize: 11,
                         fontWeight:
                             isBest ? FontWeight.w600 : FontWeight.normal,
@@ -633,7 +626,7 @@ class _MetricBarGroup extends StatelessWidget {
                             Container(
                               height: 18,
                               decoration: BoxDecoration(
-                                color: _kBorder.withValues(alpha: 0.3),
+                                color: kBorder.withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(3),
                               ),
                             ),
@@ -656,9 +649,9 @@ class _MetricBarGroup extends StatelessWidget {
                   SizedBox(
                     width: 70,
                     child: Text(
-                      _formatValue(value),
+                      formatNumber(value),
                       style: TextStyle(
-                        color: isBest ? _kGreen : _kSecondary,
+                        color: isBest ? kGreen : kTextSecondary,
                         fontSize: 11,
                         fontWeight:
                             isBest ? FontWeight.w600 : FontWeight.normal,
@@ -689,22 +682,22 @@ class _ComparisonTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: _kCard,
+      color: kCardBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: _kBorder),
+        side: const BorderSide(color: kBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
           headingRowColor: WidgetStateProperty.all(
-            _kBorder.withValues(alpha: 0.3),
+            kBorder.withValues(alpha: 0.3),
           ),
           dataRowColor: WidgetStateProperty.all(Colors.transparent),
           border: TableBorder(
-            horizontalInside: BorderSide(color: _kBorder.withValues(alpha: 0.5)),
-            verticalInside: BorderSide(color: _kBorder.withValues(alpha: 0.3)),
+            horizontalInside: BorderSide(color: kBorder.withValues(alpha: 0.5)),
+            verticalInside: BorderSide(color: kBorder.withValues(alpha: 0.3)),
           ),
           columnSpacing: 24,
           columns: [
@@ -712,7 +705,7 @@ class _ComparisonTable extends StatelessWidget {
               label: Text(
                 'Metric',
                 style: TextStyle(
-                  color: _kText,
+                  color: kTextPrimary,
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                 ),
@@ -736,7 +729,7 @@ class _ComparisonTable extends StatelessWidget {
                     Text(
                       BenchmarkProvider.frameworkName(name),
                       style: const TextStyle(
-                        color: _kText,
+                        color: kTextPrimary,
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
@@ -785,7 +778,7 @@ class _ComparisonTable extends StatelessWidget {
                   Text(
                     metric.label,
                     style: const TextStyle(
-                      color: _kSecondary,
+                      color: kTextSecondary,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -799,19 +792,19 @@ class _ComparisonTable extends StatelessWidget {
                   Color textColor;
                   FontWeight weight;
                   if (isBest) {
-                    textColor = _kGreen;
+                    textColor = kGreen;
                     weight = FontWeight.w700;
                   } else if (isWorst) {
-                    textColor = _kDim;
+                    textColor = kTextDim;
                     weight = FontWeight.w400;
                   } else {
-                    textColor = _kSecondary;
+                    textColor = kTextSecondary;
                     weight = FontWeight.w400;
                   }
 
                   return DataCell(
                     Text(
-                      _formatValue(value),
+                      formatNumber(value),
                       style: TextStyle(
                         color: textColor,
                         fontSize: 12,
@@ -827,16 +820,4 @@ class _ComparisonTable extends StatelessWidget {
       ),
     );
   }
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-String _formatValue(double value) {
-  if (value == 0) return '0';
-  if (value >= 10000) return '${(value / 1000).toStringAsFixed(1)}K';
-  if (value >= 100) return value.toStringAsFixed(1);
-  if (value >= 10) return value.toStringAsFixed(2);
-  return value.toStringAsFixed(2);
 }
