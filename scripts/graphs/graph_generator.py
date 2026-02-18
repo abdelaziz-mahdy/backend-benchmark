@@ -77,6 +77,21 @@ def process_file_cpu_usage(file_path, summary):
 
     summary["Average Server CPU Usage"] = data['benchmark_cpu_usage'].mean()
     summary["Average Database CPU Usage"] = data['db_cpu_usage'].mean()
+
+    # Memory averages
+    if 'benchmark_mem_usage_mb' in data.columns:
+        mem_vals = pd.to_numeric(data['benchmark_mem_usage_mb'].apply(
+            lambda x: parse_mem_to_mb(x) if pd.notna(x) else float('nan')
+        ), errors='coerce')
+        if mem_vals.notna().any():
+            summary["Average Server Memory (MB)"] = float(mem_vals.mean())
+    if 'db_mem_usage_mb' in data.columns:
+        mem_vals = pd.to_numeric(data['db_mem_usage_mb'].apply(
+            lambda x: parse_mem_to_mb(x) if pd.notna(x) else float('nan')
+        ), errors='coerce')
+        if mem_vals.notna().any():
+            summary["Average Database Memory (MB)"] = float(mem_vals.mean())
+
     return data, summary
 
 
