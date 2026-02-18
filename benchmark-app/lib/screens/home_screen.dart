@@ -4,7 +4,10 @@ import 'package:provider/provider.dart';
 import '../providers/benchmark_provider.dart';
 import '../widgets/header_widget.dart';
 import '../widgets/loading_widget.dart';
+import 'compare_screen.dart';
 import 'dashboard_screen.dart';
+import 'detail_screen.dart';
+import 'rankings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -55,19 +58,9 @@ class _HomeScreenState extends State<HomeScreen>
             controller: _tabController,
             physics: const NeverScrollableScrollPhysics(),
             children: const [
-              // Tab 0: Rankings - placeholder for now
-              Center(
-                  child: Text('Rankings',
-                      style: TextStyle(color: Color(0xFF8B949E)))),
-              // Tab 1: Detail - placeholder for now
-              Center(
-                  child: Text('Detail',
-                      style: TextStyle(color: Color(0xFF8B949E)))),
-              // Tab 2: Compare - placeholder for now
-              Center(
-                  child: Text('Compare',
-                      style: TextStyle(color: Color(0xFF8B949E)))),
-              // Tab 3: Time Series - existing dashboard
+              RankingsScreen(),
+              DetailScreen(),
+              CompareScreen(),
               DashboardScreen(),
             ],
           ),
