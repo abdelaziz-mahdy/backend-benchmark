@@ -112,21 +112,30 @@ class _RankingsScreenState extends State<RankingsScreen> {
       ),
       _getWinner(
         provider,
-        title: 'CPU Efficient',
-        metricKey: 'Average Server CPU Usage',
+        title: 'Best P99',
+        metricKey: 'Average Response Time 99% (ms)',
         ascending: true,
-        icon: Icons.memory,
+        icon: Icons.speed,
         color: kOrange,
-        isPercent: true,
+        unit: 'ms',
       ),
       _getWinner(
         provider,
-        title: 'Best P99 Latency',
-        metricKey: 'Average Response Time 99% (ms)',
-        ascending: true,
-        icon: Icons.check_circle,
+        title: 'CPU Efficient',
+        metricKey: 'CPU Efficiency',
+        ascending: false,
+        icon: Icons.memory,
         color: kTeal,
-        unit: 'ms',
+        unit: 'req/s/%',
+      ),
+      _getWinner(
+        provider,
+        title: 'Memory Efficient',
+        metricKey: 'Memory Efficiency',
+        ascending: false,
+        icon: Icons.sd_storage,
+        color: kPurple,
+        unit: 'req/s/MB',
       ),
     ];
 
@@ -312,18 +321,11 @@ class _RankingsScreenState extends State<RankingsScreen> {
         children: [
           SizedBox(
             width: 160,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: () => provider.selectDetailService(serviceName),
-                child: Text(
-                  name,
-                  style: const TextStyle(
-                    color: kTextSecondary,
-                    fontSize: 13,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+            child: GestureDetector(
+              onTap: () => provider.selectDetailService(serviceName),
+              child: _HoverUnderlineText(
+                text: name,
+                style: const TextStyle(color: kTextSecondary, fontSize: 13),
               ),
             ),
           ),
@@ -387,6 +389,9 @@ class _RankingsScreenState extends State<RankingsScreen> {
     _ColumnDef('Failures/s', 'Average Failures/s', false, true),
     _ColumnDef('CPU%', 'Average Server CPU Usage', true, true),
     _ColumnDef('DB CPU%', 'Average Database CPU Usage', true, true),
+    _ColumnDef('Mem (MB)', 'Average Server Memory (MB)', false, true),
+    _ColumnDef('CPU Eff', 'CPU Efficiency', false, false),
+    _ColumnDef('Mem Eff', 'Memory Efficiency', false, false),
   ];
 
   Widget _buildDataTable(BenchmarkProvider provider) {
@@ -517,18 +522,15 @@ class _RankingsScreenState extends State<RankingsScreen> {
             return DataRow(
               cells: [
                 DataCell(
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () =>
-                          provider.selectDetailService(row.serviceName),
-                      child: Text(
-                        name,
-                        style: const TextStyle(
-                          color: kBlue,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
+                  GestureDetector(
+                    onTap: () =>
+                        provider.selectDetailService(row.serviceName),
+                    child: _HoverUnderlineText(
+                      text: name,
+                      style: const TextStyle(
+                        color: kBlue,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -604,4 +606,35 @@ class _RowData {
   final List<double> values;
 
   const _RowData({required this.serviceName, required this.values});
+}
+
+class _HoverUnderlineText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+
+  const _HoverUnderlineText({required this.text, required this.style});
+
+  @override
+  State<_HoverUnderlineText> createState() => _HoverUnderlineTextState();
+}
+
+class _HoverUnderlineTextState extends State<_HoverUnderlineText> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      cursor: SystemMouseCursors.click,
+      child: Text(
+        widget.text,
+        style: widget.style.copyWith(
+          decoration: _hovering ? TextDecoration.underline : TextDecoration.none,
+          decorationColor: widget.style.color,
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
 }
