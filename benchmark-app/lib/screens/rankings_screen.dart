@@ -29,45 +29,59 @@ class _RankingsScreenState extends State<RankingsScreen> {
 
         return Container(
           color: kBackground,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionTitle('Top Performers'),
-                const SizedBox(height: 12),
-                _buildWinnerCards(provider),
-                const SizedBox(height: 32),
-                _buildSectionTitle('Performance Comparison'),
-                const SizedBox(height: 12),
-                _buildBarChartSection(
-                  provider,
-                  title: 'Requests per Second',
-                  metricKey: 'Average Requests/s',
-                  ascending: false,
-                  unit: 'req/s',
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1400),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: _buildSectionTitle('Top Performers'),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildWinnerCards(provider),
+                    const SizedBox(height: 32),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: _buildSectionTitle('Performance Comparison'),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildBarChartSection(
+                      provider,
+                      title: 'Requests per Second',
+                      metricKey: 'Average Requests/s',
+                      ascending: false,
+                      unit: 'req/s',
+                    ),
+                    const SizedBox(height: 24),
+                    _buildBarChartSection(
+                      provider,
+                      title: 'Average Response Time',
+                      metricKey: 'Average Response Time (ms)',
+                      ascending: true,
+                      unit: 'ms',
+                    ),
+                    const SizedBox(height: 24),
+                    _buildBarChartSection(
+                      provider,
+                      title: 'P99 Response Time',
+                      metricKey: 'Average Response Time 99% (ms)',
+                      ascending: true,
+                      unit: 'ms',
+                    ),
+                    const SizedBox(height: 32),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: _buildSectionTitle('Full Rankings'),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildDataTable(provider),
+                  ],
                 ),
-                const SizedBox(height: 24),
-                _buildBarChartSection(
-                  provider,
-                  title: 'Average Response Time',
-                  metricKey: 'Average Response Time (ms)',
-                  ascending: true,
-                  unit: 'ms',
-                ),
-                const SizedBox(height: 24),
-                _buildBarChartSection(
-                  provider,
-                  title: 'P99 Response Time',
-                  metricKey: 'Average Response Time 99% (ms)',
-                  ascending: true,
-                  unit: 'ms',
-                ),
-                const SizedBox(height: 32),
-                _buildSectionTitle('Full Rankings'),
-                const SizedBox(height: 12),
-                _buildDataTable(provider),
-              ],
+              ),
             ),
           ),
         );
@@ -142,6 +156,7 @@ class _RankingsScreenState extends State<RankingsScreen> {
     return Wrap(
       spacing: 16,
       runSpacing: 16,
+      alignment: WrapAlignment.center,
       children: winners.map((w) => _buildWinnerCard(w, provider)).toList(),
     );
   }

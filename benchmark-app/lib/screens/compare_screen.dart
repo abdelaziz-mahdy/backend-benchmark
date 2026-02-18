@@ -58,45 +58,62 @@ class CompareScreen extends StatelessWidget {
             .where((s) => allServices.contains(s))
             .toList();
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _SectionTitle(title: 'Select Frameworks'),
-              const SizedBox(height: 8),
-              _FrameworkSelector(
-                allServices: allServices,
-                selected: provider.compareServices,
-                onToggle: provider.toggleCompareService,
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1400),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: _SectionTitle(title: 'Select Frameworks'),
+                  ),
+                  const SizedBox(height: 8),
+                  _FrameworkSelector(
+                    allServices: allServices,
+                    selected: provider.compareServices,
+                    onToggle: provider.toggleCompareService,
+                  ),
+                  const SizedBox(height: 24),
+                  if (selected.length < 2)
+                    _EmptyState()
+                  else ...[
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: _SectionTitle(title: 'Performance Radar'),
+                    ),
+                    const SizedBox(height: 8),
+                    _RadarSection(
+                      selected: selected,
+                      data: provider.data!,
+                    ),
+                    const SizedBox(height: 24),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: _SectionTitle(title: 'Metric Comparison'),
+                    ),
+                    const SizedBox(height: 8),
+                    _BarComparisonSection(
+                      selected: selected,
+                      data: provider.data!,
+                    ),
+                    const SizedBox(height: 24),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: _SectionTitle(title: 'Detailed Comparison'),
+                    ),
+                    const SizedBox(height: 8),
+                    _ComparisonTable(
+                      selected: selected,
+                      data: provider.data!,
+                    ),
+                  ],
+                  const SizedBox(height: 32),
+                ],
               ),
-              const SizedBox(height: 24),
-              if (selected.length < 2)
-                _EmptyState()
-              else ...[
-                _SectionTitle(title: 'Performance Radar'),
-                const SizedBox(height: 8),
-                _RadarSection(
-                  selected: selected,
-                  data: provider.data!,
-                ),
-                const SizedBox(height: 24),
-                _SectionTitle(title: 'Metric Comparison'),
-                const SizedBox(height: 8),
-                _BarComparisonSection(
-                  selected: selected,
-                  data: provider.data!,
-                ),
-                const SizedBox(height: 24),
-                _SectionTitle(title: 'Detailed Comparison'),
-                const SizedBox(height: 8),
-                _ComparisonTable(
-                  selected: selected,
-                  data: provider.data!,
-                ),
-              ],
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
         );
       },

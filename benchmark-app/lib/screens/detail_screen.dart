@@ -29,24 +29,29 @@ class DetailScreen extends StatelessWidget {
         final service =
             selectedName != null ? provider.data![selectedName] : null;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildFrameworkSelector(context, provider),
-              if (service == null) ...[
-                const SizedBox(height: 120),
-                _buildEmptyState(),
-              ] else ...[
-                const SizedBox(height: 20),
-                _buildSummaryCards(service),
-                const SizedBox(height: 20),
-                _buildTimeSeriesGrid(service, selectedName!),
-                const SizedBox(height: 20),
-                _buildPercentileChart(service),
-              ],
-            ],
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1400),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildFrameworkSelector(context, provider),
+                  if (service == null) ...[
+                    const SizedBox(height: 120),
+                    _buildEmptyState(),
+                  ] else ...[
+                    const SizedBox(height: 20),
+                    _buildSummaryCards(service),
+                    const SizedBox(height: 20),
+                    _buildTimeSeriesGrid(service, selectedName!),
+                    const SizedBox(height: 20),
+                    _buildPercentileChart(service),
+                  ],
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -73,52 +78,56 @@ class DetailScreen extends StatelessWidget {
     }
     services.sort();
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: kCardBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: kBorder),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: (provider.selectedDetailService != null &&
-                  services.contains(provider.selectedDetailService))
-              ? provider.selectedDetailService
-              : null,
-          hint: const Text(
-            'Select a framework...',
-            style: TextStyle(color: kTextMuted, fontSize: 14),
-          ),
-          dropdownColor: kCardBg,
-          icon: const Icon(Icons.expand_more, color: kTextMuted, size: 20),
-          isExpanded: true,
-          style: const TextStyle(color: kTextPrimary, fontSize: 14),
-          items: services.map((name) {
-            final color = ServiceColors.getColor(name);
-            return DropdownMenuItem(
-              value: name,
-              child: Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 400),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        decoration: BoxDecoration(
+          color: kCardBg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: kBorder),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: (provider.selectedDetailService != null &&
+                    services.contains(provider.selectedDetailService))
+                ? provider.selectedDetailService
+                : null,
+            hint: const Text(
+              'Select a framework...',
+              style: TextStyle(color: kTextMuted, fontSize: 14),
+            ),
+            dropdownColor: kCardBg,
+            icon:
+                const Icon(Icons.expand_more, color: kTextMuted, size: 20),
+            isExpanded: true,
+            style: const TextStyle(color: kTextPrimary, fontSize: 14),
+            items: services.map((name) {
+              final color = ServiceColors.getColor(name);
+              return DropdownMenuItem(
+                value: name,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(BenchmarkProvider.frameworkName(name)),
-                ],
-              ),
-            );
-          }).toList(),
-          onChanged: (value) {
-            if (value != null) {
-              provider.selectDetailService(value);
-            }
-          },
+                    const SizedBox(width: 10),
+                    Text(BenchmarkProvider.frameworkName(name)),
+                  ],
+                ),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                provider.selectDetailService(value);
+              }
+            },
+          ),
         ),
       ),
     );
@@ -203,6 +212,7 @@ class DetailScreen extends StatelessWidget {
     return Wrap(
       spacing: 12,
       runSpacing: 12,
+      alignment: WrapAlignment.center,
       children: stats.map((s) => _buildStatCard(s)).toList(),
     );
   }
@@ -520,7 +530,9 @@ class DetailScreen extends StatelessWidget {
       if (p.value! > maxVal) maxVal = p.value!;
     }
 
-    return Container(
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
       decoration: BoxDecoration(
         color: kCardBg,
@@ -645,6 +657,7 @@ class DetailScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
