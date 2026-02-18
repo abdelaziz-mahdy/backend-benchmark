@@ -4,10 +4,13 @@ import 'package:provider/provider.dart';
 import '../providers/benchmark_provider.dart';
 
 class HeaderWidget extends StatelessWidget implements PreferredSizeWidget {
-  const HeaderWidget({super.key});
+  final TabController? tabController;
+
+  const HeaderWidget({super.key, this.tabController});
 
   @override
-  Size get preferredSize => const Size.fromHeight(56);
+  Size get preferredSize =>
+      Size.fromHeight(tabController != null ? 92 : 56);
 
   @override
   Widget build(BuildContext context) {
@@ -34,19 +37,51 @@ class HeaderWidget extends StatelessWidget implements PreferredSizeWidget {
             ],
           ),
           actions: [
-            IconButton(
-              icon: Icon(
-                provider.sidebarExpanded
-                    ? Icons.menu_open
-                    : Icons.tune,
-                color: const Color(0xFF8B949E),
-                size: 20,
+            if (provider.activeTab == 3)
+              IconButton(
+                icon: Icon(
+                  provider.sidebarExpanded ? Icons.menu_open : Icons.tune,
+                  color: const Color(0xFF8B949E),
+                  size: 20,
+                ),
+                onPressed: provider.toggleSidebar,
+                tooltip: 'Toggle sidebar',
               ),
-              onPressed: provider.toggleSidebar,
-              tooltip: 'Toggle sidebar',
-            ),
             const SizedBox(width: 4),
           ],
+          bottom: tabController != null
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(36),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: Color(0xFF30363D)),
+                      ),
+                    ),
+                    child: TabBar(
+                      controller: tabController,
+                      indicatorColor: const Color(0xFFF78166),
+                      indicatorWeight: 2,
+                      labelColor: const Color(0xFFE6EDF3),
+                      unselectedLabelColor: const Color(0xFF8B949E),
+                      labelStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      unselectedLabelStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      tabs: const [
+                        Tab(text: 'Rankings'),
+                        Tab(text: 'Detail'),
+                        Tab(text: 'Compare'),
+                        Tab(text: 'Time Series'),
+                      ],
+                    ),
+                  ),
+                )
+              : null,
         );
       },
     );

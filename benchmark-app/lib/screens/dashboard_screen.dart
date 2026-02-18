@@ -3,8 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../providers/benchmark_provider.dart';
 import '../widgets/chart_card.dart';
-import '../widgets/header_widget.dart';
-import '../widgets/loading_widget.dart';
 import '../widgets/sidebar_widget.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -12,41 +10,34 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const HeaderWidget(),
-      body: Consumer<BenchmarkProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoading || provider.data == null) {
-            return LoadingWidget(progress: provider.progress);
-          }
+    return Consumer<BenchmarkProvider>(
+      builder: (context, provider, _) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final narrow = constraints.maxWidth < 700;
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final narrow = constraints.maxWidth < 700;
-
-              if (narrow) {
-                return Column(
-                  children: [
-                    if (provider.sidebarExpanded)
-                      SizedBox(
-                        height: 300,
-                        child: const SidebarWidget(),
-                      ),
-                    Expanded(child: _ChartGrid(provider: provider)),
-                  ],
-                );
-              }
-
-              return Row(
+            if (narrow) {
+              return Column(
                 children: [
-                  const SidebarWidget(),
+                  if (provider.sidebarExpanded)
+                    SizedBox(
+                      height: 300,
+                      child: const SidebarWidget(),
+                    ),
                   Expanded(child: _ChartGrid(provider: provider)),
                 ],
               );
-            },
-          );
-        },
-      ),
+            }
+
+            return Row(
+              children: [
+                const SidebarWidget(),
+                Expanded(child: _ChartGrid(provider: provider)),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
