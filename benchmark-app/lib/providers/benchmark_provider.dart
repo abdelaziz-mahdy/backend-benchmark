@@ -14,6 +14,15 @@ class BenchmarkProvider extends ChangeNotifier {
   bool sidebarExpanded = true;
   TestTypeFilter testTypeFilter = TestTypeFilter.db;
 
+  // Navigation
+  int activeTab = 0;
+
+  // Detail tab
+  String? selectedDetailService;
+
+  // Compare tab
+  Set<String> compareServices = {};
+
   List<String> get dbServices =>
       data?.keys
           .where((k) => k.contains('db_test') && !k.contains('no_db_test'))
@@ -61,6 +70,14 @@ class BenchmarkProvider extends ChangeNotifier {
 
       // Select all services by default
       selectedServices = data!.keys.toSet();
+
+      // Default compare to top 3 by req/s for current filter
+      final ranked = getRankedServices('Average Requests/s');
+      compareServices = ranked.take(3).map((e) => e.key).toSet();
+      // Default detail to the top performer
+      if (ranked.isNotEmpty) {
+        selectedDetailService = ranked.first.key;
+      }
     } catch (e) {
       debugPrint('Error loading data: $e');
     } finally {
@@ -114,5 +131,53 @@ class BenchmarkProvider extends ChangeNotifier {
   void toggleSidebar() {
     sidebarExpanded = !sidebarExpanded;
     notifyListeners();
+  }
+
+  void setActiveTab(int tab) {
+    activeTab = tab;
+    notifyListeners();
+  }
+
+  void selectDetailService(String service) {
+    selectedDetailService = service;
+    activeTab = 1; // Switch to Detail tab
+    notifyListeners();
+  }
+
+  void toggleCompareService(String service) {
+    if (compareServices.contains(service)) {
+      compareServices.remove(service);
+    } else if (compareServices.length < 4) {
+      compareServices.add(service);
+    }
+    notifyListeners();
+  }
+
+  void setCompareServices(Set<String> services) {
+    compareServices = services;
+    notifyListeners();
+  }
+
+  /// Get ranked services for a given summary metric key, filtered by current test type.
+  /// Returns list of (serviceName, value) sorted descending by default.
+  /// Set ascending=true for metrics where lower is better (response time, CPU).
+  List<MapEntry<String, double>> getRankedServices(String metricKey,
+      {bool ascending = false}) {
+    if (data == null) return [];
+    final entries = <MapEntry<String, double>>[];
+    final services = testTypeFilter == TestTypeFilter.all
+        ? data!.keys.toList()
+        : testTypeFilter == TestTypeFilter.db
+            ? dbServices
+            : noDbServices;
+    for (final name in services) {
+      final value = data![name]?.summary[metricKey];
+      if (value != null && value > 0) {
+        entries.add(MapEntry(name, value));
+      }
+    }
+    entries.sort((a, b) =>
+        ascending ? a.value.compareTo(b.value) : b.value.compareTo(a.value));
+    return entries;
   }
 }
