@@ -1,4 +1,4 @@
-// Screenshot tour of every tab at three widths. Not part of the normal test
+// Screenshot tour of every page at three widths. Not part of the normal test
 // run (tagged "tour"); generate with:
 //   flutter test test/tour --tags tour --update-goldens
 // Uses the data in assets/results/ (run bench/report/report.py first).
@@ -40,6 +40,9 @@ void main() {
         listen: false,
       );
       Future<void> shot(String name) async {
+        // Two frames: the first schedules implicit animations (hint fade,
+        // chip colours), the second lets them finish.
+        await t.pump(const Duration(milliseconds: 600));
         await t.pump(const Duration(milliseconds: 600));
         await expectLater(
           find.byType(MaterialApp),
@@ -47,25 +50,48 @@ void main() {
         );
       }
 
-      await shot('1-overview');
-      state.setTab(DashboardTab.framework);
-      await shot('2-framework');
-      final keys = state.rank(state.visibleBackends, state.headline).take(3);
-      for (final b in keys) {
-        state.toggleCompare(b.key);
-      }
-      state.setTab(DashboardTab.compare);
-      await shot('3-compare');
-      state.setTab(DashboardTab.history);
-      await shot('4-history');
-      state.setTab(DashboardTab.method);
-      await shot('5-method');
+      String keyOf(String name) =>
+          state.run!.backends.firstWhere((b) => b.name == name).key;
+      final foam = keyOf('foam3 (postgres)');
+      final fast = keyOf('rust actix-web');
+      final slow = keyOf('django (sync)');
+
+      // T1: the home table, nothing expanded.
+      await shot('1-home');
+
+      // T2: a slow framework's row expanded (foam3).
+      state.toggleExpanded(foam);
+      await shot('2-home-foam3-expanded');
+
+      // T2 again with a fast one, and the search narrowing the list.
+      state.toggleExpanded(fast);
+      state.setQuery('rust');
+      await shot('3-home-search-rust-expanded');
+      state.setQuery('');
+      state.toggleExpanded(fast);
+
+      // T3: tray with two picked, then a 3-way comparison including foam3.
+      state.toggleCompare(foam);
+      state.toggleCompare(slow);
+      await shot('4-home-tray');
+      state.toggleCompare(fast);
+      state.openCompare();
+      await shot('5-compare-3way');
+
+      // Details of the fast one, DB mixed.
+      state.setScenario('db_mixed');
+      state.openDetails(fast);
+      await shot('6-details-actix-db-mixed');
+
+      state.setPage(DashboardPage.history);
+      await shot('7-history');
+      state.setPage(DashboardPage.method);
+      await shot('8-method');
+
       final legacy = state.index.firstWhere((e) => e.isLegacy);
       await t.runAsync(() => state.selectRun(legacy));
-      state.setTab(DashboardTab.overview);
-      await shot('6-legacy-overview');
-      state.setTab(DashboardTab.framework);
-      await shot('7-legacy-framework');
+      state.goHome();
+      await shot('9-legacy-home');
     });
   }
 }

@@ -4,9 +4,11 @@ import '../models/metrics.dart';
 import '../models/results.dart';
 import '../services/results_service.dart';
 
-enum DashboardTab { overview, framework, compare, history, method }
+/// The home table, plus the pages opened from it. Every page except
+/// [home] has a Back control that returns to the table.
+enum DashboardPage { home, details, compare, history, method }
 
-/// Where a backend stands among the visible ones for one metric.
+/// Where a backend stands among the backends of one scenario for one metric.
 class Rank {
   final int position; // 1-based
   final int total;
@@ -31,10 +33,14 @@ class Rank {
     if (v == null || l == null || l <= 0) return null;
     return v / l;
   }
+
+  /// "#3 of 12", "tied #1 of 12".
+  String get label => '${tied > 1 ? 'tied ' : ''}#$position of $total';
 }
 
-/// Everything the screens share: which run, scenario and languages are
-/// selected, which framework is open, and which are being compared.
+/// Everything the screens share: which run is loaded, how the home table is
+/// sorted and filtered, which row is expanded, which page is open, which
+/// scenario the chart pages show, and which frameworks are being compared.
 class DashboardState extends ChangeNotifier {
   final ResultsService _service;
 
@@ -48,12 +54,24 @@ class DashboardState extends ChangeNotifier {
   Object? error;
   bool loading = true;
 
-  DashboardTab tab = DashboardTab.overview;
-  String? scenario;
-  final Set<String> languages = {};
+  DashboardPage page = DashboardPage.home;
 
-  /// Free-text filter from the header's "Find" field.
+  /// Scenario the Details and Compare pages show charts for.
+  String? scenario;
+
+  /// Number shown in every cell of the home table.
+  Metric metric = Metrics.sustainable;
+
+  /// Scenario column the home table is sorted by.
+  String? sortScenario;
+
+  /// Free-text filter over the rows of the home table.
   String query = '';
+
+  /// Row expanded in place on the home table.
+  String? expandedKey;
+
+  /// Framework open on the Details page.
   String? detailKey;
   final List<String> compareKeys = [];
 
@@ -84,12 +102,22 @@ class DashboardState extends ChangeNotifier {
       if (!scenarios.contains(scenario)) {
         scenario = scenarios.isEmpty ? null : scenarios.first;
       }
+      if (!scenarios.contains(sortScenario)) {
+        sortScenario = defaultSortScenario(scenarios);
+      }
+      final results = [for (final b in loaded.backends) ...b.scenarios.values];
+      if (!Metrics.available(results, [metric]).contains(metric)) {
+        metric = Metrics.headlineFor(results);
+      }
       final keys = loaded.backends.map((b) => b.key).toSet();
       compareKeys.removeWhere((k) => !keys.contains(k));
       if (detailKey != null && !keys.contains(detailKey)) detailKey = null;
-      languages.removeWhere(
-        (l) => !loaded.backends.any((b) => b.language == l),
-      );
+      if (expandedKey != null && !keys.contains(expandedKey)) {
+        expandedKey = null;
+      }
+      if (page == DashboardPage.details && detailKey == null) {
+        page = DashboardPage.home;
+      }
     } catch (e) {
       error = e;
     }
@@ -97,24 +125,33 @@ class DashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setTab(DashboardTab next) {
-    if (tab == next) return;
-    tab = next;
+  /// DB mixed is the closest to a real API and is never capped by the load
+  /// generator; No DB ties most frameworks at the k6 limit.
+  static String? defaultSortScenario(List<String> scenarios) {
+    if (scenarios.contains('db_mixed')) return 'db_mixed';
+    return scenarios.isEmpty ? null : scenarios.first;
+  }
+
+  void setPage(DashboardPage next) {
+    if (page == next) return;
+    page = next;
     notifyListeners();
   }
+
+  void goHome() => setPage(DashboardPage.home);
 
   void setScenario(String next) {
     scenario = next;
     notifyListeners();
   }
 
-  void toggleLanguage(String language) {
-    if (!languages.remove(language)) languages.add(language);
+  void setMetric(Metric next) {
+    metric = next;
     notifyListeners();
   }
 
-  void clearLanguages() {
-    languages.clear();
+  void setSortScenario(String next) {
+    sortScenario = next;
     notifyListeners();
   }
 
@@ -124,41 +161,24 @@ class DashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Opens the framework that best matches [text] (first by rank), if any.
-  bool openBestMatch(String text) {
-    final r = run;
-    if (r == null) return false;
-    final hits = rank(
-      r.backends.where((b) => b.matches(text)).toList(),
-      headline,
-    );
-    if (hits.isEmpty) return false;
-    openFramework(hits.first.key);
+  /// Expands [key] in place, or collapses it when it is already open.
+  void toggleExpanded(String key) {
+    expandedKey = expandedKey == key ? null : key;
+    notifyListeners();
+  }
+
+  /// Expands the first row that matches [text], if any.
+  bool expandFirstMatch(String text) {
+    final hit = sortedBackends.where((b) => b.matches(text)).firstOrNull;
+    if (hit == null) return false;
+    expandedKey = hit.key;
+    notifyListeners();
     return true;
   }
 
-  /// All backends of the run, by name, for the finder and prev/next.
-  List<BackendResult> get allBackends =>
-      [...?run?.backends]..sort((a, b) => a.name.compareTo(b.name));
-
-  /// Moves the Framework tab to the previous (-1) or next (+1) backend.
-  void stepDetail(int delta) {
-    final all = allBackends;
-    final current = detailBackend;
-    if (all.isEmpty || current == null) return;
-    final i = all.indexWhere((b) => b.key == current.key);
-    detailKey = all[(i + delta) % all.length].key;
-    notifyListeners();
-  }
-
-  void openFramework(String key) {
+  void openDetails(String key) {
     detailKey = key;
-    tab = DashboardTab.framework;
-    notifyListeners();
-  }
-
-  void setDetail(String key) {
-    detailKey = key;
+    page = DashboardPage.details;
     notifyListeners();
   }
 
@@ -173,93 +193,132 @@ class DashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearCompare() {
+    compareKeys.clear();
+    notifyListeners();
+  }
+
+  /// Puts [key] and the best other frameworks of the sorted column into the
+  /// tray (up to [maxCompare]) and opens the Compare page.
+  void compareWithLeaders(String key) {
+    if (!compareKeys.contains(key)) {
+      if (compareKeys.length >= maxCompare) compareKeys.removeLast();
+      compareKeys.insert(0, key);
+    }
+    for (final b in leaders) {
+      if (compareKeys.length >= maxCompare) break;
+      if (!compareKeys.contains(b.key)) compareKeys.add(b.key);
+    }
+    page = DashboardPage.compare;
+    notifyListeners();
+  }
+
+  /// Opens the Compare page for whatever is in the tray.
+  void openCompare() => setPage(DashboardPage.compare);
+
   // ---------------------------------------------------------------- derived
 
-  List<String> get allLanguages {
-    final langs = {...?run?.backends.map((b) => b.language)}.toList()..sort();
-    return langs;
-  }
-
-  /// Backends of the selected run that have the selected scenario and match
-  /// the language filter.
-  List<BackendResult> get visibleBackends {
+  /// Rows of the home table: every backend of the run that matches the
+  /// query, best first in the sorted column, missing values last.
+  List<BackendResult> get sortedBackends {
     final r = run;
-    if (r == null || scenario == null) return const [];
-    return r.backends
-        .where((b) => b.scenarios.containsKey(scenario))
-        .where((b) => languages.isEmpty || languages.contains(b.language))
-        .where((b) => b.matches(query))
-        .toList();
+    if (r == null) return const [];
+    final rows = r.backends.where((b) => b.matches(query)).toList();
+    return rank(rows, metric, sortScenario);
   }
 
-  /// True when the language filter or the query hides something.
-  bool get filtersActive => languages.isNotEmpty || query.trim().isNotEmpty;
+  /// Every backend of the run, best first in the sorted column.
+  List<BackendResult> get allRanked =>
+      run == null ? const [] : rank(run!.backends, metric, sortScenario);
 
-  /// Backends of the run that have the selected scenario, ignoring filters.
-  List<BackendResult> get scenarioBackends {
+  /// The best frameworks of the sorted column, in order.
+  List<BackendResult> get leaders =>
+      allRanked.where((b) => valueOf(b, metric, sortScenario) != null).toList();
+
+  /// Backends of the run that have [scenario].
+  List<BackendResult> backendsIn(String? s) {
     final r = run;
-    if (r == null || scenario == null) return const [];
-    return r.backends.where((b) => b.scenarios.containsKey(scenario)).toList();
+    if (r == null || s == null) return const [];
+    return r.backends.where((b) => b.scenarios.containsKey(s)).toList();
   }
 
-  /// [backend]'s place among every backend with this scenario (filters do
-  /// not change a rank).
-  Rank? rankOf(BackendResult backend, Metric metric) {
-    final ranked = rank(scenarioBackends, metric);
+  /// Backends in the tray that have a result for [scenario], tray order.
+  List<BackendResult> compared(String? s) => [
+    for (final k in compareKeys)
+      ?backendsIn(s).where((b) => b.key == k).firstOrNull,
+  ];
+
+  /// [backend]'s place among every backend with [scenario] for [metric].
+  /// The query never changes a rank.
+  Rank? rankOf(BackendResult backend, Metric metric, String? scenario) {
+    final s = scenario ?? this.scenario;
+    final ranked = rank(backendsIn(s), metric, s);
     final i = ranked.indexWhere((b) => b.key == backend.key);
     if (i < 0) return null;
-    final value = _value(backend, metric);
-    final same = value == null
-        ? 1
-        : ranked.where((b) => _value(b, metric) == value).length;
-    final first = value == null
-        ? i
-        : ranked.indexWhere((b) => _value(b, metric) == value);
+    final value = valueOf(backend, metric, s);
+    if (value == null) return null;
+    final same = ranked.where((b) => valueOf(b, metric, s) == value).length;
+    final first = ranked.indexWhere((b) => valueOf(b, metric, s) == value);
     return Rank(
       first + 1,
       ranked.length,
       value,
-      _value(ranked.first, metric),
+      valueOf(ranked.first, metric, s),
       tied: same,
     );
   }
 
-  ScenarioResult? resultOf(BackendResult b) =>
-      scenario == null ? null : b.scenarios[scenario];
+  ScenarioResult? resultOf(BackendResult b, [String? s]) {
+    final sc = s ?? scenario;
+    return sc == null ? null : b.scenarios[sc];
+  }
 
-  Metric get headline =>
-      Metrics.headlineFor(visibleBackends.map(resultOf).whereType());
+  double? valueOf(BackendResult b, Metric metric, String? s) {
+    final r = resultOf(b, s);
+    return r == null ? null : metric.value(r);
+  }
+
+  /// Metrics with at least one value in the run, in table order.
+  List<Metric> get availableMetrics {
+    final r = run;
+    if (r == null) return const [];
+    return Metrics.available([
+      for (final b in r.backends) ...b.scenarios.values,
+    ], Metrics.table);
+  }
+
+  /// The headline metric of the selected scenario: sustainable (v2) or
+  /// average (v1).
+  Metric get headline => Metrics.headlineFor(
+    backendsIn(scenario).map((b) => resultOf(b)).whereType<ScenarioResult>(),
+  );
 
   BackendResult? get detailBackend {
     final r = run;
-    if (r == null) return null;
-    final visible = visibleBackends;
     final key = detailKey;
-    if (key != null) {
-      final b = r.backend(key);
-      if (b != null) return b;
-    }
-    if (visible.isEmpty) return null;
-    return rank(visible, headline).first;
+    if (r == null || key == null) return null;
+    return r.backend(key);
   }
 
-  /// Backends sorted by [metric], best first; missing values last.
-  List<BackendResult> rank(List<BackendResult> backends, Metric metric) {
+  /// Backends sorted by [metric] in [scenario], best first; missing values
+  /// last, alphabetical among equals so ties have a stable order.
+  List<BackendResult> rank(
+    List<BackendResult> backends,
+    Metric metric, [
+    String? scenario,
+  ]) {
+    final s = scenario ?? this.scenario;
     final sorted = [...backends];
     sorted.sort((a, b) {
-      final va = _value(a, metric);
-      final vb = _value(b, metric);
+      final va = valueOf(a, metric, s);
+      final vb = valueOf(b, metric, s);
       if (va == null && vb == null) return a.name.compareTo(b.name);
       if (va == null) return 1;
       if (vb == null) return -1;
-      return metric.higherIsBetter ? vb.compareTo(va) : va.compareTo(vb);
+      final c = metric.higherIsBetter ? vb.compareTo(va) : va.compareTo(vb);
+      return c != 0 ? c : a.name.compareTo(b.name);
     });
     return sorted;
-  }
-
-  double? _value(BackendResult b, Metric metric) {
-    final r = resultOf(b);
-    return r == null ? null : metric.value(r);
   }
 
   /// Index entries comparable with the selected run, oldest first, excluding

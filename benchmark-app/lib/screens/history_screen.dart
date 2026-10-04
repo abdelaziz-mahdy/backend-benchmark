@@ -98,12 +98,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final scenario = state.scenario;
     if (run == null || scenario == null) return const SizedBox.shrink();
     final names = {for (final b in run.backends) b.key: b.name};
-    final allowed = state.languages.isEmpty
-        ? null
-        : {
-            for (final b in run.backends)
-              if (state.languages.contains(b.language)) b.key,
-          };
     final groups = [
       for (final g in state.historyGroups)
         HistoryGroup.build(
@@ -116,6 +110,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
     ];
     return PageBody(
       children: [
+        PageTitle(
+          title: 'History',
+          subtitle: 'How results changed across runs',
+          onBack: state.goHome,
+        ),
+        ScenarioChips(
+          scenarios: run.scenarios,
+          selected: scenario,
+          onSelected: state.setScenario,
+        ),
         Wrap(
           spacing: 12,
           runSpacing: 8,
@@ -132,7 +136,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 for (final m in _historyMetrics)
                   ButtonSegment(
                     value: m,
-                    label: Text(m.short, style: const TextStyle(fontSize: 12)),
+                    label: Text(
+                      m == Metrics.sustainable ? 'Load' : m.short,
+                      softWrap: false,
+                      style: const TextStyle(fontSize: 12),
+                    ),
                     tooltip: m.help,
                   ),
               ],
@@ -146,16 +154,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
           'comparable inside a chart.',
           style: TextStyle(color: kTextMuted, fontSize: 12.5),
         ),
-        for (final g in groups) _card(g, allowed),
+        for (final g in groups) _card(g),
       ],
     );
   }
 
-  Widget _card(HistoryGroup g, Set<String>? allowed) {
+  Widget _card(HistoryGroup g) {
     final first = g.runs.isEmpty ? null : g.runs.first;
-    final lines = allowed == null
-        ? g.lines
-        : g.lines.where((l) => allowed.contains(l.$1)).toList();
+    final lines = g.lines;
     final legacy = first?.isLegacy ?? false;
     return SectionCard(
       title:
@@ -167,7 +173,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ].join(' · '),
       child: lines.isEmpty
           ? const Text(
-              'No results for this scenario and filter.',
+              'No results for this scenario.',
               style: TextStyle(color: kTextMuted, fontSize: 12.5),
             )
           : Column(

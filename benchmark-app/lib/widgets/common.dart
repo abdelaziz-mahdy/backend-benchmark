@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../models/metrics.dart';
 import '../models/results.dart';
 import '../utils/colors.dart';
 import '../utils/theme_constants.dart';
 
-/// Card with a title row, used for every section.
+/// Card with a title row, used for every section. The header always keeps
+/// its 16 px inset; [fullBleed] lets the body run edge to edge (tables).
 class SectionCard extends StatelessWidget {
   final String title;
   final String? subtitle;
   final Widget? trailing;
   final Widget child;
-  final EdgeInsetsGeometry padding;
+  final bool fullBleed;
 
   const SectionCard({
     super.key,
@@ -18,7 +20,7 @@ class SectionCard extends StatelessWidget {
     this.subtitle,
     this.trailing,
     required this.child,
-    this.padding = const EdgeInsets.fromLTRB(16, 14, 16, 16),
+    this.fullBleed = false,
   });
 
   @override
@@ -29,42 +31,167 @@ class SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(kRadius),
         border: Border.all(color: kBorder),
       ),
-      padding: padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: kTextPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 2),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        subtitle!,
-                        style: const TextStyle(color: kTextMuted, fontSize: 12),
+                        title,
+                        style: const TextStyle(
+                          color: kTextPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle!,
+                          style: const TextStyle(
+                            color: kTextMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              ?trailing,
-            ],
+                ?trailing,
+              ],
+            ),
           ),
           const SizedBox(height: 12),
-          child,
+          Padding(
+            padding: fullBleed
+                ? const EdgeInsets.only(bottom: 6)
+                : const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: child,
+          ),
         ],
       ),
+    );
+  }
+}
+
+/// Back link plus a page title, at the top of every page but the home.
+class PageTitle extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final VoidCallback onBack;
+  final Widget? trailing;
+
+  const PageTitle({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.onBack,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        TextButton.icon(
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back, size: 16),
+          label: const Text('All frameworks'),
+          style: TextButton.styleFrom(
+            foregroundColor: kBlue,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: kTextPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (subtitle != null)
+                Text(
+                  subtitle!,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: kTextMuted, fontSize: 12),
+                ),
+            ],
+          ),
+        ),
+        ?trailing,
+      ],
+    );
+  }
+}
+
+/// One row of scenario chips; the only place a scenario is picked.
+class ScenarioChips extends StatelessWidget {
+  final List<String> scenarios;
+  final String? selected;
+  final ValueChanged<String> onSelected;
+
+  /// Scenarios that would show nothing (greyed, still selectable).
+  final Set<String> empty;
+
+  const ScenarioChips({
+    super.key,
+    required this.scenarios,
+    required this.selected,
+    required this.onSelected,
+    this.empty = const {},
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(right: 4),
+          child: Text(
+            'Scenario',
+            style: TextStyle(color: kTextMuted, fontSize: 12),
+          ),
+        ),
+        for (final s in scenarios)
+          Tooltip(
+            message: scenarioHelp(s),
+            waitDuration: _tooltipDelay,
+            child: ChoiceChip(
+              label: Text(scenarioLabel(s)),
+              selected: selected == s,
+              onSelected: (_) => onSelected(s),
+              labelStyle: TextStyle(
+                fontSize: 12,
+                color: selected == s
+                    ? kTextPrimary
+                    : (empty.contains(s) ? kTextDim : kTextMuted),
+              ),
+              selectedColor: kBlue.withValues(alpha: 0.2),
+              backgroundColor: kBackground,
+              side: BorderSide(color: selected == s ? kBlue : kBorder),
+              showCheckmark: false,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+      ],
     );
   }
 }

@@ -11,6 +11,9 @@ import '../widgets/charts.dart';
 import '../widgets/common.dart';
 import '../widgets/implementation.dart';
 
+/// Two to four frameworks side by side: the headline in every scenario,
+/// then a grouped metric table, charts and implementation facts for the
+/// selected scenario.
 class CompareScreen extends StatefulWidget {
   const CompareScreen({super.key});
 
@@ -22,40 +25,61 @@ enum _OverTime { cpu, memory, dbCpu, rps }
 
 class _CompareScreenState extends State<CompareScreen> {
   _OverTime _overTime = _OverTime.cpu;
+  bool _more = false;
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardState>();
-    final visible = state.visibleBackends;
-    if (state.run == null || visible.isEmpty) {
-      return const PageBody(
-        children: [
-          EmptyState(
-            icon: Icons.filter_list_off,
-            title: 'No frameworks match the filters',
-          ),
-        ],
-      );
-    }
-    final selected = [
-      for (final k in state.compareKeys)
-        ?visible.where((b) => b.key == k).firstOrNull,
-    ];
+    final run = state.run;
+    if (run == null) return const SizedBox.shrink();
+    final picked = [for (final k in state.compareKeys) ?run.backend(k)];
+    final selected = state.compared(state.scenario);
     return PageBody(
       children: [
-        _Chooser(state: state, visible: visible),
-        if (selected.length < 2)
+        PageTitle(
+          title: picked.length < 2
+              ? 'Compare'
+              : picked.map((b) => b.name).join(' vs '),
+          subtitle: picked.length < 2
+              ? null
+              : 'Remove one with ×, add more from the home page.',
+          onBack: state.goHome,
+        ),
+        _Picked(state: state, picked: picked),
+        if (picked.length < 2)
           const EmptyState(
             icon: Icons.compare_arrows,
             title: 'Pick at least two frameworks to compare',
-            message: 'Tap the chips above, or tick rows on the Overview.',
+            message:
+                'On the home page, tap "Compare" on a row or open a row '
+                'and tap "Compare with the leaders".',
           )
         else ...[
-          _Bars(state: state, selected: selected),
-          if (selected.any((b) => state.resultOf(b)!.steps.isNotEmpty))
-            _steps(state, selected),
-          _overTimeCard(state, selected),
-          _Table(state: state, selected: selected),
+          _AllScenarios(state: state, picked: picked),
+          ScenarioChips(
+            scenarios: run.scenarios,
+            selected: state.scenario,
+            onSelected: state.setScenario,
+          ),
+          if (selected.length < 2)
+            EmptyState(
+              icon: Icons.info_outline,
+              title:
+                  'Fewer than two of them were measured in '
+                  '${scenarioLabel(state.scenario ?? '')}',
+              message: 'Pick another scenario above.',
+            )
+          else ...[
+            _Table(
+              state: state,
+              selected: selected,
+              more: _more,
+              onMore: () => setState(() => _more = !_more),
+            ),
+            if (selected.any((b) => state.resultOf(b)!.steps.isNotEmpty))
+              _steps(state, selected),
+            _overTimeCard(state, selected),
+          ],
         ],
       ],
     );
@@ -123,11 +147,28 @@ class _CompareScreenState extends State<CompareScreen> {
       _OverTime.rps: series.any((s) => s.$2.series.containsKey('rps')),
     };
     final mode = available[_overTime]! ? _overTime : _OverTime.cpu;
-    final (field, format) = switch (mode) {
-      _OverTime.cpu => ('app_cpu', (double v) => '${v.toStringAsFixed(0)}%'),
-      _OverTime.memory => ('app_mem_mb', (double v) => '${formatNumber(v)} MB'),
-      _OverTime.dbCpu => ('db_cpu', (double v) => '${v.toStringAsFixed(0)}%'),
-      _OverTime.rps => ('rps', formatNumber),
+    final field = switch (mode) {
+      _OverTime.cpu => 'app_cpu',
+      _OverTime.memory => 'app_mem_mb',
+      _OverTime.dbCpu => 'db_cpu',
+      _OverTime.rps => 'rps',
+    };
+    final chart = switch (mode) {
+      _OverTime.memory => TimeSeriesChart(
+        series: series,
+        field: field,
+        formatFor: memoryAxisFormatter,
+      ),
+      _OverTime.rps => TimeSeriesChart(
+        series: series,
+        field: field,
+        format: formatNumber,
+      ),
+      _ => TimeSeriesChart(
+        series: series,
+        field: field,
+        format: (v) => '${v.toStringAsFixed(0)}%',
+      ),
     };
     return SectionCard(
       title: 'Over time',
@@ -154,7 +195,7 @@ class _CompareScreenState extends State<CompareScreen> {
       ),
       child: Column(
         children: [
-          TimeSeriesChart(series: series, field: field, format: format),
+          chart,
           const SizedBox(height: 8),
           ChartLegend(backends: [for (final s in series) s.$1]),
         ],
@@ -163,336 +204,606 @@ class _CompareScreenState extends State<CompareScreen> {
   }
 }
 
-class _Chooser extends StatelessWidget {
+/// The frameworks being compared, each removable.
+class _Picked extends StatelessWidget {
   final DashboardState state;
-  final List<BackendResult> visible;
+  final List<BackendResult> picked;
 
-  const _Chooser({required this.state, required this.visible});
+  const _Picked({required this.state, required this.picked});
 
   @override
-  Widget build(BuildContext context) {
-    final ranked = state.rank(visible, state.headline);
-    final full = state.compareKeys.length >= DashboardState.maxCompare;
-    return SectionCard(
-      title: 'Frameworks',
-      subtitle: full
-          ? 'Comparing the maximum of ${DashboardState.maxCompare}. Remove one to add another.'
-          : 'Pick 2 to ${DashboardState.maxCompare}. Ordered by ${state.headline.label.toLowerCase()}.',
-      trailing: state.compareKeys.isEmpty
-          ? TextButton(
-              onPressed: () {
-                for (final b in ranked.take(3)) {
-                  state.toggleCompare(b.key);
-                }
-              },
-              child: const Text('Top 3'),
-            )
-          : TextButton(
-              onPressed: () {
-                for (final k in [...state.compareKeys]) {
-                  state.toggleCompare(k);
-                }
-              },
-              child: const Text('Clear'),
-            ),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
-          for (final b in ranked)
-            _chip(
-              b,
-              state.compareKeys.contains(b.key),
-              state.canAddCompare(b.key),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _chip(BackendResult b, bool on, bool enabled) {
-    final color = BackendColors.of(b.key);
-    return FilterChip(
-      avatar: ColorDot(color: enabled ? color : kTextDim, size: 9),
-      label: Text(b.name),
-      selected: on,
-      onSelected: enabled ? (_) => state.toggleCompare(b.key) : null,
-      showCheckmark: false,
-      labelStyle: TextStyle(
-        fontSize: 12.5,
-        color: on ? kTextPrimary : (enabled ? kTextSecondary : kTextDim),
-      ),
-      color: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.selected)
-            ? color.withValues(alpha: 0.18)
-            : kBackground,
-      ),
-      side: BorderSide(color: on ? color : kBorder),
-      tooltip: enabled
-          ? null
-          : 'Compare holds up to ${DashboardState.maxCompare}',
-    );
-  }
+  Widget build(BuildContext context) => Wrap(
+    spacing: 6,
+    runSpacing: 6,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      for (final b in picked)
+        InputChip(
+          avatar: ColorDot(color: BackendColors.of(b.key), size: 9),
+          label: Text(b.name),
+          labelStyle: const TextStyle(color: kTextPrimary, fontSize: 12.5),
+          backgroundColor: kCardBg,
+          side: const BorderSide(color: kBorder),
+          deleteIconColor: kTextMuted,
+          deleteButtonTooltipMessage: 'Remove ${b.name}',
+          visualDensity: VisualDensity.compact,
+          onDeleted: () => state.toggleCompare(b.key),
+        ),
+      if (picked.length < DashboardState.maxCompare)
+        ActionChip(
+          avatar: const Icon(Icons.add, size: 14, color: kTextMuted),
+          label: const Text('Add from the list'),
+          labelStyle: const TextStyle(color: kTextMuted, fontSize: 12.5),
+          backgroundColor: kBackground,
+          side: const BorderSide(color: kBorder),
+          visualDensity: VisualDensity.compact,
+          onPressed: state.goHome,
+        ),
+    ],
+  );
 }
 
-/// One small bar group per metric; the best value is bold.
-class _Bars extends StatelessWidget {
-  final DashboardState state;
-  final List<BackendResult> selected;
+/// Which values win a row: the best when at least two frameworks have a
+/// value and the best is not tied after display rounding; otherwise none.
+class _RowVerdict {
+  final Map<String, double?> values;
+  final Map<String, String> shown;
+  final String? bestKey;
+  final double? best;
+  final double max;
+  final bool tie;
 
-  const _Bars({required this.state, required this.selected});
+  const _RowVerdict({
+    required this.values,
+    required this.shown,
+    required this.bestKey,
+    required this.best,
+    required this.max,
+    required this.tie,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    final results = selected.map(state.resultOf).whereType<ScenarioResult>();
-    final metrics = Metrics.available(results, [
-      state.headline,
-      Metrics.peak,
-      Metrics.p99,
-      Metrics.cpu,
-      Metrics.memory,
-      Metrics.rpsPerCore,
-    ]);
-    return LayoutBuilder(
-      builder: (context, c) {
-        final cols = c.maxWidth >= 1100 ? 3 : (c.maxWidth >= 700 ? 2 : 1);
-        final w = (c.maxWidth - 16 * (cols - 1)) / cols;
-        return Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: [
-            for (final m in metrics) SizedBox(width: w, child: _group(m)),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _group(Metric m) {
-    final values = {
-      for (final b in selected) b.key: m.value(state.resultOf(b)!),
+  static _RowVerdict of(
+    Metric m,
+    List<BackendResult> backends,
+    double? Function(BackendResult) value,
+  ) {
+    final values = {for (final b in backends) b.key: value(b)};
+    final shown = {
+      for (final e in values.entries) e.key: formatMetricShort(m, e.value),
     };
-    final present = values.values.whereType<double>();
-    final max = present.isEmpty ? 0.0 : present.reduce((a, b) => a > b ? a : b);
-    final best = state.rank(selected, m).first.key;
-    return SectionCard(
-      title: m.label,
-      subtitle: m.higherIsBetter ? 'Higher is better' : 'Lower is better',
-      child: Column(
-        children: [
-          for (final b in selected)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 110,
-                    child: Text(
-                      b.name,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: kTextSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: InlineBar(
-                      value: values[b.key],
-                      max: max,
-                      color: BackendColors.of(b.key),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      formatMetricShort(m, values[b.key]),
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        color: b.key == best ? kTextPrimary : kTextSecondary,
-                        fontWeight: b.key == best
-                            ? FontWeight.w700
-                            : FontWeight.w400,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
+    final present = values.entries.where((e) => e.value != null).toList();
+    if (present.length < 2) {
+      return _RowVerdict(
+        values: values,
+        shown: shown,
+        bestKey: null,
+        best: null,
+        max: present.isEmpty ? 0 : present.first.value!,
+        tie: false,
+      );
+    }
+    present.sort(
+      (a, b) => m.higherIsBetter
+          ? b.value!.compareTo(a.value!)
+          : a.value!.compareTo(b.value!),
     );
+    final bestEntry = present.first;
+    final tie = present
+        .skip(1)
+        .any((e) => shown[e.key] == shown[bestEntry.key]);
+    final max = present.map((e) => e.value!).reduce((a, b) => a > b ? a : b);
+    return _RowVerdict(
+      values: values,
+      shown: shown,
+      bestKey: tie ? null : bestEntry.key,
+      best: bestEntry.value,
+      max: max,
+      tie: tie,
+    );
+  }
+
+  bool isBest(String key) => bestKey == key;
+
+  /// "−42%" for a smaller higher-is-better value, "2.3× slower" / "1.8× more"
+  /// for a larger lower-is-better one, "=" for a tie, "" for the best.
+  String delta(Metric m, String key) {
+    final v = values[key], b = best;
+    if (v == null || b == null) return '';
+    if (shown[key] == formatMetricShort(m, b)) return tie ? '=' : '';
+    if (m.higherIsBetter) {
+      if (b <= 0) return '';
+      return '−${((1 - v / b) * 100).round()}%';
+    }
+    if (b <= 0) return '';
+    final x = v / b;
+    final word = m.unit == Unit.ms ? 'slower' : 'more';
+    return '${x >= 10 ? x.round() : x.toStringAsFixed(1)}× $word';
   }
 }
 
+/// Grouped side-by-side table. Desktop: metrics as rows, one column per
+/// framework, each value with a bar scaled to the row's largest value and
+/// its distance from the best. Phone: one card per framework.
 class _Table extends StatelessWidget {
   final DashboardState state;
   final List<BackendResult> selected;
+  final bool more;
+  final VoidCallback onMore;
 
-  const _Table({required this.state, required this.selected});
+  const _Table({
+    required this.state,
+    required this.selected,
+    required this.more,
+    required this.onMore,
+  });
+
+  static const _groups = <(String, String)>[
+    ('Throughput', 'Higher is better. Sustainable load is the headline.'),
+    (
+      'Latency and errors',
+      'At each framework\'s own sustainable load, so a slower framework can '
+          'show a lower p99 by serving less. Lower is better.',
+    ),
+    ('Resources', 'Average over the sustainable step. Lower is better.'),
+    ('Efficiency', 'Throughput per unit of resource. Higher is better.'),
+  ];
+
+  /// Group title, help, and its metrics (the secondary ones only with
+  /// [more]); groups with nothing to show are left out.
+  List<(String, String, List<Metric>)> _rows(Iterable<ScenarioResult> rs) {
+    final head = Metrics.headlineFor(rs);
+    final by = <String, (List<Metric>, List<Metric>)>{
+      'Throughput': ([head, Metrics.peak], []),
+      'Latency and errors': (
+        [Metrics.p50, Metrics.p99, Metrics.errors],
+        [Metrics.p90, Metrics.p999],
+      ),
+      'Resources': ([Metrics.cpu, Metrics.memory], [Metrics.dbCpu]),
+      'Efficiency': ([Metrics.rpsPerCore], [Metrics.rpsPer100Mb]),
+    };
+    return [
+      for (final (title, help) in _groups)
+        (
+          title,
+          help,
+          Metrics.available(rs, [...by[title]!.$1, if (more) ...by[title]!.$2]),
+        ),
+    ].where((g) => g.$3.isNotEmpty).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     final results = selected.map(state.resultOf).whereType<ScenarioResult>();
-    final metrics = Metrics.available(results, Metrics.all);
+    final groups = _rows(results);
     final sha = state.run!.dirty ? null : state.run!.gitSha;
+    final impl = <(String, String? Function(BackendResult))>[
+      ('Server', (b) => b.implementation?.server),
+      ('Concurrency', (b) => b.implementation?.concurrency),
+      ('DB access', (b) => b.implementation?.dbAccess),
+      ('DB pool', (b) => b.implementation?.pool),
+      ('API', (b) => b.apiLabel),
+      ('Database', (b) => b.storageLabel),
+      ('Versions', (b) => b.subtitle.isEmpty ? null : b.subtitle),
+    ];
     return SectionCard(
-      title: 'Side by side',
+      title: 'Side by side · ${scenarioLabel(state.scenario ?? '')}',
       subtitle:
-          'Best value per row in green. The lower half shows how each one is '
-          'implemented, so you can judge whether the comparison is fair.',
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowHeight: 40,
-          dataRowMinHeight: 34,
-          dataRowMaxHeight: double.infinity,
-          columnSpacing: 28,
-          horizontalMargin: 4,
-          columns: [
-            const DataColumn(
-              label: Text(
-                'Metric',
-                style: TextStyle(color: kTextMuted, fontSize: 12),
-              ),
-            ),
+          'Best value per row in green; equal values are not ranked. Bars '
+          'show each value against the largest in its row.',
+      trailing: TextButton.icon(
+        onPressed: onMore,
+        icon: Icon(more ? Icons.expand_less : Icons.expand_more, size: 16),
+        label: Text(more ? 'Fewer rows' : 'More rows'),
+        style: TextButton.styleFrom(
+          visualDensity: VisualDensity.compact,
+          textStyle: labelStyle(context, 12),
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, c) => c.maxWidth < kNarrow
+            ? _cards(groups, impl, sha)
+            : _table(c.maxWidth, groups, impl, sha),
+      ),
+    );
+  }
+
+  static const _labelStyle = TextStyle(color: kTextSecondary, fontSize: 12.5);
+  static const _groupStyle = TextStyle(
+    color: kTextPrimary,
+    fontSize: 12.5,
+    fontWeight: FontWeight.w600,
+  );
+  static const _helpStyle = TextStyle(color: kTextDim, fontSize: 11);
+
+  Widget _table(
+    double width,
+    List<(String, String, List<Metric>)> groups,
+    List<(String, String? Function(BackendResult))> impl,
+    String? sha,
+  ) {
+    const labelW = 150.0;
+    final colW = ((width - labelW) / selected.length).clamp(150.0, 320.0);
+    final table = Table(
+      columnWidths: {
+        0: const FixedColumnWidth(labelW),
+        for (var i = 0; i < selected.length; i++) i + 1: FixedColumnWidth(colW),
+      },
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      children: [
+        TableRow(
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: kBorder)),
+          ),
+          children: [
+            const SizedBox(height: 32),
             for (final b in selected)
-              DataColumn(
-                label: Row(
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     ColorDot(color: BackendColors.of(b.key), size: 8),
                     const SizedBox(width: 6),
-                    Text(
-                      b.name,
-                      style: const TextStyle(
-                        color: kTextPrimary,
-                        fontSize: 12.5,
+                    Flexible(
+                      child: Text(
+                        b.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: kTextPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
           ],
-          rows: [
-            for (final m in metrics) _row(m),
-            _heading('Implementation'),
-            _textRow('Server', (b) => b.implementation?.server),
-            _textRow('Concurrency', (b) => b.implementation?.concurrency),
-            _textRow('DB access', (b) => b.implementation?.dbAccess),
-            _textRow('DB pool', (b) => b.implementation?.pool),
-            _textRow('API', (b) => b.apiLabel),
-            _textRow('Database', (b) => b.storageLabel),
-            _textRow('Version', (b) => b.version),
-            _textRow('Runtime', (b) => b.runtime),
-            DataRow(
-              cells: [
-                _label('Source'),
-                for (final b in selected)
-                  DataCell(
-                    b.sourceUrl == null
-                        ? _dim('—')
-                        : _cell(
-                            SourceLink(
-                              url: b.sourceUrlAt(sha) ?? b.sourceUrl!,
-                              label: 'backends/${b.path}',
-                            ),
-                          ),
+        ),
+        for (final (title, help, metrics) in groups) ...[
+          _groupRow(title, help),
+          for (final m in metrics) _metricRow(m),
+        ],
+        _groupRow(
+          'Implementation',
+          'How each one is run, so you can judge whether the comparison is '
+              'fair.',
+        ),
+        for (final (label, value) in impl)
+          TableRow(
+            children: [
+              _label(label),
+              for (final b in selected)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 5, 12, 5),
+                  child: Text(
+                    value(b) ?? '—',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: value(b) == null ? kTextDim : kTextSecondary,
+                      fontSize: 12,
+                      height: 1.3,
+                    ),
                   ),
-              ],
-            ),
+                ),
+            ],
+          ),
+        TableRow(
+          children: [
+            _label('Source'),
+            for (final b in selected)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 5, 12, 5),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: b.sourceUrl == null
+                      ? const Text('—', style: TextStyle(color: kTextDim))
+                      : SourceLink(
+                          url: b.sourceUrlAt(sha) ?? b.sourceUrl!,
+                          label: 'backends/${b.path}',
+                          fontSize: 12,
+                        ),
+                ),
+              ),
           ],
         ),
-      ),
+      ],
+    );
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: table,
     );
   }
 
-  static const _cellWidth = 230.0;
-
-  Widget _cell(Widget child) => ConstrainedBox(
-    constraints: const BoxConstraints(maxWidth: _cellWidth),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: child,
-    ),
+  Widget _label(String text) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Text(text, style: _labelStyle),
   );
 
-  Widget _dim(String s) =>
-      Text(s, style: const TextStyle(color: kTextDim, fontSize: 12.5));
-
-  DataCell _label(String text) => DataCell(
-    Text(text, style: const TextStyle(color: kTextSecondary, fontSize: 12.5)),
-  );
-
-  DataRow _heading(String text) => DataRow(
-    color: WidgetStatePropertyAll(kBlue.withValues(alpha: 0.06)),
-    cells: [
-      DataCell(
-        Text(
-          text,
-          style: const TextStyle(
-            color: kTextPrimary,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+  TableRow _groupRow(String title, String help) => TableRow(
+    children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(0, 18, 0, 6),
+        child: Text(title, style: _groupStyle),
       ),
-      for (final _ in selected) const DataCell(SizedBox.shrink()),
+      for (var i = 0; i < selected.length; i++)
+        i == 0
+            ? Padding(
+                padding: const EdgeInsets.fromLTRB(0, 18, 12, 6),
+                child: Text(help, style: _helpStyle),
+              )
+            : const SizedBox.shrink(),
     ],
   );
 
-  DataRow _textRow(String label, String? Function(BackendResult) value) =>
-      DataRow(
-        cells: [
-          _label(label),
-          for (final b in selected)
-            DataCell(
-              value(b) == null
-                  ? _dim('—')
-                  : _cell(
-                      Text(
-                        value(b)!,
-                        softWrap: true,
-                        style: const TextStyle(
-                          color: kTextSecondary,
-                          fontSize: 12.5,
-                          height: 1.3,
-                        ),
-                      ),
-                    ),
-            ),
-        ],
-      );
-
-  DataRow _row(Metric m) {
-    final best = state.rank(selected, m).first.key;
-    return DataRow(
-      cells: [
-        DataCell(
-          Row(
-            children: [
-              Text(
-                m.label,
-                style: const TextStyle(color: kTextSecondary, fontSize: 12.5),
-              ),
-              InfoIcon(m.help),
-            ],
+  TableRow _metricRow(Metric m) {
+    final v = _RowVerdict.of(m, selected, (b) => m.value(state.resultOf(b)!));
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Tooltip(
+            message: m.help,
+            waitDuration: const Duration(milliseconds: 400),
+            child: Text(m.label, style: _labelStyle),
           ),
         ),
         for (final b in selected)
-          DataCell(
-            Text(
-              formatMetric(m, m.value(state.resultOf(b)!)),
-              style: TextStyle(
-                color: b.key == best && m.value(state.resultOf(b)!) != null
-                    ? kGreen
-                    : kTextSecondary,
-                fontSize: 12.5,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 5, 12, 5),
+            child: _ValueBar(m: m, verdict: v, backend: b),
+          ),
+      ],
+    );
+  }
+
+  /// Phone: one card per framework with the same groups.
+  Widget _cards(
+    List<(String, String, List<Metric>)> groups,
+    List<(String, String? Function(BackendResult))> impl,
+    String? sha,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final b in selected)
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: kBackground,
+              borderRadius: BorderRadius.circular(kRadius),
+              border: Border.all(color: kBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                BackendLabel(backend: b),
+                for (final (title, _, metrics) in groups) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
+                    child: Text(title, style: _groupStyle),
+                  ),
+                  for (final m in metrics)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 120,
+                            child: Text(m.label, style: _labelStyle),
+                          ),
+                          Expanded(
+                            child: _ValueBar(
+                              m: m,
+                              verdict: _RowVerdict.of(
+                                m,
+                                selected,
+                                (x) => m.value(state.resultOf(x)!),
+                              ),
+                              backend: b,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(0, 12, 0, 4),
+                  child: Text('Implementation', style: _groupStyle),
+                ),
+                for (final (label, value) in impl)
+                  if (value(b) != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 120,
+                            child: Text(label, style: _labelStyle),
+                          ),
+                          Expanded(child: factText(value(b)!)),
+                        ],
+                      ),
+                    ),
+                if (b.sourceUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: SourceLink(
+                      url: b.sourceUrlAt(sha) ?? b.sourceUrl!,
+                      label: 'backends/${b.path}',
+                      fontSize: 12,
+                    ),
+                  ),
+              ],
             ),
           ),
       ],
+    );
+  }
+}
+
+/// One table cell: right-aligned value (green when it is the row's clear
+/// best), the distance from the best, and a thin bar for magnitude.
+class _ValueBar extends StatelessWidget {
+  final Metric m;
+  final _RowVerdict verdict;
+  final BackendResult backend;
+
+  const _ValueBar({
+    required this.m,
+    required this.verdict,
+    required this.backend,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final key = backend.key;
+    final value = verdict.values[key];
+    final best = verdict.isBest(key);
+    final delta = verdict.delta(m, key);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (delta.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  delta,
+                  style: const TextStyle(color: kTextDim, fontSize: 11),
+                ),
+              ),
+            Text(
+              verdict.shown[key]!,
+              style: TextStyle(
+                color: value == null
+                    ? kTextDim
+                    : best
+                    ? kGreen
+                    : kTextPrimary,
+                fontSize: 13,
+                fontWeight: best ? FontWeight.w700 : FontWeight.w500,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        InlineBar(
+          value: value,
+          max: verdict.max,
+          color: BackendColors.of(key).withValues(alpha: 0.7),
+          height: 4,
+        ),
+      ],
+    );
+  }
+}
+
+/// The headline number of every picked framework in every scenario, so the
+/// comparison is not limited to the scenario the charts show.
+class _AllScenarios extends StatelessWidget {
+  final DashboardState state;
+  final List<BackendResult> picked;
+
+  const _AllScenarios({required this.state, required this.picked});
+
+  @override
+  Widget build(BuildContext context) {
+    final scenarios = state.run!.scenarios;
+    final metric = Metrics.headlineFor([
+      for (final b in picked) ...b.scenarios.values,
+    ]);
+    return SectionCard(
+      title: '${metric.label} in every scenario',
+      subtitle:
+          'Best per scenario in green; equal values are not ranked. '
+          'Tap a scenario for the rest of its numbers.',
+      fullBleed: true,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Table(
+            defaultColumnWidth: const FixedColumnWidth(150),
+            columnWidths: const {0: FixedColumnWidth(96)},
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: [
+              TableRow(
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: kBorder)),
+                ),
+                children: [
+                  const SizedBox(height: 30),
+                  for (final b in picked)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          ColorDot(color: BackendColors.of(b.key), size: 8),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              b.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: kTextPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              for (final s in scenarios)
+                TableRow(
+                  children: [
+                    InkWell(
+                      onTap: () => state.setScenario(s),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Text(
+                          scenarioLabel(s),
+                          style: TextStyle(
+                            color: s == state.scenario
+                                ? kTextPrimary
+                                : kTextSecondary,
+                            fontSize: 12.5,
+                            fontWeight: s == state.scenario
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    ),
+                    for (final b in picked)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 5, 12, 5),
+                        child: _ValueBar(
+                          m: metric,
+                          verdict: _RowVerdict.of(
+                            metric,
+                            picked,
+                            (x) => state.valueOf(x, metric, s),
+                          ),
+                          backend: b,
+                        ),
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

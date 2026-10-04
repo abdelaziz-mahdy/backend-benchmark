@@ -216,16 +216,23 @@ class StepLoadChart extends StatelessWidget {
 class TimeSeriesChart extends StatelessWidget {
   final List<(BackendResult, TimeSeries)> series;
   final String field;
-  final String Function(double) format;
+
+  /// Fixed formatter for axis labels and tooltips.
+  final String Function(double)? format;
+
+  /// Formatter chosen from the chart's maximum, so one unit serves the
+  /// whole axis (memory: MB or GB, never both).
+  final String Function(double) Function(double maxY)? formatFor;
   final double height;
 
   const TimeSeriesChart({
     super.key,
     required this.series,
     required this.field,
-    required this.format,
+    this.format,
+    this.formatFor,
     this.height = 220,
-  });
+  }) : assert(format != null || formatFor != null);
 
   @override
   Widget build(BuildContext context) {
@@ -265,6 +272,7 @@ class TimeSeriesChart extends StatelessWidget {
       );
     }
     final yInterval = _niceInterval(maxY);
+    final format = formatFor?.call(maxY) ?? this.format!;
     return SizedBox(
       height: height,
       child: LineChart(
