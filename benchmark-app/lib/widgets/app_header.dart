@@ -70,45 +70,66 @@ class AppHeader extends StatelessWidget {
               ),
             ),
           );
-          final links = Wrap(
-            spacing: 2,
-            alignment: WrapAlignment.end,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              if (entry != null)
-                _Link(
+          final dataLink = entry == null
+              ? null
+              : _Link(
                   icon: Icons.storage_outlined,
                   label: 'Data: ${dataLabel(entry)}',
                   tooltip: 'Which run is shown; change it on the Method page',
                   flagged: entry.dirty || entry.isLegacy,
                   selected: false,
                   onTap: () => state.setPage(DashboardPage.method),
-                ),
-              _Link(
-                icon: Icons.timeline,
-                label: 'History',
-                tooltip: 'How results changed across runs',
-                selected: state.page == DashboardPage.history,
-                onTap: () => state.setPage(DashboardPage.history),
-              ),
-              _Link(
-                icon: Icons.science_outlined,
-                label: "How it's measured",
-                tooltip: 'Method, fairness rules, flags and glossary',
-                selected: state.page == DashboardPage.method,
-                onTap: () => state.setPage(DashboardPage.method),
-              ),
-            ],
+                );
+          final history = _Link(
+            icon: Icons.timeline,
+            label: 'History',
+            tooltip: 'How results changed across runs',
+            selected: state.page == DashboardPage.history,
+            compact: narrow,
+            onTap: () => state.setPage(DashboardPage.history),
+          );
+          final method = _Link(
+            icon: Icons.science_outlined,
+            label: "How it's measured",
+            tooltip: 'Method, fairness rules, flags and glossary',
+            selected: state.page == DashboardPage.method,
+            compact: narrow,
+            onTap: () => state.setPage(DashboardPage.method),
+          );
+          final links = Wrap(
+            spacing: 2,
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [?dataLink, history, method],
           );
           return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
               child: Padding(
                 padding: EdgeInsets.fromLTRB(pad, 8, pad, 6),
+                // Phone: one row (title + icon-only links), data link below,
+                // so nothing wraps onto a stray second line.
                 child: narrow
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [title, links],
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: title,
+                                  ),
+                                ),
+                              ),
+                              history,
+                              method,
+                            ],
+                          ),
+                          ?dataLink,
+                        ],
                       )
                     : Row(
                         children: [
@@ -137,9 +158,13 @@ class _Link extends StatelessWidget {
   final String tooltip;
   final bool selected;
   final bool flagged;
+
+  /// Icon only (label becomes the tooltip/semantics), for phones.
+  final bool compact;
   final VoidCallback onTap;
 
   const _Link({
+    this.compact = false,
     required this.icon,
     required this.label,
     required this.tooltip,
@@ -151,6 +176,14 @@ class _Link extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = selected ? kTextPrimary : kTextMuted;
+    if (compact) {
+      return IconButton(
+        onPressed: onTap,
+        tooltip: label,
+        visualDensity: VisualDensity.compact,
+        icon: Icon(icon, size: 20, color: flagged ? kYellow : color),
+      );
+    }
     return Tooltip(
       message: tooltip,
       waitDuration: const Duration(milliseconds: 500),
