@@ -1,16 +1,17 @@
-FROM dart:3.8.1 AS build
+FROM dart:3.13.5 AS build
 WORKDIR /app
 COPY pubspec.yaml pubspec.lock ./
 RUN dart pub get
 COPY . .
-RUN dart compile exe bin/main.dart -o bin/server
+# dart build (not compile exe): serverpod 4 depends on sqlite3, which has native build hooks.
+RUN dart build cli --target bin/main.dart -o build/server
 
 FROM scratch
 WORKDIR /app
 COPY --from=build /runtime/ /
-COPY --from=build /app/bin/server server
+COPY --from=build /app/build/server/bundle/ ./
 COPY --from=build /app/config/ config/
 COPY --from=build /app/web/ web/
 COPY --from=build /app/migrations/ migrations/
 EXPOSE 8000
-CMD ["/app/server", "--mode=production", "--server-id=default", "--logging=normal", "--role=monolith", "--apply-migrations"]
+CMD ["/app/bin/main", "--mode=production", "--server-id=default", "--logging=normal", "--role=monolith", "--apply-migrations"]

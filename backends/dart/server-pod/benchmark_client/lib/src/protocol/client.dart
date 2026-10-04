@@ -10,57 +10,53 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'dart:async' as _ida;
 
-import 'package:serverpod_client/serverpod_client.dart' as _i1;
+import 'package:benchmark_client/src/protocol/note.dart' as _ibqxzvsy;
+import 'package:http/http.dart' as _i85jenna;
+import 'package:serverpod_client/serverpod_client.dart' as _isc;
 
-import 'dart:async' as _i2;
-
-import 'package:benchmark_client/src/protocol/note.dart' as _i3;
-
-import 'protocol.dart' as _i4;
+import 'protocol.dart' as _il2as5qe;
 
 /// Benchmark API as Serverpod RPC methods (POST /note/<method>), which is how
 /// Serverpod apps are normally called. The k6 scenarios map the shared
 /// operations onto these methods (api_style: serverpod_rpc in backend.yaml).
 /// {@category Endpoint}
-class EndpointNote extends _i1.EndpointRef {
-  EndpointNote(_i1.EndpointCaller caller) : super(caller);
+class EndpointNote extends _isc.EndpointRef {
+  EndpointNote(_isc.EndpointCaller caller) : super(caller);
 
   @override
   String get name => 'note';
 
-  _i2.Future<_i3.Note> createNote(_i3.Note note) =>
-      caller.callServerEndpoint<_i3.Note>('note', 'createNote', {'note': note});
+  _ida.Future<_ibqxzvsy.Note> createNote(_ibqxzvsy.Note note) => caller
+      .callServerEndpoint<_ibqxzvsy.Note>('note', 'createNote', {'note': note});
 
-  _i2.Future<List<_i3.Note>> getNotes(int limit, int offset) =>
-      caller.callServerEndpoint<List<_i3.Note>>('note', 'getNotes', {
+  _ida.Future<List<_ibqxzvsy.Note>> getNotes(int limit, int offset) =>
+      caller.callServerEndpoint<List<_ibqxzvsy.Note>>('note', 'getNotes', {
         'limit': limit,
         'offset': offset,
       });
 
-  _i2.Future<_i3.Note?> getNote(int id) =>
-      caller.callServerEndpoint<_i3.Note?>('note', 'getNote', {'id': id});
+  _ida.Future<_ibqxzvsy.Note?> getNote(int id) =>
+      caller.callServerEndpoint<_ibqxzvsy.Note?>('note', 'getNote', {'id': id});
 
-  _i2.Future<Map<String, String>> noDbEndpoint() => caller
+  _ida.Future<Map<String, String>> noDbEndpoint() => caller
       .callServerEndpoint<Map<String, String>>('note', 'noDbEndpoint', {});
 }
 
-class Client extends _i1.ServerpodClientShared {
+class Client extends _isc.ServerpodClientShared {
   Client(
     String host, {
     dynamic securityContext,
-    @Deprecated(
-      'Use authKeyProvider instead. This will be removed in future releases.',
-    )
-    super.authenticationKeyManager,
     Duration? streamingConnectionTimeout,
     Duration? connectionTimeout,
-    Function(_i1.MethodCallContext, Object, StackTrace)? onFailedCall,
-    Function(_i1.MethodCallContext)? onSucceededCall,
+    Function(_isc.MethodCallContext, Object, StackTrace)? onFailedCall,
+    Function(_isc.MethodCallContext)? onSucceededCall,
     bool? disconnectStreamsOnLostInternetConnection,
+    _i85jenna.Client? httpClientOverride,
   }) : super(
          host,
-         _i4.Protocol(),
+         _il2as5qe.Protocol(),
          securityContext: securityContext,
          streamingConnectionTimeout: streamingConnectionTimeout,
          connectionTimeout: connectionTimeout,
@@ -68,6 +64,7 @@ class Client extends _i1.ServerpodClientShared {
          onSucceededCall: onSucceededCall,
          disconnectStreamsOnLostInternetConnection:
              disconnectStreamsOnLostInternetConnection,
+         httpClientOverride: httpClientOverride,
        ) {
     note = EndpointNote(this);
   }
@@ -75,8 +72,8 @@ class Client extends _i1.ServerpodClientShared {
   late final EndpointNote note;
 
   @override
-  Map<String, _i1.EndpointRef> get endpointRefLookup => {'note': note};
+  Map<String, _isc.EndpointRef> get endpointRefLookup => {'note': note};
 
   @override
-  Map<String, _i1.ModuleEndpointCaller> get moduleLookup => {};
+  Map<String, _isc.ModuleEndpointCaller> get moduleLookup => {};
 }

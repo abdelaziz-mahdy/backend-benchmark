@@ -21,9 +21,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Serverpod Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue),
       home: const MyHomePage(title: 'Serverpod Example'),
     );
   }
@@ -46,15 +44,15 @@ class MyHomePageState extends State<MyHomePage> {
 
   final _textEditingController = TextEditingController();
 
-  // Calls the `hello` method of the `example` endpoint. Will set either the
+  // Calls the benchmark's `noDbEndpoint`. Will set either the
   // `_resultMessage` or `_errorMessage` field, depending on if the call
   // is successful.
   void _callHello() async {
     try {
-      final result = await client.example.hello(_textEditingController.text);
+      final result = await client.note.noDbEndpoint();
       setState(() {
         _errorMessage = null;
-        _resultMessage = result;
+        _resultMessage = result['message'];
       });
     } catch (e) {
       setState(() {
@@ -66,9 +64,7 @@ class MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
+      appBar: AppBar(title: Text(widget.title)),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -77,9 +73,7 @@ class MyHomePageState extends State<MyHomePage> {
               padding: const EdgeInsets.only(bottom: 16.0),
               child: TextField(
                 controller: _textEditingController,
-                decoration: const InputDecoration(
-                  hintText: 'Enter your name',
-                ),
+                decoration: const InputDecoration(hintText: 'Enter your name'),
               ),
             ),
             Padding(
@@ -106,10 +100,7 @@ class _ResultDisplay extends StatelessWidget {
   final String? resultMessage;
   final String? errorMessage;
 
-  const _ResultDisplay({
-    this.resultMessage,
-    this.errorMessage,
-  });
+  const _ResultDisplay({this.resultMessage, this.errorMessage});
 
   @override
   Widget build(BuildContext context) {
@@ -129,9 +120,7 @@ class _ResultDisplay extends StatelessWidget {
     return Container(
       height: 50,
       color: backgroundColor,
-      child: Center(
-        child: Text(text),
-      ),
+      child: Center(child: Text(text)),
     );
   }
 }
