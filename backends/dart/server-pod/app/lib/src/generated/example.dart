@@ -14,15 +14,9 @@ import 'package:serverpod/serverpod.dart' as _i1;
 
 abstract class Example
     implements _i1.SerializableModel, _i1.ProtocolSerialization {
-  Example._({
-    required this.name,
-    required this.data,
-  });
+  Example._({required this.name, required this.data});
 
-  factory Example({
-    required String name,
-    required int data,
-  }) = _ExampleImpl;
+  factory Example({required String name, required int data}) = _ExampleImpl;
 
   factory Example.fromJson(Map<String, dynamic> jsonSerialization) {
     return Example(
@@ -38,26 +32,15 @@ abstract class Example
   /// Returns a shallow copy of this [Example]
   /// with some or all fields replaced by the given arguments.
   @_i1.useResult
-  Example copyWith({
-    String? name,
-    int? data,
-  });
+  Example copyWith({String? name, int? data});
   @override
   Map<String, dynamic> toJson() {
-    return {
-      '__className__': 'Example',
-      'name': name,
-      'data': data,
-    };
+    return {'__className__': 'Example', 'name': name, 'data': data};
   }
 
   @override
   Map<String, dynamic> toJsonForProtocol() {
-    return {
-      '__className__': 'Example',
-      'name': name,
-      'data': data,
-    };
+    return {'__className__': 'Example', 'name': name, 'data': data};
   }
 
   @override
@@ -67,25 +50,14 @@ abstract class Example
 }
 
 class _ExampleImpl extends Example {
-  _ExampleImpl({
-    required String name,
-    required int data,
-  }) : super._(
-         name: name,
-         data: data,
-       );
+  _ExampleImpl({required String name, required int data})
+    : super._(name: name, data: data);
 
   /// Returns a shallow copy of this [Example]
   /// with some or all fields replaced by the given arguments.
   @_i1.useResult
   @override
-  Example copyWith({
-    String? name,
-    int? data,
-  }) {
-    return Example(
-      name: name ?? this.name,
-      data: data ?? this.data,
-    );
+  Example copyWith({String? name, int? data}) {
+    return Example(name: name ?? this.name, data: data ?? this.data);
   }
 }

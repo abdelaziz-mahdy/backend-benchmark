@@ -13,17 +13,10 @@
 import 'package:serverpod/serverpod.dart' as _i1;
 
 abstract class Note implements _i1.TableRow<int?>, _i1.ProtocolSerialization {
-  Note._({
-    this.id,
-    required this.title,
-    required this.content,
-  });
+  Note._({this.id, required this.title, required this.content});
 
-  factory Note({
-    int? id,
-    required String title,
-    required String content,
-  }) = _NoteImpl;
+  factory Note({int? id, required String title, required String content}) =
+      _NoteImpl;
 
   factory Note.fromJson(Map<String, dynamic> jsonSerialization) {
     return Note(
@@ -50,11 +43,7 @@ abstract class Note implements _i1.TableRow<int?>, _i1.ProtocolSerialization {
   /// Returns a shallow copy of this [Note]
   /// with some or all fields replaced by the given arguments.
   @_i1.useResult
-  Note copyWith({
-    int? id,
-    String? title,
-    String? content,
-  });
+  Note copyWith({int? id, String? title, String? content});
   @override
   Map<String, dynamic> toJson() {
     return {
@@ -108,25 +97,14 @@ abstract class Note implements _i1.TableRow<int?>, _i1.ProtocolSerialization {
 class _Undefined {}
 
 class _NoteImpl extends Note {
-  _NoteImpl({
-    int? id,
-    required String title,
-    required String content,
-  }) : super._(
-         id: id,
-         title: title,
-         content: content,
-       );
+  _NoteImpl({int? id, required String title, required String content})
+    : super._(id: id, title: title, content: content);
 
   /// Returns a shallow copy of this [Note]
   /// with some or all fields replaced by the given arguments.
   @_i1.useResult
   @override
-  Note copyWith({
-    Object? id = _Undefined,
-    String? title,
-    String? content,
-  }) {
+  Note copyWith({Object? id = _Undefined, String? title, String? content}) {
     return Note(
       id: id is int? ? id : this.id,
       title: title ?? this.title,
@@ -138,28 +116,18 @@ class _NoteImpl extends Note {
 class NoteUpdateTable extends _i1.UpdateTable<NoteTable> {
   NoteUpdateTable(super.table);
 
-  _i1.ColumnValue<String, String> title(String value) => _i1.ColumnValue(
-    table.title,
-    value,
-  );
+  _i1.ColumnValue<String, String> title(String value) =>
+      _i1.ColumnValue(table.title, value);
 
-  _i1.ColumnValue<String, String> content(String value) => _i1.ColumnValue(
-    table.content,
-    value,
-  );
+  _i1.ColumnValue<String, String> content(String value) =>
+      _i1.ColumnValue(table.content, value);
 }
 
 class NoteTable extends _i1.Table<int?> {
   NoteTable({super.tableRelation}) : super(tableName: 'note') {
     updateTable = NoteUpdateTable(this);
-    title = _i1.ColumnString(
-      'title',
-      this,
-    );
-    content = _i1.ColumnString(
-      'content',
-      this,
-    );
+    title = _i1.ColumnString('title', this);
+    content = _i1.ColumnString('content', this);
   }
 
   late final NoteUpdateTable updateTable;
@@ -169,11 +137,7 @@ class NoteTable extends _i1.Table<int?> {
   late final _i1.ColumnString content;
 
   @override
-  List<_i1.Column> get columns => [
-    id,
-    title,
-    content,
-  ];
+  List<_i1.Column> get columns => [id, title, content];
 }
 
 class NoteInclude extends _i1.IncludeObject {
@@ -294,10 +258,7 @@ class NoteRepository {
     int id, {
     _i1.Transaction? transaction,
   }) async {
-    return session.db.findById<Note>(
-      id,
-      transaction: transaction,
-    );
+    return session.db.findById<Note>(id, transaction: transaction);
   }
 
   /// Inserts all [Note]s in the list and returns the inserted rows.
@@ -311,10 +272,7 @@ class NoteRepository {
     List<Note> rows, {
     _i1.Transaction? transaction,
   }) async {
-    return session.db.insert<Note>(
-      rows,
-      transaction: transaction,
-    );
+    return session.db.insert<Note>(rows, transaction: transaction);
   }
 
   /// Inserts a single [Note] and returns the inserted row.
@@ -325,10 +283,7 @@ class NoteRepository {
     Note row, {
     _i1.Transaction? transaction,
   }) async {
-    return session.db.insertRow<Note>(
-      row,
-      transaction: transaction,
-    );
+    return session.db.insertRow<Note>(row, transaction: transaction);
   }
 
   /// Updates all [Note]s in the list and returns the updated rows. If
@@ -413,10 +368,7 @@ class NoteRepository {
     List<Note> rows, {
     _i1.Transaction? transaction,
   }) async {
-    return session.db.delete<Note>(
-      rows,
-      transaction: transaction,
-    );
+    return session.db.delete<Note>(rows, transaction: transaction);
   }
 
   /// Deletes a single [Note].
@@ -425,10 +377,7 @@ class NoteRepository {
     Note row, {
     _i1.Transaction? transaction,
   }) async {
-    return session.db.deleteRow<Note>(
-      row,
-      transaction: transaction,
-    );
+    return session.db.deleteRow<Note>(row, transaction: transaction);
   }
 
   /// Deletes all rows matching the [where] expression.

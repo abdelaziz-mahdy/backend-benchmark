@@ -11,26 +11,18 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _i1;
+
 import '../endpoints/example_endpoint.dart' as _i2;
 import '../endpoints/note_endpoint.dart' as _i3;
+
 import 'package:benchmark_server/src/generated/note.dart' as _i4;
 
 class Endpoints extends _i1.EndpointDispatch {
   @override
   void initializeEndpoints(_i1.Server server) {
     var endpoints = <String, _i1.Endpoint>{
-      'example': _i2.ExampleEndpoint()
-        ..initialize(
-          server,
-          'example',
-          null,
-        ),
-      'note': _i3.NoteEndpoint()
-        ..initialize(
-          server,
-          'note',
-          null,
-        ),
+      'example': _i2.ExampleEndpoint()..initialize(server, 'example', null),
+      'note': _i3.NoteEndpoint()..initialize(server, 'note', null),
     };
     connectors['example'] = _i1.EndpointConnector(
       name: 'example',
@@ -45,11 +37,8 @@ class Endpoints extends _i1.EndpointDispatch {
               nullable: false,
             ),
           },
-          call:
-              (
-                _i1.Session session,
-                Map<String, dynamic> params,
-              ) async => (endpoints['example'] as _i2.ExampleEndpoint).hello(
+          call: (_i1.Session session, Map<String, dynamic> params) async =>
+              (endpoints['example'] as _i2.ExampleEndpoint).hello(
                 session,
                 params['name'],
               ),
@@ -69,11 +58,8 @@ class Endpoints extends _i1.EndpointDispatch {
               nullable: false,
             ),
           },
-          call:
-              (
-                _i1.Session session,
-                Map<String, dynamic> params,
-              ) async => (endpoints['note'] as _i3.NoteEndpoint).createNote(
+          call: (_i1.Session session, Map<String, dynamic> params) async =>
+              (endpoints['note'] as _i3.NoteEndpoint).createNote(
                 session,
                 params['note'],
               ),
@@ -81,33 +67,20 @@ class Endpoints extends _i1.EndpointDispatch {
         'getAllNotes': _i1.MethodConnector(
           name: 'getAllNotes',
           params: {},
-          call:
-              (
-                _i1.Session session,
-                Map<String, dynamic> params,
-              ) async =>
-                  (endpoints['note'] as _i3.NoteEndpoint).getAllNotes(session),
+          call: (_i1.Session session, Map<String, dynamic> params) async =>
+              (endpoints['note'] as _i3.NoteEndpoint).getAllNotes(session),
         ),
         'noDbEndpoint': _i1.MethodConnector(
           name: 'noDbEndpoint',
           params: {},
-          call:
-              (
-                _i1.Session session,
-                Map<String, dynamic> params,
-              ) async =>
-                  (endpoints['note'] as _i3.NoteEndpoint).noDbEndpoint(session),
+          call: (_i1.Session session, Map<String, dynamic> params) async =>
+              (endpoints['note'] as _i3.NoteEndpoint).noDbEndpoint(session),
         ),
         'noDbEndpoint2': _i1.MethodConnector(
           name: 'noDbEndpoint2',
           params: {},
-          call:
-              (
-                _i1.Session session,
-                Map<String, dynamic> params,
-              ) async => (endpoints['note'] as _i3.NoteEndpoint).noDbEndpoint2(
-                session,
-              ),
+          call: (_i1.Session session, Map<String, dynamic> params) async =>
+              (endpoints['note'] as _i3.NoteEndpoint).noDbEndpoint2(session),
         ),
       },
     );

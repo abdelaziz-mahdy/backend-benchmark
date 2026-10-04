@@ -12,9 +12,12 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _i1;
 import 'package:serverpod/protocol.dart' as _i2;
+
 import 'example.dart' as _i3;
 import 'note.dart' as _i4;
+
 import 'package:benchmark_server/src/generated/note.dart' as _i5;
+
 export 'example.dart';
 export 'note.dart';
 
@@ -80,10 +83,7 @@ class Protocol extends _i1.SerializationManagerServer {
   }
 
   @override
-  T deserialize<T>(
-    dynamic data, [
-    Type? t,
-  ]) {
+  T deserialize<T>(dynamic data, [Type? t]) {
     t ??= T;
 
     final dataClassName = getClassNameFromObjectJson(data);
