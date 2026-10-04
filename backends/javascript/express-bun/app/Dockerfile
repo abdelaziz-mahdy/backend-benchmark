@@ -1,24 +1,8 @@
-# Use the official Node.js image as the base image
-FROM oven/bun:1.3
-
-# Set the working directory inside the container
+FROM oven/bun:1.3-slim
 WORKDIR /app
-
-# Copy the package.json and bun.lockb files to the working directory
-COPY package.json ./
-
-# Install the app dependencies
-RUN bun install
-
-# Install curl
-RUN apt-get update && apt-get install -y curl
-
-
-COPY . .
-
+ENV NODE_ENV=production
+COPY package.json bun.lock ./
+RUN bun install --production --frozen-lockfile
+COPY server.js migration.sql ./
 EXPOSE 8000
-
-
-CMD bun run server.js
-
-
+CMD ["bun", "run", "server.js"]
