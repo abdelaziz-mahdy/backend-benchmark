@@ -29,7 +29,7 @@ String formatMetric(Metric metric, double? value) {
     Unit.ms => formatMs(value),
     Unit.percent => _percentShare(value),
     Unit.cpu => '${value.toStringAsFixed(0)}%',
-    Unit.mb => '${formatNumber(value)} MB',
+    Unit.mb => formatMb(value),
     Unit.ratio => formatNumber(value),
   };
 }
@@ -41,7 +41,7 @@ String formatMetricShort(Metric metric, double? value) {
     Unit.ms => formatMs(value),
     Unit.percent => _percentShare(value),
     Unit.cpu => '${value.toStringAsFixed(0)}%',
-    Unit.mb => '${formatNumber(value)} MB',
+    Unit.mb => formatMb(value),
     _ => formatNumber(value),
   };
 }
@@ -60,3 +60,8 @@ String _percentShare(double share) {
   if (p < 0.01) return '<0.01%';
   return '${p.toStringAsFixed(p < 1 ? 2 : 1)}%';
 }
+
+/// Megabytes, switching to GB from 1000 MB ("1.9 GB" not "1.9K MB").
+String formatMb(double mb) => mb >= 1000
+    ? '${(mb / 1024).toStringAsFixed(1)} GB'
+    : '${formatNumber(mb)} MB';

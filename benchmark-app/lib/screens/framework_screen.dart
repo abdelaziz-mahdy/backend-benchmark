@@ -69,10 +69,10 @@ class _FrameworkScreenState extends State<FrameworkScreen> {
     if (rank == null) return null;
     final share = rank.shareOfLeader;
     final parts = [
-      '#${rank.position} of ${rank.total} by ${metric.label.toLowerCase()} '
-          'in ${scenarioLabel(state.scenario!)}',
+      '${rank.tied > 1 ? 'tied ' : ''}#${rank.position} of ${rank.total} by '
+          '${metric.label.toLowerCase()} in ${scenarioLabel(state.scenario!)}',
       if (rank.position == 1)
-        'the leader'
+        rank.tied > 1 ? 'tied with ${rank.tied - 1} others' : 'the leader'
       else if (share != null)
         '${(share * 100).round()}% of the leader',
     ];

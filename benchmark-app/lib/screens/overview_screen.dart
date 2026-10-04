@@ -68,6 +68,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
                     ranked: ranked,
                     headline: headline,
                     columns: columns,
+                    sortBy: sortBy,
                   )
                 : _LeaderTable(
                     state: state,
@@ -348,6 +349,25 @@ double _maxOf(DashboardState state, List<BackendResult> bs, Metric m) {
   return max;
 }
 
+/// Competition ranks for a list already sorted by [m]: tied values share a
+/// position (1, 1, 1, 4, …) so a tie never looks like an order.
+List<int> _ranks(DashboardState state, List<BackendResult> sorted, Metric m) {
+  final out = <int>[];
+  for (var i = 0; i < sorted.length; i++) {
+    final r = state.resultOf(sorted[i]);
+    final v = r == null ? null : m.value(r);
+    if (i > 0 && v != null) {
+      final pr = state.resultOf(sorted[i - 1]);
+      if (pr != null && m.value(pr) == v) {
+        out.add(out[i - 1]);
+        continue;
+      }
+    }
+    out.add(i + 1);
+  }
+  return out;
+}
+
 class _LeaderTable extends StatelessWidget {
   final DashboardState state;
   final List<BackendResult> ranked;
@@ -369,6 +389,7 @@ class _LeaderTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final others = columns.where((m) => m != headline).toList();
     final max = _maxOf(state, ranked, headline);
+    final positions = _ranks(state, ranked, sortBy);
     return Column(
       children: [
         _row(
@@ -383,7 +404,10 @@ class _LeaderTable extends StatelessWidget {
           _BodyRow(
             onTap: () => state.openFramework(ranked[i].key),
             child: _row(
-              rank: Text('${i + 1}', style: const TextStyle(color: kTextMuted)),
+              rank: Text(
+                '${positions[i]}',
+                style: const TextStyle(color: kTextMuted),
+              ),
               name: _nameCell(ranked[i]),
               headlineCell: _headlineCell(ranked[i], max),
               cells: [
@@ -599,17 +623,20 @@ class _LeaderCards extends StatelessWidget {
   final List<BackendResult> ranked;
   final Metric headline;
   final List<Metric> columns;
+  final Metric sortBy;
 
   const _LeaderCards({
     required this.state,
     required this.ranked,
     required this.headline,
     required this.columns,
+    required this.sortBy,
   });
 
   @override
   Widget build(BuildContext context) {
     final max = _maxOf(state, ranked, headline);
+    final positions = _ranks(state, ranked, sortBy);
     final others = columns.where((m) => m != headline).take(4).toList();
     return Column(
       children: [
@@ -629,7 +656,7 @@ class _LeaderCards extends StatelessWidget {
                       SizedBox(
                         width: 22,
                         child: Text(
-                          '${i + 1}',
+                          '${positions[i]}',
                           style: const TextStyle(color: kTextMuted),
                         ),
                       ),

@@ -185,3 +185,8 @@ def test_without_pyyaml_the_fallback_is_skipped(tmp_path, monkeypatch):
         "path": "go/mux", "api_style": "rest", "implementation": None, "implementation_from": None,
     }
     report._manifests.clear()
+
+
+def test_variant_names_are_distinct():
+    assert report._display_name({"name": "foam3", "variant": "embedded"}, "java-foam3-embedded") == "foam3 (embedded)"
+    assert report._display_name({"name": "go mux", "variant": "postgres"}, "go-mux") == "go mux"
