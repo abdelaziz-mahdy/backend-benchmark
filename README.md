@@ -1,90 +1,38 @@
-# Backend Benchmark Repository
+# Backend Benchmark
 
-### Contribution Guide
+Compares backend frameworks under the same load, on the same machine, with the
+same API. **[View the dashboard](https://abdelaziz-mahdy.github.io/backend-benchmark/)**
 
-The **[Contribution Guide](Contribution.md)** provides detailed instructions on:
+## The question it answers
 
-- Adding new platforms to the benchmarks.
-- Rerunning tests to validate results.
-- Updating configurations for existing benchmarks.
+What is the highest load each framework sustains while **p99 latency stays
+under 100 ms and errors under 1%**, and what CPU and memory does that cost?
+Peak throughput is reported as a secondary number.
 
-### Demo
+## Backends
 
-Explore the interactive demo at **[backend-benchmark](https://abdelaziz-mahdy.github.io/backend-benchmark/)** to:
+| Language | Frameworks |
+|---|---|
+| Python | Django (sync, async, via PgBouncer), FastAPI |
+| Dart | Serverpod |
+| JavaScript | Express on Node, Express on Bun |
+| C# | ASP.NET Core |
+| Go | gorilla/mux |
+| Rust | actix-web |
+| Java | Spring Boot |
 
-- Compare different backend services.
-- Visualize performance metrics for each framework and individual fields.
+Each backend lives in `backends/<language>/<framework>/` as a `backend.yaml`
+manifest plus an `app/` folder. See [Contribution.md](Contribution.md) to add one.
 
----
+## Scenarios
 
-## Table of Contents
+- `no_db` — static JSON, framework overhead only
+- `db_read` — paged list and read-by-id over 10,000 seeded rows
+- `db_write` — inserts
+- `db_mixed` — 80% reads, 20% writes
 
-- [Introduction](#introduction)
-- [Prerequisites](#prerequisites)
-- [Completed Benchmarks](#completed-benchmarks)
-  - [Python](#python)
-  - [Dart](#dart)
-  - [JavaScript/TypeScript](#javascripttypescript)
-  - [C#](#c)
-  - [Go](#go)
-  - [Rust](#rust)
-- [Testing Tool: Locust](#testing-tool-locust)
-- [Benchmark Visualization](#benchmark-visualization)
-- [Database Endpoints](#database-endpoints)
-- [Static Endpoints](#static-endpoints)
+## History
 
-## Introduction
-
-This repository serves as a comprehensive resource for comparing backend technologies based on speed and load capabilities. Our benchmarks focus on write and read operations, as well as requests to static endpoints, reflecting real-world usage scenarios to assist developers and decision-makers in choosing the most suitable backend framework for their needs.
-
-## Prerequisites
-
-- Docker installed on the system to run the benchmarks.
-- The `scripts/start_tests.sh` script is used to launch each test and create the graphs.
-
-## Completed Benchmarks
-
-Benchmarks are categorized into:
-
-1. **Database Tests (`db_test`):** Involving database operations such as read and write requests.
-2. **Static Endpoint Tests (`no_db_test`):** Involving requests to static endpoints without database interaction.
-
-### Python
-
-- **Django** (Sync and Async) - Connection Pooling with PgBouncer.
-
-### Dart
-
-- **Serverpod**
-
-### JavaScript/TypeScript
-
-- **Express** (Node and Bun)
-
-### C#
-
-- **.Net Core**
-
-### Go
-
-### Rust
-
-## Testing Tool: Locust
-
-- **Configuration:**
-  - Users: 10000
-  - Spawn Rate: 83.33 users/second
-  - Test Duration: 120 seconds
-
-## Benchmark Visualization
-
-All benchmark results are visualized in the interactive dashboard:
-
-**[View Live Dashboard](https://abdelaziz-mahdy.github.io/backend-benchmark/)**
-
-The dashboard includes:
-- **Rankings** — Leaderboard with bar charts and sortable data table
-- **Detail** — Single framework deep-dive with time series and percentile charts
-- **Compare** — Head-to-head radar charts and grouped metric comparisons
-- **Time Series** — Multi-framework line charts over test duration
-
+Every run is kept in `results/runs/`. Results from the earlier Locust-based
+method are in `results/legacy/` and are not comparable with current runs
+(see [results/legacy/README.md](results/legacy/README.md)).

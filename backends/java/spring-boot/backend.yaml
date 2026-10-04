@@ -1,0 +1,8 @@
+name: spring boot
+language: java
+framework: spring-boot
+version: "4.0.2"
+runtime: java 21
+variants:
+  - id: postgres
+    db: postgres

@@ -1,7 +1,8 @@
 **/node_modules
 .DS_Store
 **/__pycache__/
-backends/c_sharp/dot-net/benchmark/obj
+backends/c_sharp/dot-net/app/obj
+backends/c_sharp/dot-net/app/bin
 
 # Design docs
 docs/plans/
