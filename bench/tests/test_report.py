@@ -104,3 +104,84 @@ def test_latest_view_takes_newest_result_per_backend(tmp_path):
     entry = report.index_entry(view, "x")
     assert entry["kind"] == "latest"
     assert entry["headline"]["go-mux"]["no_db"]["sustainable_rps"] == 2000
+
+
+IMPL = {"server": "net/http", "concurrency": "goroutines", "db_access": "database/sql", "pool": "20"}
+
+
+def write_manifest(backends: Path, rel, text):
+    d = backends / rel
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "backend.yaml").write_text(text)
+
+
+def manifest_yaml(impl, extra=""):
+    lines = ["name: x", extra, "implementation:"] + [f"  {k}: {v!r}" for k, v in impl.items()]
+    return "\n".join(l for l in lines if l) + "\n"
+
+
+def test_implementation_recorded_in_run_wins(tmp_path):
+    backends = tmp_path / "backends"
+    write_manifest(backends, "go/mux", manifest_yaml({**IMPL, "pool": "changed later"}))
+    run = make_run(tmp_path, "2026-10-04_m_a_0001", {
+        "go-mux": {"name": "go mux", "path": "go/mux", "implementation": IMPL, "scenarios": {"no_db": {"status": "ok"}}},
+    })
+    make_rep(run / "go-mux" / "no_db" / "rep-1", [(1000, True)])
+    s = report.build_run(run, report.Problems(), backends)
+    b = s["backends"][0]
+    assert b["implementation"] == IMPL
+    assert b["implementation_from"] == "run"
+    assert b["path"] == "go/mux"
+    assert b["api_style"] == "rest"
+
+
+def test_old_run_falls_back_to_current_manifest(tmp_path):
+    backends = tmp_path / "backends"
+    write_manifest(backends, "go/mux", manifest_yaml(IMPL))
+    write_manifest(backends, "java/foam3", manifest_yaml({"server": "jetty"}, "api_style: foam_rpc"))
+    write_manifest(backends, "dart/relic", "name: no block\n")
+    run = make_run(tmp_path, "2026-10-04_m_a_0001", {
+        "go-mux": {"name": "go mux", "path": "go/mux", "scenarios": {"no_db": {"status": "ok"}}},
+        "java-foam3-embedded": {"name": "foam3", "scenarios": {"no_db": {"status": "ok"}}},  # no path: slug match
+        "dart-relic": {"name": "relic", "scenarios": {"no_db": {"status": "ok"}}},
+        "gone-backend": {"name": "gone", "scenarios": {"no_db": {"status": "ok"}}},
+    })
+    for key in ("go-mux", "java-foam3-embedded", "dart-relic", "gone-backend"):
+        make_rep(run / key / "no_db" / "rep-1", [(1000, True)])
+    s = report.build_run(run, report.Problems(), backends)
+    by = {b["key"]: b for b in s["backends"]}
+    assert by["go-mux"]["implementation"] == IMPL
+    assert by["go-mux"]["implementation_from"] == "manifest"
+    assert by["java-foam3-embedded"]["path"] == "java/foam3"
+    assert by["java-foam3-embedded"]["implementation"] == {"server": "jetty"}
+    assert by["java-foam3-embedded"]["api_style"] == "foam_rpc"
+    assert by["dart-relic"]["implementation"] is None
+    assert by["dart-relic"]["implementation_from"] is None
+    assert by["gone-backend"]["path"] is None
+    assert by["gone-backend"]["implementation"] is None
+
+
+def test_legacy_backends_get_current_manifest(tmp_path):
+    backends = tmp_path / "backends"
+    write_manifest(backends, "go/mux", manifest_yaml(IMPL))
+    legacy = tmp_path / "summary_v1.json"
+    legacy.write_text(json.dumps({
+        "go mux no_db_test": {"summary": {"Average Requests/s": 10.0}, "data": []},
+        "rust actix web no_db_test": {"summary": {"Average Requests/s": 20.0}, "data": []},
+    }))
+    s = report.build_legacy(legacy, backends)
+    by = {b["key"]: b for b in s["backends"]}
+    assert by["go-mux"]["path"] == "go/mux"
+    assert by["go-mux"]["implementation_from"] == "manifest"
+    assert by["rust-actix-web"]["implementation"] is None
+
+
+def test_without_pyyaml_the_fallback_is_skipped(tmp_path, monkeypatch):
+    backends = tmp_path / "backends"
+    write_manifest(backends, "go/mux", manifest_yaml(IMPL))
+    monkeypatch.setattr(report, "_load_yaml", lambda path: None)
+    report._manifests.clear()
+    assert report.describe_backend(backends, "go-mux", {}) == {
+        "path": "go/mux", "api_style": "rest", "implementation": None, "implementation_from": None,
+    }
+    report._manifests.clear()

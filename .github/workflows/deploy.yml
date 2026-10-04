@@ -18,6 +18,9 @@ jobs:
       with:
         python-version: '3.12'
 
+    - name: Install report dependencies
+      run: pip install pyyaml
+
     - name: Generate dashboard data from results/
       run: python bench/report/report.py
 

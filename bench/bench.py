@@ -463,6 +463,7 @@ def main():
             pgbouncer=item.variant.pgbouncer,
             api_style=item.api_style,
             notes=item.manifest.get("notes"),
+            implementation=item.manifest.get("implementation"),
         )
         stack = Stack(item, cpus)
         log(f"== {item.key}: build")

@@ -7,3 +7,9 @@ variants:
   - id: postgres
     db: postgres
     pgbouncer: true
+# How this backend is run and talks to the database; shown on the dashboard.
+implementation:
+  server: "uvicorn (ASGI), one worker per core (2)"
+  concurrency: "asyncio event loop per worker, async views"
+  db_access: "Django ORM async API (psycopg 3) through PgBouncer"
+  pool: "no app-side pool; PgBouncer transaction mode, 50 server connections"

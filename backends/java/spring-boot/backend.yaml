@@ -6,3 +6,9 @@ runtime: java 25
 variants:
   - id: postgres
     db: postgres
+# How this backend is run and talks to the database; shown on the dashboard.
+implementation:
+  server: "embedded Tomcat, Spring MVC (blocking)"
+  concurrency: "Tomcat thread pool (default 200 threads)"
+  db_access: "Spring Data JPA / Hibernate; native SQL for the paged list"
+  pool: "20 (HikariCP maximum-pool-size)"

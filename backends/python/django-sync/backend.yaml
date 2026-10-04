@@ -7,3 +7,9 @@ variants:
   - id: postgres
     db: postgres
     pgbouncer: true
+# How this backend is run and talks to the database; shown on the dashboard.
+implementation:
+  server: "gunicorn gthread, 2 x cores + 1 = 5 workers x 4 threads"
+  concurrency: "20 blocking threads across 5 processes"
+  db_access: "Django ORM (psycopg 3) through PgBouncer"
+  pool: "one persistent connection per thread (CONN_MAX_AGE 60); PgBouncer transaction mode, 50 server connections"

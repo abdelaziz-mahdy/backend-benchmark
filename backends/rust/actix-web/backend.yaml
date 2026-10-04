@@ -6,3 +6,9 @@ runtime: rust 1.99
 variants:
   - id: postgres
     db: postgres
+# How this backend is run and talks to the database; shown on the dashboard.
+implementation:
+  server: "actix-web 4 HttpServer (release build, LTO)"
+  concurrency: "one actix worker thread per core (2), tokio runtime"
+  db_access: "tokio-postgres, hand-written SQL"
+  pool: "20 (deadpool-postgres)"

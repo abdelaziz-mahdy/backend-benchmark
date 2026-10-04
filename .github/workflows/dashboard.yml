@@ -20,6 +20,9 @@ jobs:
         with:
           channel: stable
 
+      - name: Install report dependencies
+        run: pip install pyyaml
+
       - name: Generate dashboard data
         run: python bench/report/report.py
 

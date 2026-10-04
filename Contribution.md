@@ -31,10 +31,20 @@ benchmark-app/      # Flutter web dashboard
        db: postgres          # or: none (backend stores data itself)
        pgbouncer: false      # optional, route DB traffic through pgbouncer
    # optional:
-   # api_style: rest         # or serverpod_rpc (see bench/README.md)
+   # api_style: rest         # or serverpod_rpc, foam_rpc (see bench/README.md)
    # health_path: /health
    # notes: one line shown in the dashboard
+   # How the app is run; shown on the dashboard so readers can judge fairness.
+   implementation:
+     server: net/http with gorilla/mux          # what answers HTTP, in which mode
+     concurrency: goroutine per request          # how the 2 cores are used
+     db_access: database/sql with lib/pq         # driver / ORM
+     pool: "20 (SetMaxOpenConns)"                # DB connections
    ```
+
+   `implementation` is four short sentences; keep them accurate when you change
+   the app (the report shows the block recorded with each run, and falls back to
+   the current manifest for runs made before the block existed).
 
 3. Implement the API contract below. Read DB settings from
    `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`

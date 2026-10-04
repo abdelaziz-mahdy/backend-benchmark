@@ -12,3 +12,9 @@ variants:
 api_style: foam_rpc
 health_path: /service/health
 notes: "FOAM NoteService over box RPC. embedded: in-memory MDAO + FOAM journal file; postgres: FOAM's PostgresDAO (JDBC). Both via EasyDAO with SequenceNumberDAO ids."
+# How this backend is run and talks to the database; shown on the dashboard.
+implementation:
+  server: "FOAM3 Jetty HttpServer with NanoRouter at /service/*"
+  concurrency: "Jetty thread pool (FOAM defaults), ZGC, heap 75% of container"
+  db_access: "embedded: in-memory MDAO + journal file; postgres: FOAM PostgresDAO (JDBC)"
+  pool: "20 (commons-dbcp2, postgres variant only)"
