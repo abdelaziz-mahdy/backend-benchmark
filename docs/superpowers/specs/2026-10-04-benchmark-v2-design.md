@@ -200,6 +200,11 @@ Each PR: CI green, `flutter analyze` + `dart format` over the whole app, smoke t
 
 ## Changes made during implementation
 
+- **Paged reads use offsets below 200.** With offsets anywhere in the 10k
+  rows, Postgres scanned ~5k rows per list request and saturated its 3 cores
+  at ~6k rps for every fast framework (dotnet: DB 286% CPU, app 87%), so
+  `db_read` measured Postgres, not the framework. Found in the first full run,
+  which was discarded.
 - **Seeding goes through the API** (`POST /notes/` via k6), not SQL. ORMs name
   tables differently and the FOAM embedded variant has no SQL at all.
 - **CPU sets scale with the Docker VM** (min 6 CPUs). On 10 CPUs: app 0-1,
