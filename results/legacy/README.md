@@ -12,6 +12,9 @@ How v1 measured, and why its numbers are not comparable with v2:
 - `GET /notes/` returned every row while `POST /notes/` kept inserting,
   so read payloads grew during the run.
 - One run per backend, no warmup, no repetitions.
+- Python backends ran in development mode: Django on `manage.py runserver`
+  with `DEBUG = True`, FastAPI as a single uvicorn process calling synchronous
+  SQLAlchemy from async handlers. Node/Bun ran one process.
 
 Layout:
 
