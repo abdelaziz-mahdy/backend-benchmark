@@ -21,6 +21,11 @@ def test_k6_run_container_role():
     assert stats.role_of("bench-k6-run-3f2a1b") == "k6"
 
 
+def test_other_projects_are_ignored():
+    assert stats.role_of("foambench-benchmark-1") is None
+    assert stats.role_of("foambench-benchmark-1", "foambench") == "app"
+
+
 def test_machine_slug():
     assert machine.slug("Apple M2 Pro", 10, 32) == "m2pro-10c-32g"
     assert machine.slug("Intel(R) Core(TM) i7-9700K CPU @ 3.60GHz", 8, 16) == "i79700k-8c-16g"

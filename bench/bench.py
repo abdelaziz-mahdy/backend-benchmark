@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parent.parent
 BENCH = ROOT / "bench"
 RESULTS = Path(os.environ.get("BENCH_RESULTS", ROOT / "results"))
 PORT = int(os.environ.get("BENCH_PORT", "18000"))
+# Overrides compose.yaml's "name: bench" so two stacks can coexist.
+PROJECT = os.environ.get("COMPOSE_PROJECT_NAME", "bench")
 HEALTH_TIMEOUT_S = 240
 
 
@@ -237,7 +239,7 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores):
             stack.down()
             return {"status": "error", "error": "seeding failed: " + (seed.stdout + seed.stderr)[-2000:] + logs[-1000:]}
 
-    sampler = Sampler()
+    sampler = Sampler(PROJECT)
     sampler.start()
     t0 = time.time()
     stack.k6(f"{scenario}.js", RATE=steps[0], DURATION=f"{slo.WARMUP_SECONDS}s", SEED_ROWS=slo.SEED_ROWS)
@@ -444,6 +446,8 @@ def main():
             variant=item.variant.id,
             db=item.variant.db,
             pgbouncer=item.variant.pgbouncer,
+            api_style=item.api_style,
+            notes=item.manifest.get("notes"),
         )
         stack = Stack(item, cpus)
         log(f"== {item.key}: build")
@@ -457,6 +461,7 @@ def main():
         digest = stack.image_digest()
         entry["status"] = "ok"
         entry["image_digest"] = digest
+        write_json(run_json, run_meta)  # visible to the report while running
         for scenario in item.scenarios:
             if wanted and scenario not in wanted:
                 continue
@@ -481,6 +486,8 @@ def main():
                     runtime=item.manifest.get("runtime"),
                 )
                 write_json(rep_dir / "meta.json", result)
+                sentry.update(status="running")
+                write_json(run_json, run_meta)
                 if result["status"] != "ok":
                     log(f"   {scenario} rep {rep}: {result['status']}")
             done = sum(rep_done(run_dir / item.key / scenario / f"rep-{r}") for r in range(1, args.reps + 1))

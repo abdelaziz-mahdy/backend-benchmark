@@ -145,6 +145,8 @@ def build_run(run_dir, problems):
             "runtime": item.get("runtime"),
             "variant": item.get("variant"),
             "db": item.get("db"),
+            "pgbouncer": item.get("pgbouncer", False),
+            "notes": item.get("notes"),
             "status": item.get("status", "unknown"),
             "scenarios": {},
         }
@@ -247,6 +249,7 @@ def build_legacy(path):
     date = dt.datetime.fromtimestamp(first_ts, dt.timezone.utc).date().isoformat() if first_ts else None
     return {
         "id": "legacy-v1",
+        "kind": "legacy",
         "date": date,
         "started_at": None,
         "finished_at": None,
@@ -275,9 +278,62 @@ def clean(v):
     return v
 
 
+HEADLINE_KEYS = ["sustainable_rps", "peak_rps", "avg_rps", "p50_ms", "p99_ms", "error_rate", "app_cpu", "app_mem_mb"]
+
+
+def headline(summary):
+    """Median of the headline metrics per backend and scenario, for History."""
+    out = {}
+    for b in summary["backends"]:
+        per = {}
+        for scenario, sc in b["scenarios"].items():
+            per[scenario] = {k: (sc.get(k) or {}).get("median") for k in HEADLINE_KEYS if sc.get(k)}
+        if per:
+            out[b["key"]] = per
+    return out
+
+
+def latest_views(summaries):
+    """One combined view per (machine, methodology): the newest result of
+    every backend and scenario across that machine's runs. Lets a run that
+    only measured one new backend sit next to an earlier full run."""
+    groups = {}
+    for s in summaries:
+        if s.get("kind") == "legacy":
+            continue
+        groups.setdefault((s["machine"].get("slug"), s["methodology"]), []).append(s)
+    views = []
+    for (slug, methodology), runs in sorted(groups.items()):
+        runs = sorted(runs, key=lambda r: (r["date"] or "", r["id"]))
+        backends = {}
+        for run in runs:  # oldest first, newer runs overwrite
+            for b in run["backends"]:
+                entry = backends.setdefault(b["key"], {**b, "scenarios": {}})
+                entry.update({k: v for k, v in b.items() if k != "scenarios"})
+                for scenario, sc in b["scenarios"].items():
+                    entry["scenarios"][scenario] = {**sc, "from_run": sc.get("from_run", run["id"])}
+        newest = runs[-1]
+        views.append(
+            {
+                **{k: newest.get(k) for k in ("date", "started_at", "finished_at", "docker", "params")},
+                "id": f"latest_{slug}_{methodology}",
+                "kind": "latest",
+                "git_sha": None,
+                "dirty": any(r.get("dirty") for r in runs),
+                "contributor": None,
+                "machine": newest["machine"],
+                "methodology": methodology,
+                "runs": [r["id"] for r in runs],
+                "backends": sorted(backends.values(), key=lambda b: b["key"]),
+            }
+        )
+    return views
+
+
 def index_entry(summary, file):
     return {
         "id": summary["id"],
+        "kind": summary.get("kind", "run"),
         "date": summary["date"],
         "machine": summary["machine"],
         "methodology": summary["methodology"],
@@ -285,6 +341,8 @@ def index_entry(summary, file):
         "contributor": summary["contributor"],
         "backends": [b["key"] for b in summary["backends"]],
         "scenarios": sorted({s for b in summary["backends"] for s in b["scenarios"]}),
+        "runs": summary.get("runs"),
+        "headline": headline(summary),
         "file": file,
     }
 
@@ -324,11 +382,13 @@ def main():
 
     (args.out / "runs").mkdir(parents=True, exist_ok=True)
     index = []
-    for s in summaries:
+    for s in summaries + latest_views(summaries):
         file = f"runs/{s['id']}.json"
         (args.out / file).write_text(json.dumps(clean(s), separators=(",", ":"), allow_nan=False, default=str))
         index.append(index_entry(s, file))
+    kind_order = {"latest": 0, "run": 1, "legacy": 2}
     index.sort(key=lambda e: (e["date"] or "", e["id"]), reverse=True)
+    index.sort(key=lambda e: kind_order.get(e["kind"], 9))
     (args.out / "index.json").write_text(json.dumps({"runs": index}, indent=1))
     for p in problems:
         print("warning:", p)
