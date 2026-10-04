@@ -28,7 +28,11 @@ foam.CLASS({
         // The DAO owns ids: clear any client-supplied id so SequenceNumberDAO assigns one.
         Note n = (Note) note.fclone();
         n.clearProperty("id");
-        return (Note) ((DAO) x.get("noteDAO")).put(n);
+        Note created = (Note) ((DAO) x.get("noteDAO")).put(n);
+        // PostgresDAO logs SQL errors and returns null instead of throwing;
+        // make that an RPC error so the client sees a failure.
+        if ( created == null ) throw new RuntimeException("createNote failed");
+        return created;
       `
     },
     {

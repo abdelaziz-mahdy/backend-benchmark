@@ -124,3 +124,7 @@ served `noteService`, `SessionServerBox` then accepts calls without a
   with an upsert (`insert ... on conflict (id) do update`).
 - Embedded: journal writes go through one synchronous writer per journal, so
   writes are serialized on the journal; reads go to the MDAO and take no lock.
+- `PostgresDAO` logs SQL errors and returns null rather than throwing.
+  `createNote` turns a null put into an exception (an RPC error the runner
+  counts) and `getNotes` fails on the null sink, but `getNote` cannot tell a
+  database error from a missing row: both return null.
