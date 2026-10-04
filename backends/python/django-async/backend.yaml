@@ -1,7 +1,7 @@
 name: django (async)
 language: python
 framework: django
-version: "5.2.3"
+version: "6.1.1"
 runtime: python 3.14
 variants:
   - id: postgres
