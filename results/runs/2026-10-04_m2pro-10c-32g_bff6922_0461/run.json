@@ -1,0 +1,390 @@
+{
+  "contributor": null,
+  "dirty": false,
+  "docker": {
+    "cpus": 10,
+    "mem_gb": 11.7,
+    "version": "29.8.1"
+  },
+  "finished_at": "2026-10-04T16:52:20+00:00",
+  "git_sha": "bff6922",
+  "id": "2026-10-04_m2pro-10c-32g_bff6922_0461",
+  "items": {
+    "c_sharp-dot-net": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "aspnetcore",
+      "image_digest": "sha256:c269558c5990e04c99728d4d2f3b30b72600c90ed5c6595ad498ae653e25f148",
+      "language": "c_sharp",
+      "name": "asp.net core",
+      "notes": null,
+      "path": "c_sharp/dot-net",
+      "pgbouncer": false,
+      "runtime": ".NET 10",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "10.0 (EF Core 10.0.12)"
+    },
+    "dart-server-pod": {
+      "api_style": "serverpod_rpc",
+      "db": "postgres",
+      "framework": "serverpod",
+      "image_digest": "sha256:193e8f31be28698ab03232497e874da9ce297f1cf54e4dc05df9112c2f56640d",
+      "language": "dart",
+      "name": "serverpod",
+      "notes": "Runs one Dart isolate, so it uses a single core of the two assigned.",
+      "path": "dart/server-pod",
+      "pgbouncer": false,
+      "runtime": "dart 3.13",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "4.0.3"
+    },
+    "go-mux": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "gorilla/mux",
+      "image_digest": "sha256:31c2eba40c7b02960b1d439361c86e97c7f744520902d6f460c19cb2c30bfb87",
+      "language": "go",
+      "name": "go mux",
+      "notes": null,
+      "path": "go/mux",
+      "pgbouncer": false,
+      "runtime": "go 1.27",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "1.8.1"
+    },
+    "java-spring-boot": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "spring-boot",
+      "image_digest": "sha256:466de069a1e60a04547300f94b056456f675600723ebe8a540175f4da49d50f0",
+      "language": "java",
+      "name": "spring boot",
+      "notes": null,
+      "path": "java/spring-boot",
+      "pgbouncer": false,
+      "runtime": "java 25",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "4.1.1"
+    },
+    "javascript-express-bun": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "express",
+      "image_digest": "sha256:13c7804b7081bc40205e890bdc7e3459f7930d4ed530ec3b2b367911c3df04e2",
+      "language": "javascript",
+      "name": "express (bun)",
+      "notes": null,
+      "path": "javascript/express-bun",
+      "pgbouncer": false,
+      "runtime": "bun 1.4",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "5.2.1"
+    },
+    "javascript-express-node": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "express",
+      "image_digest": "sha256:ec4c5d132e34bd8c532912a95b4745cc93bb37d1e76ebca4ee0c074d139c0798",
+      "language": "javascript",
+      "name": "express (node)",
+      "notes": null,
+      "path": "javascript/express-node",
+      "pgbouncer": false,
+      "runtime": "node 24.21 (LTS)",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "5.2.1"
+    },
+    "python-django-async": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "django",
+      "image_digest": "sha256:7ee56a1a2dd72b1d6adf24cbe1a6897eebcaa3d9d901a87720599e0157369e76",
+      "language": "python",
+      "name": "django (async)",
+      "notes": null,
+      "path": "python/django-async",
+      "pgbouncer": true,
+      "runtime": "python 3.14",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "6.1.1"
+    },
+    "python-django-sync": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "django",
+      "image_digest": "sha256:96e75e4532972e9e5125c927988d06a5944db449290918146a944d3f1f34d510",
+      "language": "python",
+      "name": "django (sync)",
+      "notes": null,
+      "path": "python/django-sync",
+      "pgbouncer": true,
+      "runtime": "python 3.14",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "6.1.1"
+    },
+    "python-fast-api": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "fastapi",
+      "image_digest": "sha256:353d71f598b749e9f83f3de2bf0f8e77deb7ed32aea84e8c11cc73ab904fcdfd",
+      "language": "python",
+      "name": "fastapi",
+      "notes": null,
+      "path": "python/fast-api",
+      "pgbouncer": false,
+      "runtime": "python 3.14",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "0.142.2"
+    },
+    "rust-actix-web": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "actix-web",
+      "image_digest": "sha256:5f8de50b0b4d902128404a9df97640d8fdcda87efef048c2adbf70d212eeebaa",
+      "language": "rust",
+      "name": "rust actix-web",
+      "notes": null,
+      "path": "rust/actix-web",
+      "pgbouncer": false,
+      "runtime": "rust 1.99",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "4.15.0"
+    }
+  },
+  "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.0.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+  },
+  "methodology": "v2",
+  "params": {
+    "cpusets": {
+      "app": "0-1",
+      "db": "2-4",
+      "k6": "5-8",
+      "k6_cores": 4
+    },
+    "images": {
+      "db": "postgres:18.6",
+      "k6": "grafana/k6:2.3.0",
+      "pgbouncer": "edoburu/pgbouncer:v1.26.0-p0"
+    },
+    "memory": {
+      "app": "2g",
+      "db": "2g"
+    },
+    "reps": 3,
+    "seed_rows": 10000,
+    "slo": {
+      "achieved_ratio": 0.95,
+      "error_rate": 0.01,
+      "p99_ms": 100.0
+    },
+    "step_seconds": 30,
+    "steps": [
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000,
+      16000,
+      32000,
+      64000
+    ],
+    "warmup_seconds": 30
+  },
+  "started_at": "2026-10-04T07:02:09+00:00"
+}

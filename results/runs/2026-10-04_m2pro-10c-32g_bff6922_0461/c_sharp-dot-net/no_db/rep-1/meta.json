@@ -1,0 +1,7 @@
+{
+  "finished_at": "2026-10-04T07:07:57+00:00",
+  "framework_version": "10.0 (EF Core 10.0.12)",
+  "image_digest": "sha256:c269558c5990e04c99728d4d2f3b30b72600c90ed5c6595ad498ae653e25f148",
+  "runtime": ".NET 10",
+  "status": "ok"
+}

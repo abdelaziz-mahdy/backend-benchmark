@@ -1,0 +1,7 @@
+{
+  "finished_at": "2026-10-04T12:32:34+00:00",
+  "framework_version": "5.2.1",
+  "image_digest": "sha256:ec4c5d132e34bd8c532912a95b4745cc93bb37d1e76ebca4ee0c074d139c0798",
+  "runtime": "node 24.21 (LTS)",
+  "status": "ok"
+}
