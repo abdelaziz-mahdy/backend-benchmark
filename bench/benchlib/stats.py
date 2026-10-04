@@ -19,8 +19,11 @@ def parse_mem_mb(value):
     return num * scale.get(unit, 1)
 
 
-def role_of(name):
-    """Map compose container names to roles (bench-benchmark-1 -> app)."""
+def role_of(name, project="bench"):
+    """Map this compose project's container names to roles
+    (bench-benchmark-1 -> app); other containers are ignored."""
+    if not name.startswith(f"{project}-"):
+        return None
     if "-benchmark-" in name:
         return "app"
     if "-db-" in name:
@@ -32,14 +35,14 @@ def role_of(name):
     return None
 
 
-def parse_frames(text):
+def parse_frames(text, project="bench"):
     """Yield (role, cpu_percent, mem_mb) for every JSON frame in text."""
     for raw in _FRAME.findall(text):
         try:
             frame = json.loads(raw)
         except json.JSONDecodeError:
             continue
-        role = role_of(frame.get("Name", ""))
+        role = role_of(frame.get("Name", ""), project)
         if role is None:
             continue
         cpu = float(frame.get("CPUPerc", "0%").rstrip("%") or 0)
@@ -49,7 +52,8 @@ def parse_frames(text):
 class Sampler:
     """Background reader; samples are (epoch_seconds, role, cpu, mem_mb)."""
 
-    def __init__(self):
+    def __init__(self, project="bench"):
+        self.project = project
         self.samples = []
         self._proc = None
         self._thread = None
@@ -68,7 +72,7 @@ class Sampler:
     def _read(self):
         for line in self._proc.stdout:
             now = time.time()
-            for role, cpu, mem in parse_frames(line):
+            for role, cpu, mem in parse_frames(line, self.project):
                 self.samples.append((now, role, cpu, mem))
 
     def stop(self):
