@@ -1,40 +1,50 @@
 package com.example.demo;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 public class NoteController {
 
-    @Autowired
-    private NoteRepository noteRepository;
-    
-    @GetMapping("/notes/")
-    public List<Note> getAllNotes() {
-        return noteRepository.findTop100ByOrderByIdDesc();
+    private final NoteRepository notes;
+
+    public NoteController(NoteRepository notes) {
+        this.notes = notes;
     }
 
-    @PostMapping("/notes/")
-    public ResponseEntity<String> createNote(@RequestBody Note note) {
-        noteRepository.save(note);
-        return ResponseEntity.status(201).body("Note created");
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        try {
+            notes.existsById(0L);
+            return ResponseEntity.ok("ok");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("not ready: " + e.getMessage());
+        }
     }
 
     @GetMapping("/no_db_endpoint/")
-    public ResponseEntity<String> noDbEndpoint() {
-        return ResponseEntity.ok("No db endpoint");
+    public Map<String, String> noDbEndpoint() {
+        return Map.of("message", "No db endpoint");
     }
 
-    @GetMapping("/no_db_endpoint2/")
-    public ResponseEntity<String> noDbEndpoint2() {
-        return ResponseEntity.ok("No db endpoint2");
+    @GetMapping("/notes/")
+    public List<Note> list(@RequestParam(defaultValue = "20") int limit,
+                           @RequestParam(defaultValue = "0") int offset) {
+        return notes.page(Math.max(limit, 0), Math.max(offset, 0));
     }
 
-    @GetMapping("/")
-    public ResponseEntity<String> serverStatus() {
-        return ResponseEntity.ok("OK");
+    @GetMapping("/notes/{id}")
+    public ResponseEntity<Note> get(@PathVariable long id) {
+        return notes.findById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/notes/")
+    public ResponseEntity<Note> create(@RequestBody Note note) {
+        note.setId(null);
+        return ResponseEntity.status(HttpStatus.CREATED).body(notes.save(note));
     }
 }
