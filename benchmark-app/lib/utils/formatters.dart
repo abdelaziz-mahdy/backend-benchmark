@@ -41,6 +41,7 @@ String formatMetricShort(Metric metric, double? value) {
     Unit.ms => formatMs(value),
     Unit.percent => _percentShare(value),
     Unit.cpu => '${value.toStringAsFixed(0)}%',
+    Unit.mb => '${formatNumber(value)} MB',
     _ => formatNumber(value),
   };
 }

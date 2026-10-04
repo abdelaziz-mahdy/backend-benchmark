@@ -134,7 +134,7 @@ class _CompareScreenState extends State<CompareScreen> {
           'Whole run, warmup included. Faster frameworks run more steps, so their lines are longer.',
       trailing: SegmentedButton<_OverTime>(
         showSelectedIcon: false,
-        style: const ButtonStyle(visualDensity: VisualDensity.compact),
+        style: kSegmentedStyle,
         segments: [
           for (final e in available.entries)
             if (e.value)
@@ -221,9 +221,11 @@ class _Chooser extends StatelessWidget {
         fontSize: 12.5,
         color: on ? kTextPrimary : (enabled ? kTextSecondary : kTextDim),
       ),
-      backgroundColor: kBackground,
-      disabledColor: kBackground,
-      selectedColor: color.withValues(alpha: 0.18),
+      color: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected)
+            ? color.withValues(alpha: 0.18)
+            : kBackground,
+      ),
       side: BorderSide(color: on ? color : kBorder),
       tooltip: enabled
           ? null

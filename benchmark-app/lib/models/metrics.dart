@@ -223,7 +223,7 @@ String scenarioHelp(String id) => switch (id) {
     'Half paged lists (20 rows), half single-row reads over 10,000 rows.',
   'db_write' => 'Inserts only.',
   'db_mixed' => '80% reads, 20% inserts.',
-  'no_db_test' => 'v1 method: static endpoint under a 10k-user Locust ramp.',
-  'db_test' => 'v1 method: read-all and insert under a 10k-user Locust ramp.',
+  'no_db_test' => 'Static endpoint under a 10k-user Locust ramp.',
+  'db_test' => 'Read-all and insert under a 10k-user Locust ramp.',
   _ => '',
 };

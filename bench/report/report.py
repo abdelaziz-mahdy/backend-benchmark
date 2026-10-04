@@ -201,7 +201,7 @@ def build_legacy(path):
             key,
             {
                 "key": key,
-                "name": fw,
+                "name": label,
                 "language": lang,
                 "framework": fw,
                 "version": None,
@@ -340,6 +340,7 @@ def index_entry(summary, file):
         "dirty": summary["dirty"],
         "contributor": summary["contributor"],
         "backends": [b["key"] for b in summary["backends"]],
+        "names": {b["key"]: b["name"] for b in summary["backends"]},
         "scenarios": sorted({s for b in summary["backends"] for s in b["scenarios"]}),
         "runs": summary.get("runs"),
         "headline": headline(summary),

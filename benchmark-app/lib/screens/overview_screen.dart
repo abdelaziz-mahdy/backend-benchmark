@@ -149,8 +149,9 @@ class _Leaders extends StatelessWidget {
   Widget build(BuildContext context) {
     final results = backends.map(state.resultOf).whereType<ScenarioResult>();
     final metrics = Metrics.available(results, [
+      // No p99 leader: each framework's p99 is taken at its own sustainable
+      // load, so a slower framework can "win" by running less traffic.
       state.headline,
-      Metrics.p99,
       Metrics.rpsPerCore,
       Metrics.memory,
     ]);
@@ -180,11 +181,14 @@ class _Leaders extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                m.higherIsBetter
-                    ? 'Most ${m.short.toLowerCase()}'
-                    : 'Lowest ${m.short.toLowerCase()}',
-                style: const TextStyle(color: kTextMuted, fontSize: 12),
+              Flexible(
+                child: Text(
+                  m.higherIsBetter
+                      ? 'Highest ${m.label.toLowerCase()}'
+                      : 'Lowest ${m.label.toLowerCase()}',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: kTextMuted, fontSize: 12),
+                ),
               ),
               const SizedBox(width: 10),
               ColorDot(color: BackendColors.of(best.key), size: 8),

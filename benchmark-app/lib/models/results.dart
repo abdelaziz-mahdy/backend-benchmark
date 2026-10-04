@@ -66,6 +66,7 @@ class RunIndexEntry {
   final List<String> backends;
   final List<String> scenarios;
   final List<String> runs;
+  final Map<String, String> names;
   final String file;
 
   /// backend key -> scenario -> metric -> median.
@@ -82,6 +83,7 @@ class RunIndexEntry {
     required this.backends,
     required this.scenarios,
     required this.runs,
+    required this.names,
     required this.file,
     required this.headline,
   });
@@ -116,6 +118,7 @@ class RunIndexEntry {
       backends: [...?(json['backends'] as List?)?.cast<String>()],
       scenarios: [...?(json['scenarios'] as List?)?.cast<String>()],
       runs: [...?(json['runs'] as List?)?.cast<String>()],
+      names: {...?(json['names'] as Map?)?.cast<String, String>()},
       file: json['file'] as String,
       headline: headline,
     );

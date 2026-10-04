@@ -63,10 +63,22 @@ class HistoryGroup {
       metric: m,
       lines: [
         for (final k in keys)
-          (k, names[k] ?? k, [for (final r in runs) r.headline[k]?[sc]?[m.id]]),
+          (
+            k,
+            names[k] ?? _nameIn(runs, k),
+            [for (final r in runs) r.headline[k]?[sc]?[m.id]],
+          ),
       ],
     );
   }
+}
+
+String _nameIn(List<RunIndexEntry> runs, String key) {
+  for (final r in runs.reversed) {
+    final n = r.names[key];
+    if (n != null) return n;
+  }
+  return key;
 }
 
 class HistoryScreen extends StatefulWidget {
@@ -115,7 +127,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             SegmentedButton<Metric>(
               showSelectedIcon: false,
-              style: const ButtonStyle(visualDensity: VisualDensity.compact),
+              style: kSegmentedStyle,
               segments: [
                 for (final m in _historyMetrics)
                   ButtonSegment(

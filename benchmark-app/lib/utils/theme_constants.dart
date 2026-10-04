@@ -25,3 +25,18 @@ const kPurple = Color(0xFFBB86FC);
 const kMaxContentWidth = 1280.0;
 const kNarrow = 760.0;
 const kRadius = 10.0;
+
+/// Segmented buttons tinted blue when selected (Material 3 defaults to the
+/// secondary color, which is green here).
+final kSegmentedStyle = ButtonStyle(
+  visualDensity: VisualDensity.compact,
+  backgroundColor: WidgetStateProperty.resolveWith(
+    (s) => s.contains(WidgetState.selected)
+        ? kBlue.withValues(alpha: 0.2)
+        : Colors.transparent,
+  ),
+  foregroundColor: WidgetStateProperty.resolveWith(
+    (s) => s.contains(WidgetState.selected) ? kTextPrimary : kTextMuted,
+  ),
+  side: const WidgetStatePropertyAll(BorderSide(color: kBorder)),
+);
