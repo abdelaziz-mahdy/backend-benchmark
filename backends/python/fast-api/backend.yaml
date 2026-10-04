@@ -1,8 +1,8 @@
 name: fastapi
 language: python
 framework: fastapi
-version: "0.115.12"
-runtime: python 3.13
+version: "0.142.2"
+runtime: python 3.14
 variants:
   - id: postgres
     db: postgres

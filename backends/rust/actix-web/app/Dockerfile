@@ -1,9 +1,9 @@
-FROM rust:1 AS build
+FROM rust:1.99 AS build
 WORKDIR /usr/src/app
-COPY Cargo.toml ./
+COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY migration.sql ./
-RUN cargo build --release
+RUN cargo build --release --locked
 
 FROM debian:trixie-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*

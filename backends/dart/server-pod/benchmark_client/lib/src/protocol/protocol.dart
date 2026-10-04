@@ -8,19 +8,17 @@
 // ignore_for_file: type_literal_in_constant_pattern
 // ignore_for_file: use_super_parameters
 // ignore_for_file: invalid_use_of_internal_member
+// ignore_for_file: dead_code, unnecessary_type_check
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:benchmark_client/src/protocol/note.dart' as _ibqxzvsy;
+import 'package:serverpod_client/serverpod_client.dart' as _isc;
 
-import 'package:serverpod_client/serverpod_client.dart' as _i1;
-
-import 'note.dart' as _i2;
-
-import 'package:benchmark_client/src/protocol/note.dart' as _i3;
-
+import 'note.dart' as _io8vvye9;
 export 'note.dart';
 export 'client.dart';
 
-class Protocol extends _i1.SerializationManager {
+class Protocol extends _isc.SerializationManager {
   Protocol._();
 
   factory Protocol() => _instance;
@@ -44,21 +42,22 @@ class Protocol extends _i1.SerializationManager {
           'className': dataClassName,
           'data': data,
         });
-      } on FormatException catch (_) {
+      } on _isc.DeserializationClassNameNotFoundException catch (_) {
         // If the className is not recognized (e.g., older client receiving
         // data with a new subtype), fall back to deserializing without the
         // className, using the expected type T.
       }
     }
 
-    if (t == _i2.Note) {
-      return _i2.Note.fromJson(data) as T;
+    if (t == _io8vvye9.Note) {
+      return _io8vvye9.Note.fromJson(data) as T;
     }
-    if (t == _i1.getType<_i2.Note?>()) {
-      return (data != null ? _i2.Note.fromJson(data) : null) as T;
+    if (t == _isc.getType<_io8vvye9.Note?>()) {
+      return (data != null ? _io8vvye9.Note.fromJson(data) : null) as T;
     }
-    if (t == List<_i3.Note>) {
-      return (data as List).map((e) => deserialize<_i3.Note>(e)).toList() as T;
+    if (t == List<_ibqxzvsy.Note>) {
+      return (data as List).map((e) => deserialize<_ibqxzvsy.Note>(e)).toList()
+          as T;
     }
     if (t == Map<String, String>) {
       return (data as Map).map(
@@ -70,7 +69,7 @@ class Protocol extends _i1.SerializationManager {
 
   static String? getClassNameForType(Type type) {
     return switch (type) {
-      _i2.Note => 'Note',
+      _io8vvye9.Note => 'Note',
       _ => null,
     };
   }
@@ -85,7 +84,7 @@ class Protocol extends _i1.SerializationManager {
     }
 
     switch (data) {
-      case _i2.Note():
+      case _io8vvye9.Note():
         return 'Note';
     }
     return null;
@@ -98,10 +97,13 @@ class Protocol extends _i1.SerializationManager {
       return super.deserializeByClassName(data);
     }
     if (dataClassName == 'Note') {
-      return deserialize<_i2.Note>(data['data']);
+      return deserialize<_io8vvye9.Note>(data['data']);
     }
     return super.deserializeByClassName(data);
   }
+
+  @override
+  String getModuleName() => 'benchmark';
 
   /// Maps any `Record`s known to this [Protocol] to their JSON representation
   ///

@@ -10,10 +10,10 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:serverpod_client/serverpod_client.dart' as _isc;
 
-import 'package:serverpod_client/serverpod_client.dart' as _i1;
-
-abstract class Note implements _i1.SerializableModel {
+abstract class Note
+    implements _isc.SerializableModel, _isc.ProtocolSerialization {
   Note._({this.id, required this.title, required this.content});
 
   factory Note({int? id, required String title, required String content}) =
@@ -38,7 +38,7 @@ abstract class Note implements _i1.SerializableModel {
 
   /// Returns a shallow copy of this [Note]
   /// with some or all fields replaced by the given arguments.
-  @_i1.useResult
+  @_isc.useResult
   Note copyWith({int? id, String? title, String? content});
   @override
   Map<String, dynamic> toJson() {
@@ -51,8 +51,18 @@ abstract class Note implements _i1.SerializableModel {
   }
 
   @override
+  Map<String, dynamic> toJsonForProtocol() {
+    return {
+      '__className__': 'Note',
+      if (id != null) 'id': id,
+      'title': title,
+      'content': content,
+    };
+  }
+
+  @override
   String toString() {
-    return _i1.SerializationManager.encode(this);
+    return _isc.SerializationManager.encode(this);
   }
 }
 
@@ -64,7 +74,7 @@ class _NoteImpl extends Note {
 
   /// Returns a shallow copy of this [Note]
   /// with some or all fields replaced by the given arguments.
-  @_i1.useResult
+  @_isc.useResult
   @override
   Note copyWith({Object? id = _Undefined, String? title, String? content}) {
     return Note(

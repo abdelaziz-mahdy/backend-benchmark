@@ -2,7 +2,7 @@ name: go mux
 language: go
 framework: gorilla/mux
 version: "1.8.1"
-runtime: go 1.26
+runtime: go 1.27
 variants:
   - id: postgres
     db: postgres

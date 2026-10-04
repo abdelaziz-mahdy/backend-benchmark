@@ -1,8 +1,8 @@
 name: express (bun)
 language: javascript
 framework: express
-version: "5.1.0"
-runtime: bun 1.3
+version: "5.2.1"
+runtime: bun 1.4
 variants:
   - id: postgres
     db: postgres
