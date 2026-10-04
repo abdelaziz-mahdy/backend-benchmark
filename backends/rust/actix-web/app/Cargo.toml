@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-actix-web = "4.12"
-tokio = { version = "1", features = ["full"] }
-tokio-postgres = "0.7.16"
-deadpool-postgres = "0.14"
+actix-web = "4.15"
+tokio = { version = "1.53", features = ["full"] }
+tokio-postgres = "0.7.18"
+deadpool-postgres = "0.14.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 anyhow = "1.0"
