@@ -1,46 +1,37 @@
-# This is the configuration file for your production environment.
-# Typically, you will want to route the traffic through a load balancer
-# which adds SSL security through https. If you use Serverpod's standard
-# Terraform scripts to deploy your server, all you need to change in
-# this file is the examplepod.com domain name.
-
-# Configuration for the main API server.
+# Benchmark configuration: the API server listens on 8000 and talks to the
+# shared Postgres service "db" without SSL. Insights and web servers are not
+# used by the benchmark.
 apiServer:
-  port: 8080
-  publicHost: api.examplepod.com
-  publicPort: 443
-  publicScheme: https
+  port: 8000
+  publicHost: benchmark
+  publicPort: 8000
+  publicScheme: http
 
-# Configuration for the Insights server.
 insightsServer:
   port: 8081
-  publicHost: insights.examplepod.com
-  publicPort: 443
-  publicScheme: https
+  publicHost: localhost
+  publicPort: 8081
+  publicScheme: http
 
-# Configuration for the web server.
 webServer:
   port: 8082
-  publicHost: app.examplepod.com
-  publicPort: 443
-  publicScheme: https
+  publicHost: localhost
+  publicPort: 8082
+  publicScheme: http
 
-# This is the database setup for your servers. The default for the Google Cloud
-# Engine Terraform configuration is to connect on a private IP address.
-# If you are connecting on a public IP (e.g. on AWS or Google Cloud Run), you
-# connect on the public IP of the database e.g. database.examplepod.com.
 database:
-  host: database.private-production.examplepod.com
+  host: db
   port: 5432
-  name: serverpod
+  name: postgres
   user: postgres
-  requireSsl: true
+  requireSsl: false
+  maxConnectionCount: 20
 
-# This is the setup for Redis. The default for the Google Cloud Engine Terraform
-# configuration is to connect on a private IP address.
-# If you are connecting on a public IP (e.g. on AWS or Google Cloud Run), you
-# connect on the public IP of the database e.g. redis.examplepod.com.
 redis:
   enabled: false
-  host: redis.private-production.examplepod.com
+  host: redis
   port: 6379
+
+sessionLogs:
+  persistentEnabled: false
+  consoleEnabled: false

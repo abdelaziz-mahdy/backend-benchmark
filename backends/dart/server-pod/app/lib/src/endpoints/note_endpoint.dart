@@ -1,37 +1,28 @@
 import 'package:benchmark_server/src/generated/protocol.dart';
 import 'package:serverpod/serverpod.dart';
 
-// This is an example endpoint of your server. It's best practice to use the
-// `Endpoint` ending of the class name, but it will be removed when accessing
-// the endpoint from the client. I.e., this endpoint can be accessed through
-// `client.example` on the client side.
-
-// After adding or modifying an endpoint, you will need to run
-// `serverpod generate` to update the server and client code.
+/// Benchmark API as Serverpod RPC methods (POST /note/<method>), which is how
+/// Serverpod apps are normally called. The k6 scenarios map the shared
+/// operations onto these methods (api_style: serverpod_rpc in backend.yaml).
 class NoteEndpoint extends Endpoint {
-  // You create methods in your endpoint which are accessible from the client by
-  // creating a public method with `Session` as its first parameter.
-  // `bool`, `int`, `double`, `String`, `UuidValue`, `Duration`, `DateTime`, `ByteData`,
-  // and other serializable classes, exceptions and enums from your from your `protocol` directory.
-  // The methods should return a typed future; the same types as for the parameters are
-  // supported. The `session` object provides access to the database, logging,
-  // passwords, and information about the request being made to the server.
-
-  Future<void> createNote(Session session, Note note) async {
-    await Note.db.insertRow(session, note);
+  Future<Note> createNote(Session session, Note note) async {
+    return Note.db.insertRow(session, note);
   }
 
-  Future<List<Note>> getAllNotes(Session session) async {
-    // By ordering by the id column, we always get the notes in the same order
-    // and not in the order they were updated.
-    return await Note.db.find(session, limit: 100);
+  Future<List<Note>> getNotes(Session session, int limit, int offset) async {
+    return Note.db.find(
+      session,
+      orderBy: (t) => t.id,
+      limit: limit < 0 ? 20 : limit,
+      offset: offset < 0 ? 0 : offset,
+    );
   }
 
-  Future<String> noDbEndpoint(Session session) async {
-    return 'no db endpoint';
+  Future<Note?> getNote(Session session, int id) async {
+    return Note.db.findById(session, id);
   }
 
-  Future<String> noDbEndpoint2(Session session) async {
-    return 'no db endpoint2';
+  Future<Map<String, String>> noDbEndpoint(Session session) async {
+    return {'message': 'No db endpoint'};
   }
 }

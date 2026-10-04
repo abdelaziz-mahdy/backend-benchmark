@@ -10,11 +10,13 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'package:serverpod_client/serverpod_client.dart' as _i1;
-import 'example.dart' as _i2;
-import 'note.dart' as _i3;
-import 'package:benchmark_client/src/protocol/note.dart' as _i4;
-export 'example.dart';
+
+import 'note.dart' as _i2;
+
+import 'package:benchmark_client/src/protocol/note.dart' as _i3;
+
 export 'note.dart';
 export 'client.dart';
 
@@ -32,10 +34,7 @@ class Protocol extends _i1.SerializationManager {
   }
 
   @override
-  T deserialize<T>(
-    dynamic data, [
-    Type? t,
-  ]) {
+  T deserialize<T>(dynamic data, [Type? t]) {
     t ??= T;
 
     final dataClassName = getClassNameFromObjectJson(data);
@@ -52,28 +51,26 @@ class Protocol extends _i1.SerializationManager {
       }
     }
 
-    if (t == _i2.Example) {
-      return _i2.Example.fromJson(data) as T;
+    if (t == _i2.Note) {
+      return _i2.Note.fromJson(data) as T;
     }
-    if (t == _i3.Note) {
-      return _i3.Note.fromJson(data) as T;
+    if (t == _i1.getType<_i2.Note?>()) {
+      return (data != null ? _i2.Note.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i2.Example?>()) {
-      return (data != null ? _i2.Example.fromJson(data) : null) as T;
+    if (t == List<_i3.Note>) {
+      return (data as List).map((e) => deserialize<_i3.Note>(e)).toList() as T;
     }
-    if (t == _i1.getType<_i3.Note?>()) {
-      return (data != null ? _i3.Note.fromJson(data) : null) as T;
-    }
-    if (t == List<_i4.Note>) {
-      return (data as List).map((e) => deserialize<_i4.Note>(e)).toList() as T;
+    if (t == Map<String, String>) {
+      return (data as Map).map(
+        (k, v) => MapEntry(deserialize<String>(k), deserialize<String>(v)),
+      ) as T;
     }
     return super.deserialize<T>(data, t);
   }
 
   static String? getClassNameForType(Type type) {
     return switch (type) {
-      _i2.Example => 'Example',
-      _i3.Note => 'Note',
+      _i2.Note => 'Note',
       _ => null,
     };
   }
@@ -88,9 +85,7 @@ class Protocol extends _i1.SerializationManager {
     }
 
     switch (data) {
-      case _i2.Example():
-        return 'Example';
-      case _i3.Note():
+      case _i2.Note():
         return 'Note';
     }
     return null;
@@ -102,11 +97,8 @@ class Protocol extends _i1.SerializationManager {
     if (dataClassName is! String) {
       return super.deserializeByClassName(data);
     }
-    if (dataClassName == 'Example') {
-      return deserialize<_i2.Example>(data['data']);
-    }
     if (dataClassName == 'Note') {
-      return deserialize<_i3.Note>(data['data']);
+      return deserialize<_i2.Note>(data['data']);
     }
     return super.deserializeByClassName(data);
   }

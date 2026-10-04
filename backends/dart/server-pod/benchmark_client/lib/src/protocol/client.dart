@@ -10,25 +10,18 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'package:serverpod_client/serverpod_client.dart' as _i1;
+
 import 'dart:async' as _i2;
+
 import 'package:benchmark_client/src/protocol/note.dart' as _i3;
+
 import 'protocol.dart' as _i4;
 
-/// {@category Endpoint}
-class EndpointExample extends _i1.EndpointRef {
-  EndpointExample(_i1.EndpointCaller caller) : super(caller);
-
-  @override
-  String get name => 'example';
-
-  _i2.Future<String> hello(String name) => caller.callServerEndpoint<String>(
-    'example',
-    'hello',
-    {'name': name},
-  );
-}
-
+/// Benchmark API as Serverpod RPC methods (POST /note/<method>), which is how
+/// Serverpod apps are normally called. The k6 scenarios map the shared
+/// operations onto these methods (api_style: serverpod_rpc in backend.yaml).
 /// {@category Endpoint}
 class EndpointNote extends _i1.EndpointRef {
   EndpointNote(_i1.EndpointCaller caller) : super(caller);
@@ -36,30 +29,20 @@ class EndpointNote extends _i1.EndpointRef {
   @override
   String get name => 'note';
 
-  _i2.Future<void> createNote(_i3.Note note) => caller.callServerEndpoint<void>(
-    'note',
-    'createNote',
-    {'note': note},
-  );
+  _i2.Future<_i3.Note> createNote(_i3.Note note) =>
+      caller.callServerEndpoint<_i3.Note>('note', 'createNote', {'note': note});
 
-  _i2.Future<List<_i3.Note>> getAllNotes() =>
-      caller.callServerEndpoint<List<_i3.Note>>(
-        'note',
-        'getAllNotes',
-        {},
-      );
+  _i2.Future<List<_i3.Note>> getNotes(int limit, int offset) =>
+      caller.callServerEndpoint<List<_i3.Note>>('note', 'getNotes', {
+        'limit': limit,
+        'offset': offset,
+      });
 
-  _i2.Future<String> noDbEndpoint() => caller.callServerEndpoint<String>(
-    'note',
-    'noDbEndpoint',
-    {},
-  );
+  _i2.Future<_i3.Note?> getNote(int id) =>
+      caller.callServerEndpoint<_i3.Note?>('note', 'getNote', {'id': id});
 
-  _i2.Future<String> noDbEndpoint2() => caller.callServerEndpoint<String>(
-    'note',
-    'noDbEndpoint2',
-    {},
-  );
+  _i2.Future<Map<String, String>> noDbEndpoint() => caller
+      .callServerEndpoint<Map<String, String>>('note', 'noDbEndpoint', {});
 }
 
 class Client extends _i1.ServerpodClientShared {
@@ -72,12 +55,7 @@ class Client extends _i1.ServerpodClientShared {
     super.authenticationKeyManager,
     Duration? streamingConnectionTimeout,
     Duration? connectionTimeout,
-    Function(
-      _i1.MethodCallContext,
-      Object,
-      StackTrace,
-    )?
-    onFailedCall,
+    Function(_i1.MethodCallContext, Object, StackTrace)? onFailedCall,
     Function(_i1.MethodCallContext)? onSucceededCall,
     bool? disconnectStreamsOnLostInternetConnection,
   }) : super(
@@ -91,19 +69,13 @@ class Client extends _i1.ServerpodClientShared {
          disconnectStreamsOnLostInternetConnection:
              disconnectStreamsOnLostInternetConnection,
        ) {
-    example = EndpointExample(this);
     note = EndpointNote(this);
   }
-
-  late final EndpointExample example;
 
   late final EndpointNote note;
 
   @override
-  Map<String, _i1.EndpointRef> get endpointRefLookup => {
-    'example': example,
-    'note': note,
-  };
+  Map<String, _i1.EndpointRef> get endpointRefLookup => {'note': note};
 
   @override
   Map<String, _i1.ModuleEndpointCaller> get moduleLookup => {};
