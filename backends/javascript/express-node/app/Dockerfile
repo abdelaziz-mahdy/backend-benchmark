@@ -1,16 +1,8 @@
-FROM node:24
-
+FROM node:24-slim
 WORKDIR /app
-
+ENV NODE_ENV=production
 COPY package*.json ./
-
-RUN npm install
-
-# Install curl
-RUN apt-get update && apt-get install -y curl
-
-COPY . .
-
+RUN npm ci --omit=dev
+COPY server.js migration.sql ./
 EXPOSE 8000
-
 CMD ["node", "server.js"]

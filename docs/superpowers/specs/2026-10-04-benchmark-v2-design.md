@@ -198,6 +198,33 @@ Dropped: winner cards, radar, Time Series tab + sidebar, sidebar toggle.
 
 Each PR: CI green, `flutter analyze` + `dart format` over the whole app, smoke test passing.
 
+## Changes made during implementation
+
+- **Paged reads use offsets below 200.** With offsets anywhere in the 10k
+  rows, Postgres scanned ~5k rows per list request and saturated its 3 cores
+  at ~6k rps for every fast framework (dotnet: DB 286% CPU, app 87%), so
+  `db_read` measured Postgres, not the framework. Found in the first full run,
+  which was discarded.
+- **Seeding goes through the API** (`POST /notes/` via k6), not SQL. ORMs name
+  tables differently and the FOAM embedded variant has no SQL at all.
+- **CPU sets scale with the Docker VM** (min 6 CPUs). On 10 CPUs: app 0-1,
+  Postgres 2-4 (a 2-core Postgres capped go/mux's `db_mixed` at ~6k rps with
+  the app at 46% CPU), k6 5-8, one spare. Stored in `run.json`.
+- **Load-generator flag**: a step where k6 used > 75% of its cores is marked
+  `k6_bound`; the fastest `no_db` backends reach this on a 10-core laptop.
+- **Time series are per-second CPU/memory**; latency and throughput are per
+  step (per-request k6 output at 60k rps is too large to keep).
+- **Community result PRs**: generated files (`index.json`, run summaries) are
+  built by CI, not committed; a run PR only adds `results/runs/<run_id>/`.
+  Run ids get a random suffix, runs record `dirty` and an optional
+  `contributor`, and `validate-results.yml` rejects edits to existing results.
+- **`api_style`**: Serverpod is measured through its RPC API
+  (`serverpod_rpc`), with the same four operations mapped in `scenarios/lib.js`.
+- **Production modes fixed** while adding endpoints: Django ran on `runserver`
+  with `DEBUG=True`, FastAPI blocked its event loop with sync SQLAlchemy,
+  Node/Bun used one process, Rust shared one DB connection.
+- The runner is Python (`bench/bench.py`, `bench/benchlib/`) behind `bench/run.sh`.
+
 ## Out of scope
 
 Remote/CI benchmark runners; cross-machine normalisation; HTTP/2 or TLS;

@@ -1,0 +1,72 @@
+# Shared stack for every backend. bench.py sets the env vars below and
+# picks profiles per variant: "postgres", "pgbouncer", "load".
+# CPU sets come from bench.py (sized to the Docker VM) so the app, database
+# and load generator never share cores.
+name: bench
+
+services:
+  db:
+    image: postgres:18
+    profiles: [postgres]
+    cpuset: "${DB_CPUSET:-2-3}"
+    mem_limit: 2g
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    command: postgres -c max_connections=500 -c shared_buffers=512MB -c synchronous_commit=on
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    profiles: [pgbouncer]
+    cpuset: "${DB_CPUSET:-2-3}"
+    environment:
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: db
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      MAX_CLIENT_CONN: 10000
+      DEFAULT_POOL_SIZE: 50
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false
+
+  benchmark:
+    build: ${APP_DIR:?APP_DIR is required}
+    image: bench-app-${BACKEND_SLUG:?BACKEND_SLUG is required}
+    cpuset: "${APP_CPUSET:-0-1}"
+    mem_limit: 2g
+    environment:
+      DATABASE_HOST: ${DATABASE_HOST-db}
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: postgres
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      BENCH_CPUS: "2"
+      BENCH_VARIANT: ${BENCH_VARIANT:-postgres}
+    ports:
+      - "127.0.0.1:${BENCH_PORT:-18000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false
+      pgbouncer:
+        condition: service_started
+        required: false
+
+  k6:
+    image: grafana/k6:latest
+    profiles: [load]
+    cpuset: "${K6_CPUSET:-4-7}"
+    environment:
+      BASE_URL: http://benchmark:8000
+    volumes:
+      - ./scenarios:/scenarios:ro
+      - ${OUT_DIR:-/tmp}:/out

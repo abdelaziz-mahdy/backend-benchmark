@@ -6,3 +6,7 @@ runtime: dart 3.8
 variants:
   - id: postgres
     db: postgres
+# Serverpod is called through its RPC API (POST /note/<method>).
+api_style: serverpod_rpc
+health_path: /
+notes: Runs one Dart isolate, so it uses a single core of the two assigned.

@@ -10,20 +10,14 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'package:serverpod_client/serverpod_client.dart' as _i1;
 
 abstract class Note implements _i1.SerializableModel {
-  Note._({
-    this.id,
-    required this.title,
-    required this.content,
-  });
+  Note._({this.id, required this.title, required this.content});
 
-  factory Note({
-    int? id,
-    required String title,
-    required String content,
-  }) = _NoteImpl;
+  factory Note({int? id, required String title, required String content}) =
+      _NoteImpl;
 
   factory Note.fromJson(Map<String, dynamic> jsonSerialization) {
     return Note(
@@ -45,11 +39,7 @@ abstract class Note implements _i1.SerializableModel {
   /// Returns a shallow copy of this [Note]
   /// with some or all fields replaced by the given arguments.
   @_i1.useResult
-  Note copyWith({
-    int? id,
-    String? title,
-    String? content,
-  });
+  Note copyWith({int? id, String? title, String? content});
   @override
   Map<String, dynamic> toJson() {
     return {
@@ -69,25 +59,14 @@ abstract class Note implements _i1.SerializableModel {
 class _Undefined {}
 
 class _NoteImpl extends Note {
-  _NoteImpl({
-    int? id,
-    required String title,
-    required String content,
-  }) : super._(
-         id: id,
-         title: title,
-         content: content,
-       );
+  _NoteImpl({int? id, required String title, required String content})
+    : super._(id: id, title: title, content: content);
 
   /// Returns a shallow copy of this [Note]
   /// with some or all fields replaced by the given arguments.
   @_i1.useResult
   @override
-  Note copyWith({
-    Object? id = _Undefined,
-    String? title,
-    String? content,
-  }) {
+  Note copyWith({Object? id = _Undefined, String? title, String? content}) {
     return Note(
       id: id is int? ? id : this.id,
       title: title ?? this.title,

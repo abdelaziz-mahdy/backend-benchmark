@@ -1,18 +1,8 @@
-FROM python:3.13
-
+FROM python:3.13-slim
 WORKDIR /app
-
-# Copy the requirements file into the container at /app
-COPY requirements.txt /app
-
-RUN pip install -r requirements.txt
-
-COPY . .
-
-
-
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY main.py start.sh ./
 EXPOSE 8000
-ENV PYTHONUNBUFFERED=1
-ARG CACHEBUST=1 
-
-CMD bash run_only_for_docker.sh
+CMD ["sh", "start.sh"]

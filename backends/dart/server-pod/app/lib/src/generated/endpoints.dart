@@ -10,41 +10,17 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'package:serverpod/serverpod.dart' as _i1;
-
-import '../endpoints/example_endpoint.dart' as _i2;
-import '../endpoints/note_endpoint.dart' as _i3;
-
-import 'package:benchmark_server/src/generated/note.dart' as _i4;
+import '../endpoints/note_endpoint.dart' as _i2;
+import 'package:benchmark_server/src/generated/note.dart' as _i3;
 
 class Endpoints extends _i1.EndpointDispatch {
   @override
   void initializeEndpoints(_i1.Server server) {
     var endpoints = <String, _i1.Endpoint>{
-      'example': _i2.ExampleEndpoint()..initialize(server, 'example', null),
-      'note': _i3.NoteEndpoint()..initialize(server, 'note', null),
+      'note': _i2.NoteEndpoint()..initialize(server, 'note', null),
     };
-    connectors['example'] = _i1.EndpointConnector(
-      name: 'example',
-      endpoint: endpoints['example']!,
-      methodConnectors: {
-        'hello': _i1.MethodConnector(
-          name: 'hello',
-          params: {
-            'name': _i1.ParameterDescription(
-              name: 'name',
-              type: _i1.getType<String>(),
-              nullable: false,
-            ),
-          },
-          call: (_i1.Session session, Map<String, dynamic> params) async =>
-              (endpoints['example'] as _i2.ExampleEndpoint).hello(
-                session,
-                params['name'],
-              ),
-        ),
-      },
-    );
     connectors['note'] = _i1.EndpointConnector(
       name: 'note',
       endpoint: endpoints['note']!,
@@ -54,33 +30,57 @@ class Endpoints extends _i1.EndpointDispatch {
           params: {
             'note': _i1.ParameterDescription(
               name: 'note',
-              type: _i1.getType<_i4.Note>(),
+              type: _i1.getType<_i3.Note>(),
               nullable: false,
             ),
           },
           call: (_i1.Session session, Map<String, dynamic> params) async =>
-              (endpoints['note'] as _i3.NoteEndpoint).createNote(
+              (endpoints['note'] as _i2.NoteEndpoint).createNote(
                 session,
                 params['note'],
               ),
         ),
-        'getAllNotes': _i1.MethodConnector(
-          name: 'getAllNotes',
-          params: {},
+        'getNotes': _i1.MethodConnector(
+          name: 'getNotes',
+          params: {
+            'limit': _i1.ParameterDescription(
+              name: 'limit',
+              type: _i1.getType<int>(),
+              nullable: false,
+            ),
+            'offset': _i1.ParameterDescription(
+              name: 'offset',
+              type: _i1.getType<int>(),
+              nullable: false,
+            ),
+          },
           call: (_i1.Session session, Map<String, dynamic> params) async =>
-              (endpoints['note'] as _i3.NoteEndpoint).getAllNotes(session),
+              (endpoints['note'] as _i2.NoteEndpoint).getNotes(
+                session,
+                params['limit'],
+                params['offset'],
+              ),
+        ),
+        'getNote': _i1.MethodConnector(
+          name: 'getNote',
+          params: {
+            'id': _i1.ParameterDescription(
+              name: 'id',
+              type: _i1.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call: (_i1.Session session, Map<String, dynamic> params) async =>
+              (endpoints['note'] as _i2.NoteEndpoint).getNote(
+                session,
+                params['id'],
+              ),
         ),
         'noDbEndpoint': _i1.MethodConnector(
           name: 'noDbEndpoint',
           params: {},
           call: (_i1.Session session, Map<String, dynamic> params) async =>
-              (endpoints['note'] as _i3.NoteEndpoint).noDbEndpoint(session),
-        ),
-        'noDbEndpoint2': _i1.MethodConnector(
-          name: 'noDbEndpoint2',
-          params: {},
-          call: (_i1.Session session, Map<String, dynamic> params) async =>
-              (endpoints['note'] as _i3.NoteEndpoint).noDbEndpoint2(session),
+              (endpoints['note'] as _i2.NoteEndpoint).noDbEndpoint(session),
         ),
       },
     );

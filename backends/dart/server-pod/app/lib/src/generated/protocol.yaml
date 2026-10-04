@@ -1,7 +1,5 @@
-example:
-  - hello:
 note:
   - createNote:
-  - getAllNotes:
+  - getNotes:
+  - getNote:
   - noDbEndpoint:
-  - noDbEndpoint2:
