@@ -23,6 +23,10 @@ jobs:
       - name: Generate dashboard data
         run: python bench/report/report.py
 
+      - name: Resolve packages
+        working-directory: benchmark-app
+        run: flutter pub get
+
       - name: Format
         working-directory: benchmark-app
         run: dart format --output=none --set-exit-if-changed lib test
