@@ -35,8 +35,17 @@ def role_of(name, project="bench"):
     return None
 
 
+def _percent(value):
+    """'150.5%' -> 150.5; docker prints '--' while a container starts or stops."""
+    try:
+        return float(str(value).rstrip("%"))
+    except ValueError:
+        return None
+
+
 def parse_frames(text, project="bench"):
-    """Yield (role, cpu_percent, mem_mb) for every JSON frame in text."""
+    """Yield (role, cpu_percent, mem_mb) for every JSON frame in text.
+    Frames without a CPU reading are skipped."""
     for raw in _FRAME.findall(text):
         try:
             frame = json.loads(raw)
@@ -45,7 +54,9 @@ def parse_frames(text, project="bench"):
         role = role_of(frame.get("Name", ""), project)
         if role is None:
             continue
-        cpu = float(frame.get("CPUPerc", "0%").rstrip("%") or 0)
+        cpu = _percent(frame.get("CPUPerc", "0%"))
+        if cpu is None:
+            continue
         yield role, cpu, parse_mem_mb(frame.get("MemUsage", "0B / 0B"))
 
 
@@ -72,8 +83,12 @@ class Sampler:
     def _read(self):
         for line in self._proc.stdout:
             now = time.time()
-            for role, cpu, mem in parse_frames(line, self.project):
-                self.samples.append((now, role, cpu, mem))
+            # One bad frame must never end sampling for the rest of the rep.
+            try:
+                for role, cpu, mem in parse_frames(line, self.project):
+                    self.samples.append((now, role, cpu, mem))
+            except Exception as e:  # noqa: BLE001
+                print(f"stats: skipped frame ({e})", flush=True)
 
     def stop(self):
         if self._proc:
