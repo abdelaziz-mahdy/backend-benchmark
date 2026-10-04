@@ -17,6 +17,12 @@ def test_parse_frames_with_ansi_noise():
     assert list(stats.parse_frames(text)) == [("app", 150.5, 100.0), ("db", 20.0, 50.0)]
 
 
+def test_frames_without_cpu_are_skipped():
+    text = '{"Name":"bench-benchmark-1","CPUPerc":"--","MemUsage":"-- / --"}' \
+           '{"Name":"bench-db-1","CPUPerc":"12%","MemUsage":"50MiB / 2GiB"}'
+    assert list(stats.parse_frames(text)) == [("db", 12.0, 50.0)]
+
+
 def test_k6_run_container_role():
     assert stats.role_of("bench-k6-run-3f2a1b") == "k6"
 
