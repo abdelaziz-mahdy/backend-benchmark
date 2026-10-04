@@ -26,7 +26,9 @@ sys.path.insert(0, str(ROOT / "bench"))
 from benchlib import slo  # noqa: E402
 
 RESULTS = ROOT / "results"
+BACKENDS = ROOT / "backends"
 DEFAULT_OUT = ROOT / "benchmark-app" / "assets" / "results"
+IMPLEMENTATION_KEYS = ["server", "concurrency", "db_access", "pool"]
 STEP_FIELDS = [
     "target_rps",
     "achieved_rps",
@@ -127,7 +129,94 @@ def scenario_summary(sdir, problems):
     return out
 
 
-def build_run(run_dir, problems):
+# ---------------------------------------------------------------- manifests
+
+
+def _load_yaml(path):
+    """Current backend.yaml, or None when PyYAML is missing (CI installs it;
+    without it the report still builds, just without the manifest fallback)."""
+    try:
+        import yaml  # noqa: PLC0415
+    except ImportError:
+        return None
+    return yaml.safe_load(path.read_text()) or {}
+
+
+_manifests = {}
+
+
+def current_manifest(backends_dir, rel_path):
+    """Manifest at backends/<rel_path>/backend.yaml, cached; {} if absent."""
+    key = (str(backends_dir), rel_path)
+    if key not in _manifests:
+        path = backends_dir / rel_path / "backend.yaml"
+        _manifests[key] = (_load_yaml(path) if path.is_file() else None) or {}
+    return _manifests[key]
+
+
+def backend_path_for(backends_dir, key, item):
+    """`backends/<lang>/<fw>` for a result key. v2 runs record `path`; older
+    runs and legacy keys use the folder slug (`go-mux` -> `go/mux`, with an
+    optional `-<variant>` suffix)."""
+    path = item.get("path")
+    if path:
+        return path
+    for manifest_path in sorted(backends_dir.glob("*/*/backend.yaml")):
+        rel = manifest_path.parent.relative_to(backends_dir).as_posix()
+        slug = rel.replace("/", "-")
+        if key == slug or key.startswith(slug + "-"):
+            return rel
+    return None
+
+
+def pick_implementation(block):
+    if not isinstance(block, dict):
+        return None
+    out = {k: str(block[k]) for k in IMPLEMENTATION_KEYS if block.get(k)}
+    return out or None
+
+
+def implementation_for(backends_dir, key, item):
+    """(implementation, source): the block recorded in the run, else the one
+    in the current manifest ("manifest"), else (None, None)."""
+    recorded = pick_implementation(item.get("implementation"))
+    if recorded:
+        return recorded, "run"
+    path = backend_path_for(backends_dir, key, item)
+    if path is None:
+        return None, None
+    current = pick_implementation(current_manifest(backends_dir, path).get("implementation"))
+    if current:
+        return current, "manifest"
+    return None, None
+
+
+def describe_backend(backends_dir, key, item):
+    """Implementation fields shared by v2 and legacy summaries."""
+    impl, source = implementation_for(backends_dir, key, item)
+    path = backend_path_for(backends_dir, key, item)
+    api_style = item.get("api_style")
+    if not api_style and path:
+        api_style = current_manifest(backends_dir, path).get("api_style")
+    return {
+        "path": path,
+        "api_style": api_style or "rest",
+        "implementation": impl,
+        "implementation_from": source,
+    }
+
+
+def _display_name(item, key):
+    """Variants of one backend need distinct names ("foam3 (embedded)")."""
+    name = item.get("name", key)
+    variant = item.get("variant")
+    if variant and key.endswith(f"-{variant}") and variant not in name:
+        return f"{name} ({variant})"
+    return name
+
+
+def build_run(run_dir, problems, backends_dir=None):
+    backends_dir = backends_dir or BACKENDS
     meta = json.loads((run_dir / "run.json").read_text())
     for key in REQUIRED_RUN_KEYS:
         if key not in meta:
@@ -138,7 +227,8 @@ def build_run(run_dir, problems):
     for key, item in sorted(meta.get("items", {}).items()):
         entry = {
             "key": key,
-            "name": item.get("name", key),
+            # Variants of one backend need distinct names ("foam3 (embedded)").
+            "name": _display_name(item, key),
             "language": item.get("language"),
             "framework": item.get("framework"),
             "version": item.get("version"),
@@ -148,6 +238,7 @@ def build_run(run_dir, problems):
             "pgbouncer": item.get("pgbouncer", False),
             "notes": item.get("notes"),
             "status": item.get("status", "unknown"),
+            **describe_backend(backends_dir, key, item),
             "scenarios": {},
         }
         for scenario, sentry in sorted(item.get("scenarios", {}).items()):
@@ -182,8 +273,9 @@ def build_run(run_dir, problems):
 # ---------------------------------------------------------------- legacy v1
 
 
-def build_legacy(path):
+def build_legacy(path, backends_dir=None):
     """Convert the v1 dashboard data into the v2 summary shape."""
+    backends_dir = backends_dir or BACKENDS
     raw = json.loads(path.read_text())
     backends = {}
     first_ts = None
@@ -201,7 +293,7 @@ def build_legacy(path):
             key,
             {
                 "key": key,
-                "name": fw,
+                "name": label,
                 "language": lang,
                 "framework": fw,
                 "version": None,
@@ -209,6 +301,7 @@ def build_legacy(path):
                 "variant": "postgres",
                 "db": "postgres",
                 "status": "ok",
+                **describe_backend(backends_dir, key, {}),
                 "scenarios": {},
             },
         )
@@ -340,6 +433,7 @@ def index_entry(summary, file):
         "dirty": summary["dirty"],
         "contributor": summary["contributor"],
         "backends": [b["key"] for b in summary["backends"]],
+        "names": {b["key"]: b["name"] for b in summary["backends"]},
         "scenarios": sorted({s for b in summary["backends"] for s in b["scenarios"]}),
         "runs": summary.get("runs"),
         "headline": headline(summary),
@@ -347,11 +441,11 @@ def index_entry(summary, file):
     }
 
 
-def build_all(results_dir, problems):
+def build_all(results_dir, problems, backends_dir=None):
     summaries = []
     legacy = results_dir / "legacy" / "summary_v1.json"
     if legacy.exists():
-        summaries.append(build_legacy(legacy))
+        summaries.append(build_legacy(legacy, backends_dir))
     runs_dir = results_dir / "runs"
     if runs_dir.exists():
         for run_dir in sorted(p for p in runs_dir.iterdir() if p.is_dir()):
@@ -359,7 +453,7 @@ def build_all(results_dir, problems):
                 problems.add(str(run_dir), "run.json missing")
                 continue
             try:
-                summaries.append(build_run(run_dir, problems))
+                summaries.append(build_run(run_dir, problems, backends_dir))
             except (json.JSONDecodeError, KeyError, ValueError) as e:
                 problems.add(str(run_dir), f"unreadable: {e}")
     return summaries
@@ -370,10 +464,11 @@ def main():
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--results", type=Path, default=RESULTS)
     ap.add_argument("--check", action="store_true", help="validate only")
+    ap.add_argument("--backends", type=Path, default=BACKENDS, help="manifests used to describe old runs")
     args = ap.parse_args()
 
     problems = Problems()
-    summaries = build_all(args.results, problems)
+    summaries = build_all(args.results, problems, args.backends)
     if args.check:
         for p in problems:
             print("problem:", p)

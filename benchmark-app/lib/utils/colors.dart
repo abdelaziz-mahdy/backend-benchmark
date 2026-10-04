@@ -1,42 +1,40 @@
 import 'package:flutter/material.dart';
 
-class ServiceColors {
-  // Bright, high-contrast colors that are easily distinguishable
-  static final Map<String, Color> _baseColors = {
-    'go mux': const Color(0xFF00B4D8), // Bright cyan
-    'rust actix web': const Color(0xFFE85D26), // Rust orange
-    'javascript express bun': const Color(0xFFF5A623), // Amber/gold
-    'javascript express node': const Color(0xFF8BC34A), // Lime green
-    'c_sharp dot net': const Color(0xFF9B59B6), // Purple
-    'java spring boot': const Color(0xFF3F51B5), // Indigo
-    'python fast api': const Color(0xFF00BFA5), // Teal
-    'python django sync': const Color(0xFFE91E63), // Pink
-    'python django async': const Color(0xFFFF5722), // Deep orange
-    'dart server pod': const Color(0xFF2196F3), // Blue
+/// Stable, distinguishable color per backend key.
+class BackendColors {
+  static const _known = {
+    'go-mux': Color(0xFF00B4D8),
+    'rust-actix-web': Color(0xFFE85D26),
+    'javascript-express-bun': Color(0xFFF5A623),
+    'javascript-express-node': Color(0xFF8BC34A),
+    'c_sharp-dot-net': Color(0xFFB07CD8),
+    'java-spring-boot': Color(0xFF7986CB),
+    'python-fast-api': Color(0xFF00BFA5),
+    'python-django-sync': Color(0xFFE91E63),
+    'python-django-async': Color(0xFFFF7043),
+    'dart-server-pod': Color(0xFF42A5F5),
+    'java-foam3-embedded': Color(0xFFFFD54F),
+    'java-foam3-postgres': Color(0xFFA1887F),
   };
 
-  static Color getColor(String serviceName) {
-    final isNoDb = serviceName.contains('no_db_test');
-    final baseName = serviceName
-        .replaceAll(' db_test', '')
-        .replaceAll(' no_db_test', '')
-        .trim();
+  static const _fallback = [
+    Color(0xFF4DD0E1),
+    Color(0xFFAED581),
+    Color(0xFFFFB74D),
+    Color(0xFFF06292),
+    Color(0xFF9575CD),
+    Color(0xFF4DB6AC),
+    Color(0xFFDCE775),
+    Color(0xFF90A4AE),
+  ];
 
-    final baseColor = _baseColors[baseName] ?? Colors.grey;
-
-    if (isNoDb) {
-      // Lighter variant for no_db — shift toward white by 40%
-      final r = (baseColor.r * 255).round();
-      final g = (baseColor.g * 255).round();
-      final b = (baseColor.b * 255).round();
-      return Color.fromARGB(
-        255,
-        r + ((255 - r) * 0.4).toInt(),
-        g + ((255 - g) * 0.4).toInt(),
-        b + ((255 - b) * 0.4).toInt(),
-      );
+  static Color of(String key) {
+    final known = _known[key];
+    if (known != null) return known;
+    var hash = 0;
+    for (final c in key.codeUnits) {
+      hash = (hash * 31 + c) & 0x7fffffff;
     }
-
-    return baseColor;
+    return _fallback[hash % _fallback.length];
   }
 }

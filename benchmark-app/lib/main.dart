@@ -1,42 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'providers/benchmark_provider.dart';
 import 'screens/home_screen.dart';
+import 'services/results_service.dart';
+import 'state/dashboard_state.dart';
+import 'utils/theme_constants.dart';
 
 void main() {
-  runApp(const BenchmarkApp());
+  runApp(BenchmarkApp(service: ResultsService()));
 }
 
 class BenchmarkApp extends StatelessWidget {
-  const BenchmarkApp({super.key});
+  final ResultsService service;
+
+  const BenchmarkApp({super.key, required this.service});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => BenchmarkProvider()..loadData(),
+      create: (_) => DashboardState(service)..load(),
       child: MaterialApp(
         title: 'Backend Benchmarks',
         debugShowCheckedModeBanner: false,
         theme: ThemeData.dark().copyWith(
-          scaffoldBackgroundColor: const Color(0xFF0D1117),
+          scaffoldBackgroundColor: kBackground,
           colorScheme: const ColorScheme.dark(
-            surface: Color(0xFF161B22),
-            primary: Color(0xFF58A6FF),
-            secondary: Color(0xFF3FB950),
+            surface: kCardBg,
+            primary: kBlue,
+            secondary: kGreen,
           ),
-          cardTheme: CardThemeData(
-            color: const Color(0xFF161B22),
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: Color(0xFF30363D)),
+          dividerColor: kBorder,
+          tooltipTheme: TooltipThemeData(
+            decoration: BoxDecoration(
+              color: kCardBgRaised,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: kBorder),
             ),
-          ),
-          dividerColor: const Color(0xFF30363D),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF161B22),
-            elevation: 0,
+            textStyle: const TextStyle(color: kTextPrimary, fontSize: 12),
+            constraints: const BoxConstraints(maxWidth: 320),
           ),
         ),
         home: const HomeScreen(),

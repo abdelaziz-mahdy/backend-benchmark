@@ -6,3 +6,9 @@ runtime: python 3.14
 variants:
   - id: postgres
     db: postgres
+# How this backend is run and talks to the database; shown on the dashboard.
+implementation:
+  server: "uvicorn, one worker per core (2)"
+  concurrency: "asyncio event loop per worker, async endpoints"
+  db_access: "SQLAlchemy 2 async with asyncpg"
+  pool: "10 per worker, 20 in total"

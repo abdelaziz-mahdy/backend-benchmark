@@ -6,3 +6,9 @@ runtime: .NET 10
 variants:
   - id: postgres
     db: postgres
+# How this backend is run and talks to the database; shown on the dashboard.
+implementation:
+  server: "Kestrel, ASP.NET Core minimal API (Production, server GC)"
+  concurrency: ".NET thread pool with async handlers on both cores"
+  db_access: "EF Core 10 with Npgsql; reads use AsNoTracking"
+  pool: "20 (Npgsql Maximum Pool Size), pooled DbContext"

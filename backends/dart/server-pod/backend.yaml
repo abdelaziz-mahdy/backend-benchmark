@@ -10,3 +10,9 @@ variants:
 api_style: serverpod_rpc
 health_path: /
 notes: Runs one Dart isolate, so it uses a single core of the two assigned.
+# How this backend is run and talks to the database; shown on the dashboard.
+implementation:
+  server: "Serverpod 4 built-in server (production mode, monolith role)"
+  concurrency: "one Dart isolate, single-threaded event loop (uses one core)"
+  db_access: "Serverpod ORM over its own Postgres driver"
+  pool: "20 (database.maxConnectionCount)"

@@ -6,3 +6,9 @@ runtime: node 24.21 (LTS)
 variants:
   - id: postgres
     db: postgres
+# How this backend is run and talks to the database; shown on the dashboard.
+implementation:
+  server: "Express 5 on Node (NODE_ENV=production)"
+  concurrency: "node:cluster, one worker process per core (2)"
+  db_access: "pg (node-postgres), hand-written SQL"
+  pool: "10 per worker, 20 in total"
