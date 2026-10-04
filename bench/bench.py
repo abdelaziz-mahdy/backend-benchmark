@@ -145,6 +145,14 @@ def docker_info():
     return {"version": info.get("ServerVersion"), "cpus": info.get("NCPU"), "mem_gb": round(info.get("MemTotal", 0) / 2**30, 1)}
 
 
+def infra_images():
+    """Pinned infrastructure images from compose.yaml (db, pgbouncer, k6)."""
+    import yaml
+
+    services = yaml.safe_load((BENCH / "compose.yaml").read_text())["services"]
+    return {name: svc["image"] for name, svc in services.items() if name != "benchmark"}
+
+
 def write_json(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
@@ -182,6 +190,7 @@ def new_run(run_id, steps, reps, cpus, contributor):
             "slo": {"p99_ms": slo.SLO_P99_MS, "error_rate": slo.SLO_ERROR_RATE, "achieved_ratio": slo.SLO_ACHIEVED_RATIO},
             "cpusets": cpus,
             "memory": {"app": "2g", "db": "2g"},
+            "images": infra_images(),
         },
         "items": {},
     }
