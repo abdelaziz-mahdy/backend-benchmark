@@ -1,0 +1,89 @@
+// Postgres connection for the postgres variant, from the env vars bench/compose.yaml sets.
+// Only looked up when noteDAO is built with setPostgres(true).
+p({
+  "class": "foam.core.boot.CSpec",
+  "name": "JDBCConnectionSpec",
+  "serve": false,
+  "serviceScript": """
+    String env(String k, String d) { String v = System.getenv(k); return v == null || v.length() == 0 ? d : v; }
+    spec = new foam.dao.jdbc.JDBCConnectionSpec();
+    spec.setDatabaseServer("postgresql");
+    spec.setHostName(env("DATABASE_HOST", "db"));
+    spec.setPort(env("DATABASE_PORT", "5432"));
+    spec.setDatabaseName(env("DATABASE_NAME", "postgres"));
+    spec.setUserName(env("DATABASE_USER", "postgres"));
+    spec.setUserPassword(env("DATABASE_PASSWORD", "postgres"));
+    return spec;
+  """
+})
+
+// The Note DAO. BENCH_VARIANT picks the storage:
+//   embedded: MDAO (in memory) + SINGLE_JOURNAL file "notes" under JOURNAL_HOME
+//   postgres: foam.dao.jdbc.PostgresDAO on table "note"
+// Either way SequenceNumberDAO (setSeqNo) assigns ids 1, 2, 3, ...
+p({
+  "class": "foam.core.boot.CSpec",
+  "name": "noteDAO",
+  "lazy": false,
+  "serve": false,
+  "serviceScript": """
+    postgres = "postgres".equals(System.getenv("BENCH_VARIANT"));
+
+    builder = new foam.dao.EasyDAO.Builder(x)
+      .setOf(bench.notes.Note.getOwnClassInfo())
+      .setSeqNo(true)
+      .setAuthorize(false)
+      .setRuler(false);
+
+    if ( postgres ) {
+      builder.setPostgres(true);
+    } else {
+      builder.setJournalType(foam.dao.JournalType.SINGLE_JOURNAL).setJournalName("notes");
+    }
+
+    dao = builder.build();
+
+    if ( postgres ) {
+      // Build the chain now so the JDBC pool ("PoolA") exists, then size it.
+      // FOAM's JDBCPooledDataSource keeps commons-pool2 defaults (8 connections);
+      // the benchmark contract asks for about 20.
+      ((foam.dao.ProxyDAO) dao).getDelegate();
+      pool = ((org.apache.commons.dbcp2.PoolingDriver) java.sql.DriverManager.getDriver("jdbc:apache:commons:dbcp:")).getConnectionPool("PoolA");
+      ((org.apache.commons.pool2.impl.GenericObjectPool) pool).setMaxTotal(20);
+      ((org.apache.commons.pool2.impl.GenericObjectPool) pool).setMaxIdle(20);
+    }
+
+    return dao;
+  """
+})
+
+// NoteService, served with FOAM's box RPC at /service/noteService.
+// serve:true + boxClass: NanoRouter wraps NoteServiceSkeleton in a
+// ServiceWebAgent, which parses the posted Envelope and replies with an
+// Envelope holding an RPCReturnMessage (or an RPCErrorMessage).
+// authenticate:false: SessionServerBox accepts calls without a sessionId (they
+// run in FOAM's shared "anonymous" session) and skips the service permission.
+p({
+  "class": "foam.core.boot.CSpec",
+  "name": "noteService",
+  "lazy": false,
+  "serve": true,
+  "authenticate": false,
+  "boxClass": "bench.notes.NoteServiceSkeleton",
+  "serviceClass": "bench.notes.NoteServiceImpl",
+  "client": "{\"class\":\"bench.notes.ClientNoteService\",\"delegate\":{\"class\":\"foam.box.HTTPBox\",\"url\":\"service/noteService\"}}"
+})
+
+// GET /service/health. Replaces FOAM's own "health" service
+// (foam.core.app.HealthWebAgent), which reports UP as soon as the server runs
+// and knows nothing about Postgres, with one that also checks noteDAO and, in
+// the postgres variant, a Postgres connection.
+p({
+  "class": "foam.core.boot.CSpec",
+  "name": "health",
+  "lazy": false,
+  "lazyOrder": -1,
+  "authenticate": false,
+  "pm": false,
+  "serviceClass": "bench.notes.NoteHealthWebAgent"
+})

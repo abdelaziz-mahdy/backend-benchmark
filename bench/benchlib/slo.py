@@ -24,13 +24,17 @@ def step_from_k6(target_rps, duration_s, summary):
     dur = metrics.get("http_req_duration", {})
     reqs = metrics.get("http_reqs", {}).get("count", 0)
     failed = metrics.get("http_req_failed", {})
+    # RPC styles whose framework answers errors with HTTP 200 (foam_rpc) count
+    # those replies in the "rpc_failed" Rate (true only for 2xx error replies,
+    # so nothing is counted twice); see scenarios/lib.js.
+    rpc_failed = metrics.get("rpc_failed", {}).get("passes", 0)
     dropped = metrics.get("dropped_iterations", {}).get("count", 0)
     return {
         "target_rps": target_rps,
         "achieved_rps": reqs / duration_s if duration_s else 0.0,
         "requests": reqs,
         "dropped": dropped,
-        "error_rate": float(failed.get("value", 0.0)) if reqs else 1.0,
+        "error_rate": min(1.0, float(failed.get("value", 0.0)) + rpc_failed / reqs) if reqs else 1.0,
         "p50_ms": dur.get("p(50)", 0.0),
         "p90_ms": dur.get("p(90)", 0.0),
         "p99_ms": dur.get("p(99)", 0.0),

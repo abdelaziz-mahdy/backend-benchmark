@@ -37,6 +37,17 @@ def test_step_from_k6_reads_summary_export():
     assert s["dropped"] == 30
 
 
+def test_rpc_error_replies_count_as_errors():
+    summary = {
+        "metrics": {
+            "http_reqs": {"count": 1000},
+            "http_req_failed": {"value": 0.01, "passes": 10, "fails": 990},
+            "rpc_failed": {"value": 0.02, "passes": 20, "fails": 980},
+        }
+    }
+    assert abs(slo.step_from_k6(100, 10, summary)["error_rate"] - 0.03) < 1e-9
+
+
 def test_no_requests_is_full_error_and_fails():
     s = slo.step_from_k6(100, 30, {"metrics": {}})
     assert s["error_rate"] == 1.0
