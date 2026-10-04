@@ -25,19 +25,50 @@ project Dockerfile:
 | File | Role |
 |---|---|
 | `src/bench/notes/Note.js` | The `Note` model (`id` Long, `title`, `content`). Java is generated from it. |
-| `journals/services.jrl` | CSpecs: `noteDAO`, `JDBCConnectionSpec`, and the web agents `notes`, `no_db_endpoint`, `health`. |
-| `src/bench/notes/NoteWebAgent.js` | `WebAgent` for `/notes/...`: parses JSON with FOAM's `JSONParser`, writes with `JSONFObjectFormatter`. |
-| `src/bench/notes/NoDbWebAgent.js`, `NoteHealthWebAgent.js` | `/no_db_endpoint/` and `/health`. |
-| `src/bench/notes/RootRouter.java` | FOAM's `NanoRouter`, mounted at `/` instead of `/service/`. |
-| `deployment/bench/services.jrl` | The `http` CSpec: FOAM's Jetty `HttpServer` on port 8000 with only `RootRouter` mapped. |
+| `src/bench/notes/NoteService.js` | `foam.INTERFACE` with `createNote`, `getNotes(limit, offset)`, `getNote(id)`, `noDb`. `skeleton: true` generates `NoteServiceSkeleton`. |
+| `src/bench/notes/NoteServiceImpl.js` | Java implementation; calls `noteDAO`. |
+| `src/bench/notes/ClientNoteService.js` | JS client stub (`Stub` property over a box). |
+| `src/bench/notes/NoteHealthWebAgent.js` | `/service/health` (see below). |
+| `journals/services.jrl` | CSpecs: `noteDAO`, `JDBCConnectionSpec`, `noteService`, `health`. |
+| `deployment/bench/services.jrl` | The `http` CSpec: FOAM's Jetty `HttpServer` on port 8000 with only `NanoRouter` at `/service/*`. |
 
-### Routes
+### Calling the service
 
-FOAM serves CSpec services through `NanoRouter` at `/service/<name>/...`.
-The benchmark contract needs `/notes/`, `/health` and `/no_db_endpoint/`, so
-`RootRouter` (a small `NanoRouter` subclass) rewrites `/<name>/...` to
-`/service/<name>/...`. Everything else is NanoRouter's normal path: CSpec
-lookup, the `authenticate` flag, per-request PM.
+`noteService` is a CSpec with `serve: true`, `boxClass:
+bench.notes.NoteServiceSkeleton` and `serviceClass:
+bench.notes.NoteServiceImpl`, and its `client` is the usual
+`ClientNoteService` over `HTTPBox` to `service/noteService`. NanoRouter
+serves it through `ServiceWebAgent` and `SessionServerBox`, FOAM's standard
+box RPC path, so it is called exactly as FOAM's own client calls it. The
+benchmark runner uses `api_style: foam_rpc` (see `bench/README.md`).
+
+Wire format, captured with FOAM's JS client (`ClientNoteService` built from
+the CSpec's `client` JSON, running under node) through a logging proxy. Every
+call is `POST /service/noteService` with `Content-Type: application/json;
+charset=utf-8`; the first arg is the Context argument, always `null`:
+
+| Call | Request body (`message`) | Reply (`message`) |
+|---|---|---|
+| `noDb` | `{"class":"foam.box.RPCMessage","name":"noDb","args":[null]}` | `{"class":"foam.box.RPCReturnMessage","executionTime":1,"data":"No db endpoint"}` |
+| `createNote` | `{"class":"foam.box.RPCMessage","name":"createNote","args":[null,{"class":"bench.notes.Note","title":"t2","content":"c2"}]}` | `{"class":"foam.box.RPCReturnMessage","executionTime":0,"data":{"class":"bench.notes.Note","id":2,"title":"t2","content":"c2"}}` |
+| `getNotes` | `{"class":"foam.box.RPCMessage","name":"getNotes","args":[null,1,1]}` | `{"class":"foam.box.RPCReturnMessage","executionTime":0,"data":[{"class":"bench.notes.Note","id":2,"title":"t2","content":"c2"}]}` |
+| `getNote` | `{"class":"foam.box.RPCMessage","name":"getNote","args":[null,1]}` | `{"class":"foam.box.RPCReturnMessage","executionTime":0,"data":{"class":"bench.notes.Note","id":1,...}}` |
+| `getNote` (missing) | `... "args":[null,999999]}` | `{"class":"foam.box.RPCReturnMessage","executionTime":0}` (no `data`: null) |
+| error | `createNote` with `[null,null]` | `{"class":"foam.box.RPCErrorMessage","data":{"class":"foam.box.RemoteException","id":"java.lang.IllegalArgumentException","message":"note required",...}}` |
+
+The full request body wraps the message:
+`{"class":"foam.box.Envelope","message":<message>,"replyBox":{"class":"foam.box.HTTPReplyBox"}}`,
+and the reply is `{"class":"foam.box.Envelope","message":<message>}`. FOAM
+returns HTTP 200 for both return and error replies; the runner reads the
+body to count errors.
+
+### Health
+
+`GET /service/health` (`health_path` in `backend.yaml`). FOAM's built-in
+`health` service (`foam.core.app.HealthWebAgent`) reports UP as soon as the
+server runs and does not look at Postgres, so the `health` CSpec is replaced
+with `NoteHealthWebAgent`. It returns 200 once `noteDAO` is built and, in the
+postgres variant, a Postgres connection is valid.
 
 The `http` CSpec override also drops FOAM's static file servlet, CSP filter,
 error pages and websockets, and turns gzip off for all paths (the other
@@ -69,18 +100,25 @@ the size the contract asks for, through commons-dbcp2's `PoolingDriver`.
 
 ### Auth
 
-The three web agents are CSpecs with `"authenticate": false`, so NanoRouter
-does not wrap them in `AuthWebAgent`: no session or login. `noteDAO` is built
-with `setAuthorize(false)` (no `AuthorizationDAO`) and `setRuler(false)`, and
-is not served over FOAM's box protocol (`"serve": false`).
+`noteService` and `health` are CSpecs with `"authenticate": false`. For the
+served `noteService`, `SessionServerBox` then accepts calls without a
+`sessionId` (they run in FOAM's shared `anonymous` session) and skips the
+`service.noteService` permission check; `health` is not wrapped in
+`AuthWebAgent`. `noteDAO` is built with `setAuthorize(false)` (no
+`AuthorizationDAO`) and `setRuler(false)`, and is not served itself
+(`"serve": false`): clients reach it only through `noteService`.
 
 ## Benchmark caveats
 
 - The image runs the whole FOAM platform (users, rules, cron, logging services
   and so on), not only these endpoints, so memory use is higher than a minimal
   app. Startup takes a few seconds.
-- NanoRouter records a PM (timing) entry per request, as it does for every
-  FOAM service.
+- Every call goes through FOAM's full RPC path: NanoRouter (CSpec lookup, a
+  PM entry), `ServiceWebAgent` (JSON parse of the Envelope), `SessionServerBox`
+  (looks up and touches the shared anonymous session, builds the session
+  context, another PM entry), the skeleton, and `HTTPReplyBox` (formats the
+  reply Envelope). Bodies are larger than plain REST JSON (class names on
+  every object).
 - Postgres: the id comes from the in-process `SequenceNumberDAO`, not a
   database sequence; the insert runs outside its lock. `PostgresDAO` writes
   with an upsert (`insert ... on conflict (id) do update`).

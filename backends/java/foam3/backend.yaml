@@ -8,4 +8,7 @@ variants:
     db: none
   - id: postgres
     db: postgres
-notes: "embedded: in-memory MDAO + FOAM journal file; postgres: FOAM's PostgresDAO (JDBC). Both via EasyDAO with SequenceNumberDAO ids."
+# NoteService is called with FOAM's box RPC (POST /service/noteService).
+api_style: foam_rpc
+health_path: /service/health
+notes: "FOAM NoteService over box RPC. embedded: in-memory MDAO + FOAM journal file; postgres: FOAM's PostgresDAO (JDBC). Both via EasyDAO with SequenceNumberDAO ids."
