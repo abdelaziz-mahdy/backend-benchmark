@@ -1,0 +1,7 @@
+{
+  "finished_at": "2026-10-04T11:42:35+00:00",
+  "framework_version": "5.2.1",
+  "image_digest": "sha256:13c7804b7081bc40205e890bdc7e3459f7930d4ed530ec3b2b367911c3df04e2",
+  "runtime": "bun 1.4",
+  "status": "ok"
+}
