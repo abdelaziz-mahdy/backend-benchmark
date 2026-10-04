@@ -470,4 +470,33 @@ void main() {
       expect(t.takeException(), isNull);
     });
   });
+
+  testWidgets('leader strip reports ties instead of picking a winner', (
+    t,
+  ) async {
+    final bundle = MapBundle(
+      files(
+        [indexEntry('r1')],
+        {
+          'r1': [
+            backend('alpha', sustainable: 48000, p99: 60),
+            backend('beta', sustainable: 48000, p99: 59),
+            backend('gamma', sustainable: 12000, p99: 9),
+          ],
+        },
+      ),
+    );
+    t.view.physicalSize = const Size(1400, 1200);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.runAsync(() async {
+      await t.pumpWidget(BenchmarkApp(service: ResultsService(bundle)));
+      for (var i = 0; i < 10; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        await t.pump();
+      }
+    });
+    expect(find.text('2 tied'), findsWidgets); // load and rps/core both tie
+    expect(t.takeException(), isNull);
+  });
 }
