@@ -1,0 +1,8 @@
+name: express (node)
+language: javascript
+framework: express
+version: "5.1.0"
+runtime: node 24
+variants:
+  - id: postgres
+    db: postgres

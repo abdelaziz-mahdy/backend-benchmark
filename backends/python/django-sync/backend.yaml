@@ -1,0 +1,9 @@
+name: django (sync)
+language: python
+framework: django
+version: "5.2.3"
+runtime: python 3.14
+variants:
+  - id: postgres
+    db: postgres
+    pgbouncer: true

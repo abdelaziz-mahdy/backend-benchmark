@@ -1,0 +1,8 @@
+name: rust actix-web
+language: rust
+framework: actix-web
+version: "4.12"
+runtime: rust stable
+variants:
+  - id: postgres
+    db: postgres
