@@ -1,23 +1,13 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-
-WORKDIR /app
-
-# Copy csproj and restore as distinct layers
+WORKDIR /src
 COPY *.csproj ./
-
 RUN dotnet restore
-
-# Copy everything else and build
 COPY . ./
+RUN dotnet publish -c Release -o /out --no-restore
 
-RUN dotnet publish -c Release -o out
-
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
-
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
-# Install curl
-RUN apt-get update && apt-get install -y curl
-
-COPY --from=build /app/out ./
-
+ENV DOTNET_gcServer=1 ASPNETCORE_ENVIRONMENT=Production
+COPY --from=build /out ./
+EXPOSE 8000
 ENTRYPOINT ["dotnet", "csharp-crud-api.dll"]

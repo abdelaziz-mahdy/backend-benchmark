@@ -1,63 +1,56 @@
 using Data;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Models;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateSlimBuilder(args);
+builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
-// Add services to the container.
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
+string Env(string key, string fallback) =>
+    Environment.GetEnvironmentVariable(key) is { Length: > 0 } v ? v : fallback;
 
-var configuration = builder.Configuration;
+var connectionString =
+    $"Host={Env("DATABASE_HOST", "db")};Port={Env("DATABASE_PORT", "5432")};" +
+    $"Database={Env("DATABASE_NAME", "postgres")};Username={Env("DATABASE_USER", "postgres")};" +
+    $"Password={Env("DATABASE_PASSWORD", "postgres")};Maximum Pool Size=20";
 
-builder.Services.AddDbContext<NoteContext>(options =>
-    options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContextPool<NoteContext>(o => o.UseNpgsql(connectionString));
+builder.WebHost.UseUrls("http://0.0.0.0:8000");
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-// Apply migrations
-try{
-using (var scope = app.Services.CreateScope())
+app.MapGet("/health", async (NoteContext db) =>
 {
-    var services = scope.ServiceProvider;
-    var dbContext = services.GetRequiredService<NoteContext>();
-    dbContext.Database.Migrate();
-    }
-}catch (Exception ex)
-{
-    // Log the exception
-    Console.WriteLine($"Migration failed: {ex.Message}");
-}
-
-// Custom endpoint for checking if 'note' table exists
-app.MapGet("/", async ([FromServices] NoteContext dbContext) =>
-{
-    var connection = dbContext.Database.GetDbConnection();
-    await connection.OpenAsync();
-    using var command = connection.CreateCommand();
-    command.CommandText = "SELECT 1 FROM information_schema.tables WHERE table_name = 'Notes'";
-    var exists = await command.ExecuteScalarAsync();
-
-    if (exists != null)
+    try
     {
-        return Results.Ok("Server is up and running");
+        await db.Database.MigrateAsync();
+        return Results.Text("ok");
     }
-    else
+    catch (Exception e)
     {
-        // Construct a problem response
-        return Results.Problem(
-            title: "Server error",
-            detail: "'note' table does not exist",
-            statusCode: 500);
+        return Results.Text($"not ready: {e.Message}", statusCode: 503);
     }
 });
 
+app.MapGet("/no_db_endpoint/", () => Results.Json(new { message = "No db endpoint" }));
 
-app.Run("");
+app.MapGet("/notes/", async (NoteContext db, int? limit, int? offset) =>
+    await db.Notes.AsNoTracking()
+        .OrderBy(n => n.Id)
+        .Skip(Math.Max(offset ?? 0, 0))
+        .Take(Math.Max(limit ?? 20, 0))
+        .ToListAsync());
+
+app.MapGet("/notes/{id:int}", async (NoteContext db, int id) =>
+    await db.Notes.AsNoTracking().FirstOrDefaultAsync(n => n.Id == id) is { } note
+        ? Results.Ok(note)
+        : Results.NotFound("not found"));
+
+app.MapPost("/notes/", async (NoteContext db, Note note) =>
+{
+    note.Id = 0;
+    db.Notes.Add(note);
+    await db.SaveChangesAsync();
+    return Results.Created($"/notes/{note.Id}", note);
+});
+
+app.Run();
