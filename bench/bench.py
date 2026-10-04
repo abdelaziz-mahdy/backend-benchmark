@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from benchlib import machine, manifest, slo
+from benchlib import foam_rpc, machine, manifest, slo
 from benchlib.stats import Sampler
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -348,10 +348,13 @@ def smoke(item, cpus):
     if ok:
         base = f"http://127.0.0.1:{PORT}"
 
-        rpc = item.api_style == "serverpod_rpc"
+        rpc = item.api_style in ("serverpod_rpc", "foam_rpc")
 
         def op(name, arg=None):
             """The four benchmark operations, in the backend's API style."""
+            if item.api_style == "foam_rpc":
+                _, body = foam_rpc.request(name, arg)
+                return foam_rpc.unwrap(*call("POST", foam_rpc.PATH, body, foam_rpc.HEADERS))
             if rpc:
                 body = {
                     "no_db": {},
@@ -369,9 +372,9 @@ def smoke(item, cpus):
                 return call("GET", f"/notes/?limit={arg['limit']}&offset={arg['offset']}")
             return call("GET", f"/notes/{arg}")
 
-        def call(method, path, body=None):
+        def call(method, path, body=None, headers=None):
             data = json.dumps(body).encode() if body is not None else None
-            req = urllib.request.Request(base + path, data=data, method=method, headers={"Content-Type": "application/json"})
+            req = urllib.request.Request(base + path, data=data, method=method, headers=headers or {"Content-Type": "application/json"})
             try:
                 with urllib.request.urlopen(req, timeout=5) as r:
                     return r.status, r.read().decode(errors="replace")
@@ -395,6 +398,9 @@ def smoke(item, cpus):
             checks.append(("get id=1", op("get", 1), {200}))
             if not rpc:  # RPC returns null with 200 for a missing row
                 checks.append(("get missing -> 404", op("get", 999999), {404}))
+            elif item.api_style == "foam_rpc":
+                status, body = op("get", 999999)
+                checks.append(("get missing -> null", (status if body == "null" else 0, body), {200}))
     else:
         print(stack.logs())
     stack.down()

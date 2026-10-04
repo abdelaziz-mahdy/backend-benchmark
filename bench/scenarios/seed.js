@@ -18,5 +18,6 @@ export const options = {
 
 export default function () {
   const res = writeOne();
-  check(res, { created: (r) => r.status === 200 || r.status === 201 });
+  // The body is only read for foam_rpc (errors come back with HTTP 200).
+  check(res, { created: (r) => (r.status === 200 || r.status === 201) && !(r.body && r.body.indexOf('RPCErrorMessage') !== -1) });
 }
