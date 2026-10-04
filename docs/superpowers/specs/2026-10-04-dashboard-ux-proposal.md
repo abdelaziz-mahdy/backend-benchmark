@@ -64,7 +64,7 @@ and each `app/`.
 | Run picker (+ modified-code flag) | keep | header (same place) |
 | Tabs | keep, rename + add one | `Leaderboard · Framework · Compare (n) · History · Method` |
 | Scenario chips + tooltip | keep | header; label gains plain-language help in the Method tab |
-| Language filter + Clear | keep | header (also shown on Framework tab now, it narrows the finder) |
+| Language filter + Clear | keep | header on Leaderboard, Compare, History (unchanged; the Framework finder lists every backend so a filter there would only hide things) |
 | Method note paragraph | **move** | one-line summary stays on Leaderboard with "How it's measured →" link; full text, params and glossary move to the **Method** tab |
 | Leader strip (3 leaders) | keep | Leaderboard, under the "Rank by" presets |
 | Leaderboard table (sort, bars, whiskers, flags, row click, compare tick) | keep | Leaderboard; rows gain an implementation one-liner |
@@ -276,4 +276,27 @@ middle-click).
 | Q2 | PyYAML in CI for the manifest fallback, or a hand-written mini parser? | **`pip install pyyaml`** in `deploy.yml` and `dashboard.yml` (validate already has it); `report.py` imports lazily and warns when missing. |
 | Q3 | "Rank by" presets: should a preset also switch the scenario? | **No.** Presets only choose the sort metric; the scenario chips stay the single place that answers "DB-heavy or not". `Lowest p99` carries the caveat tooltip (each p99 is at its own load). |
 | Q4 | Source link: `main` or the run's commit? | **`main`** as the primary link (what the user asked for; always resolves); when `git_sha` is known and the run is not dirty, a secondary "at run commit" link. |
-| Q5 | Framework finder: command palette (⌘K) or a plain search field? | **Plain type-ahead field** in the header on the Framework tab, `/` focuses it, Enter opens the best match. Works on phones; a palette does not. |
+| Q5 | Framework finder: command palette (⌘K) or a plain search field? | **Plain type-ahead fields**: a "Find a framework…" filter in the header (Leaderboard, Compare, History; Enter opens the best match) and the type-ahead picker with prev/next on the Framework tab. Works on phones; a palette does not. No `/` shortcut (it would fight the browser's find). |
+
+## 8. As implemented (2026-10-04)
+
+Delivered on `dashboard-ux`, matching the tables above with these details:
+
+- `backend.yaml` → `implementation` block on all 11 backends; `bench.py` records it in
+  `run.json`; `report.py` copies it and falls back to the current manifest for older runs
+  and legacy keys (`implementation_from: manifest`), with `--backends` to point tests at
+  a temp tree. PyYAML is installed in all three workflows; without it the report still
+  builds (no fallback, no crash).
+- Dashboard: tabs `Leaderboard · Framework · Compare (n) · History · Method`; header
+  "Find a framework…" field; Leaderboard "Rank by" presets (`Most load`, `Cheapest per
+  core`, `Least memory`, `Lowest p99` with caveat; `Most load (v1 avg)` on legacy runs),
+  compact method note with "How it's measured →", implementation one-liner under each row
+  (full facts in its tooltip; also the phone cards). Framework: type-ahead finder with
+  prev/next, implementation card (facts, API, database, versions, source link on `main`
+  and at the run commit when clean, notes, flags, rank line, "from current source"
+  hint), "by scenario" moved under the tiles, "not measured in X" state with chips for
+  the scenarios that exist. Compare: implementation section in the side-by-side table.
+  Method: what is measured (from `run.params`), scenarios, fairness rules, this run
+  (machine, Docker, images, commit), flags legend, glossary.
+- Screenshot tour now covers 7 screens × 3 widths (`benchmark-app/screenshots/`).
+- Not done (proposed, not asked): deep links / URL routing per framework.
