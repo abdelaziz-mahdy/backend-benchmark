@@ -258,6 +258,54 @@ class ScenarioResult {
   }
 }
 
+/// How a backend is run and talks to its database (backend.yaml
+/// `implementation`). Four short free-text facts; any may be missing.
+class Implementation {
+  final String? server;
+  final String? concurrency;
+  final String? dbAccess;
+  final String? pool;
+
+  const Implementation({
+    this.server,
+    this.concurrency,
+    this.dbAccess,
+    this.pool,
+  });
+
+  static Implementation? fromJson(Object? json) {
+    if (json is! Map) return null;
+    String? s(String k) {
+      final v = json[k];
+      return v is String && v.trim().isNotEmpty ? v.trim() : null;
+    }
+
+    final impl = Implementation(
+      server: s('server'),
+      concurrency: s('concurrency'),
+      dbAccess: s('db_access'),
+      pool: s('pool'),
+    );
+    return impl.isEmpty ? null : impl;
+  }
+
+  bool get isEmpty =>
+      server == null && concurrency == null && dbAccess == null && pool == null;
+
+  /// Label/value pairs in display order, missing ones left out.
+  List<(String, String)> get facts => [
+    if (server != null) ('Server', server!),
+    if (concurrency != null) ('Concurrency', concurrency!),
+    if (dbAccess != null) ('DB access', dbAccess!),
+    if (pool != null) ('DB pool', pool!),
+  ];
+
+  /// One line for dense lists: "server · db access".
+  String get summary => [?server, ?dbAccess].join(' · ');
+}
+
+const kRepoUrl = 'https://github.com/abdelaziz-mahdy/backend-benchmark';
+
 class BackendResult {
   final String key;
   final String name;
@@ -267,8 +315,18 @@ class BackendResult {
   final String? runtime;
   final String? variant;
   final String? db;
+  final bool pgbouncer;
   final String? notes;
   final String status;
+
+  /// `backends/<lang>/<fw>` folder, when the backend still exists.
+  final String? path;
+  final String apiStyle;
+  final Implementation? implementation;
+
+  /// "run" when recorded with the run, "manifest" when report.py filled it
+  /// from the current source because the run predates the field.
+  final String? implementationFrom;
   final Map<String, ScenarioResult> scenarios;
 
   const BackendResult({
@@ -280,8 +338,13 @@ class BackendResult {
     required this.runtime,
     required this.variant,
     required this.db,
+    required this.pgbouncer,
     required this.notes,
     required this.status,
+    required this.path,
+    required this.apiStyle,
+    required this.implementation,
+    required this.implementationFrom,
     required this.scenarios,
   });
 
@@ -304,8 +367,13 @@ class BackendResult {
       runtime: j['runtime'] as String?,
       variant: j['variant'] as String?,
       db: j['db'] as String?,
+      pgbouncer: j['pgbouncer'] == true,
       notes: j['notes'] as String?,
       status: j['status'] as String? ?? 'unknown',
+      path: j['path'] as String?,
+      apiStyle: j['api_style'] as String? ?? 'rest',
+      implementation: Implementation.fromJson(j['implementation']),
+      implementationFrom: j['implementation_from'] as String?,
       scenarios: scenarios,
     );
   }
@@ -316,6 +384,45 @@ class BackendResult {
     ?runtime,
     if (db == 'none') 'own storage',
   ].join(' · ');
+
+  /// Source folder on GitHub (main branch), when the backend still exists.
+  String? get sourceUrl =>
+      path == null ? null : '$kRepoUrl/tree/main/backends/$path';
+
+  /// Same folder at the commit the run was made from.
+  String? sourceUrlAt(String? sha) =>
+      path == null || sha == null ? null : '$kRepoUrl/tree/$sha/backends/$path';
+
+  /// "REST", "Serverpod RPC", "FOAM box RPC".
+  String get apiLabel => switch (apiStyle) {
+    'serverpod_rpc' => 'Serverpod RPC',
+    'foam_rpc' => 'FOAM box RPC',
+    'rest' => 'REST (JSON over HTTP)',
+    _ => apiStyle,
+  };
+
+  /// "Postgres via PgBouncer", "Postgres", "own storage (no database)".
+  String get storageLabel => switch (db) {
+    'none' => 'own storage, no database',
+    'postgres' => pgbouncer ? 'Postgres via PgBouncer' : 'Postgres',
+    null => 'unknown',
+    _ => db!,
+  };
+
+  /// Text used by the finder: name, language, framework, runtime, key.
+  bool matches(String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    final hay = [
+      name,
+      language,
+      ?framework,
+      ?runtime,
+      key,
+      ?variant,
+    ].join(' ').toLowerCase();
+    return q.split(RegExp(r'\s+')).every(hay.contains);
+  }
 }
 
 class RunSummary {
@@ -325,7 +432,10 @@ class RunSummary {
   final Machine machine;
   final String methodology;
   final bool dirty;
+  final String? gitSha;
+  final String? contributor;
   final Map<String, dynamic> params;
+  final Map<String, dynamic> docker;
   final List<BackendResult> backends;
 
   const RunSummary({
@@ -335,7 +445,10 @@ class RunSummary {
     required this.machine,
     required this.methodology,
     required this.dirty,
+    required this.gitSha,
+    required this.contributor,
     required this.params,
+    required this.docker,
     required this.backends,
   });
 
@@ -346,7 +459,10 @@ class RunSummary {
     machine: Machine.fromJson(j['machine'] as Map<String, dynamic>?),
     methodology: j['methodology'] as String? ?? 'v2',
     dirty: j['dirty'] == true,
+    gitSha: j['git_sha'] as String?,
+    contributor: j['contributor'] as String?,
     params: (j['params'] as Map<String, dynamic>?) ?? const {},
+    docker: (j['docker'] as Map<String, dynamic>?) ?? const {},
     backends: [
       ...?(j['backends'] as List?)?.whereType<Map<String, dynamic>>().map(
         BackendResult.fromJson,
@@ -376,4 +492,6 @@ class RunSummary {
     }
     return null;
   }
+
+  bool get isLegacy => methodology == 'v1';
 }

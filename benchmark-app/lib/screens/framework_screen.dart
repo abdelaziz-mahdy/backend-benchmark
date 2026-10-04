@@ -9,6 +9,7 @@ import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/charts.dart';
 import '../widgets/common.dart';
+import '../widgets/implementation.dart';
 
 class FrameworkScreen extends StatefulWidget {
   const FrameworkScreen({super.key});
@@ -39,23 +40,45 @@ class _FrameworkScreenState extends State<FrameworkScreen> {
     final result = state.resultOf(backend);
     return PageBody(
       children: [
-        _Picker(state: state, run: run, selected: backend),
+        _Finder(state: state, selected: backend),
+        ImplementationCard(
+          backend: backend,
+          flags: resultFlags(backend, result),
+          runSha: run.gitSha,
+          runDirty: run.dirty,
+          rankLine: result == null ? null : _rankLine(state, backend),
+        ),
         if (result == null)
-          EmptyState(
-            icon: Icons.block,
-            title:
-                '${backend.name} has no ${scenarioLabel(state.scenario!)} result',
-            message: 'Pick another scenario above.',
-          )
+          _NoResult(state: state, backend: backend)
         else ...[
           _tiles(result),
+          _AcrossScenarios(state: state, backend: backend),
           if (result.steps.isNotEmpty) _stepCharts(backend, result),
           _percentiles(result),
           if (!result.timeseries.isEmpty) _resources(backend, result),
         ],
-        _AcrossScenarios(state: state, backend: backend),
         _History(state: state, backend: backend),
       ],
+    );
+  }
+
+  /// "#2 of 6 by sustainable load in No DB · 83% of the leader".
+  Widget? _rankLine(DashboardState state, BackendResult b) {
+    final metric = state.headline;
+    final rank = state.rankOf(b, metric);
+    if (rank == null) return null;
+    final share = rank.shareOfLeader;
+    final parts = [
+      '#${rank.position} of ${rank.total} by ${metric.label.toLowerCase()} '
+          'in ${scenarioLabel(state.scenario!)}',
+      if (rank.position == 1)
+        'the leader'
+      else if (share != null)
+        '${(share * 100).round()}% of the leader',
+    ];
+    return Text(
+      parts.join(' · '),
+      style: const TextStyle(color: kTextSecondary, fontSize: 12.5),
     );
   }
 
@@ -256,67 +279,198 @@ class _FrameworkScreenState extends State<FrameworkScreen> {
   }
 }
 
-class _Picker extends StatelessWidget {
+/// Type-ahead over every backend of the run, plus previous/next.
+class _Finder extends StatefulWidget {
   final DashboardState state;
-  final RunSummary run;
   final BackendResult selected;
 
-  const _Picker({
-    required this.state,
-    required this.run,
-    required this.selected,
-  });
+  const _Finder({required this.state, required this.selected});
+
+  @override
+  State<_Finder> createState() => _FinderState();
+}
+
+class _FinderState extends State<_Finder> {
+  final _controller = TextEditingController();
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.text = widget.selected.name;
+    _focus.addListener(() {
+      if (_focus.hasFocus) {
+        _controller.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _controller.text.length,
+        );
+      } else {
+        _controller.text = widget.selected.name;
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _Finder old) {
+    super.didUpdateWidget(old);
+    if (old.selected.key != widget.selected.key && !_focus.hasFocus) {
+      _controller.text = widget.selected.name;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final backends = [...run.backends]
-      ..sort((a, b) => a.name.compareTo(b.name));
-    final flags = resultFlags(selected, state.resultOf(selected));
-    return Wrap(
-      spacing: 12,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    final state = widget.state;
+    final all = state.allBackends;
+    return Row(
       children: [
-        Container(
-          constraints: const BoxConstraints(maxWidth: 360),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: kCardBg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: kBorder),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: selected.key,
-              isExpanded: true,
-              dropdownColor: kCardBg,
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              icon: const Icon(Icons.expand_more, color: kTextMuted),
-              items: [
-                for (final b in backends)
-                  DropdownMenuItem(
-                    value: b.key,
-                    child: BackendLabel(backend: b, fontSize: 14),
+        Expanded(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: RawAutocomplete<BackendResult>(
+              textEditingController: _controller,
+              focusNode: _focus,
+              displayStringForOption: (b) => b.name,
+              optionsBuilder: (v) {
+                // Everything while the selected name is still in the field.
+                if (!_focus.hasFocus || v.text == widget.selected.name) {
+                  return all;
+                }
+                return all.where((b) => b.matches(v.text));
+              },
+              onSelected: (b) {
+                state.setDetail(b.key);
+                _focus.unfocus();
+              },
+              fieldViewBuilder: (context, controller, focus, onSubmit) =>
+                  TextField(
+                    controller: controller,
+                    focusNode: focus,
+                    onSubmitted: (text) {
+                      final hits = all.where((b) => b.matches(text)).toList();
+                      if (hits.isNotEmpty) state.setDetail(hits.first.key);
+                      focus.unfocus();
+                    },
+                    style: const TextStyle(
+                      color: kTextPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: 'Find a framework',
+                      hintStyle: const TextStyle(color: kTextDim),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        size: 18,
+                        color: kTextMuted,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      filled: true,
+                      fillColor: kCardBg,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: kBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: kBlue),
+                      ),
+                    ),
                   ),
-              ],
-              selectedItemBuilder: (_) => [
-                for (final b in backends)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: BackendLabel(backend: b, fontSize: 15),
+              optionsViewBuilder: (context, onSelected, options) => Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  color: kCardBgRaised,
+                  elevation: 6,
+                  borderRadius: BorderRadius.circular(8),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxHeight: 320,
+                      maxWidth: 420,
+                    ),
+                    child: ListView(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      children: [
+                        for (final b in options)
+                          InkWell(
+                            onTap: () => onSelected(b),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              child: BackendLabel(backend: b, fontSize: 13.5),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-              ],
-              onChanged: (k) => state.setDetail(k!),
+                ),
+              ),
             ),
           ),
         ),
-        ...flags,
-        if (selected.notes != null)
-          Text(
-            selected.notes!,
-            style: const TextStyle(color: kTextMuted, fontSize: 12),
-          ),
+        const SizedBox(width: 6),
+        IconButton(
+          tooltip: 'Previous framework',
+          onPressed: all.length > 1 ? () => state.stepDetail(-1) : null,
+          icon: const Icon(Icons.chevron_left),
+        ),
+        IconButton(
+          tooltip: 'Next framework',
+          onPressed: all.length > 1 ? () => state.stepDetail(1) : null,
+          icon: const Icon(Icons.chevron_right),
+        ),
       ],
+    );
+  }
+}
+
+/// This backend has nothing for the selected scenario: offer the ones it has.
+class _NoResult extends StatelessWidget {
+  final DashboardState state;
+  final BackendResult backend;
+
+  const _NoResult({required this.state, required this.backend});
+
+  @override
+  Widget build(BuildContext context) {
+    final others = state.run!.scenarios
+        .where(backend.scenarios.containsKey)
+        .toList();
+    return SectionCard(
+      title:
+          '${backend.name} was not measured in '
+          '${scenarioLabel(state.scenario!)}',
+      subtitle: others.isEmpty
+          ? 'It has no results in this run.'
+          : 'It has results in these scenarios:',
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (final s in others)
+            ActionChip(
+              label: Text(scenarioLabel(s)),
+              onPressed: () => state.setScenario(s),
+              labelStyle: const TextStyle(fontSize: 12, color: kTextPrimary),
+              backgroundColor: kBackground,
+              side: const BorderSide(color: kBlue),
+            ),
+        ],
+      ),
     );
   }
 }

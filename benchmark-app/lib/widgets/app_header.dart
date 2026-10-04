@@ -50,7 +50,8 @@ class AppHeader extends StatelessWidget {
                     _TitleRow(narrow: narrow),
                     const SizedBox(height: 10),
                     const _Tabs(),
-                    if (state.run != null) ...[
+                    if (state.run != null &&
+                        state.tab != DashboardTab.method) ...[
                       const Divider(height: 1, color: kBorder),
                       const _FilterBar(),
                     ],
@@ -173,26 +174,55 @@ class _RunPicker extends StatelessWidget {
 class _Tabs extends StatelessWidget {
   const _Tabs();
 
+  /// Each tab is named after the question it answers (tooltip).
   static const _labels = {
-    DashboardTab.overview: ('Overview', Icons.leaderboard_outlined),
-    DashboardTab.framework: ('Framework', Icons.insights_outlined),
-    DashboardTab.compare: ('Compare', Icons.compare_arrows),
-    DashboardTab.history: ('History', Icons.timeline),
+    DashboardTab.overview: (
+      'Leaderboard',
+      Icons.leaderboard_outlined,
+      'Which frameworks fit my need?',
+    ),
+    DashboardTab.framework: (
+      'Framework',
+      Icons.insights_outlined,
+      'Everything about one framework, including how it is implemented',
+    ),
+    DashboardTab.compare: (
+      'Compare',
+      Icons.compare_arrows,
+      'Two to four frameworks side by side',
+    ),
+    DashboardTab.history: (
+      'History',
+      Icons.timeline,
+      'How results changed across runs',
+    ),
+    DashboardTab.method: (
+      'Method',
+      Icons.science_outlined,
+      'What is measured, how, and what the flags mean',
+    ),
   };
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardState>();
+    final n = state.compareKeys.length;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
           for (final t in DashboardTab.values)
-            _TabButton(
-              label: _labels[t]!.$1,
-              icon: _labels[t]!.$2,
-              selected: state.tab == t,
-              onTap: () => state.setTab(t),
+            Tooltip(
+              message: _labels[t]!.$3,
+              waitDuration: const Duration(milliseconds: 500),
+              child: _TabButton(
+                label: t == DashboardTab.compare && n > 0
+                    ? '${_labels[t]!.$1} ($n)'
+                    : _labels[t]!.$1,
+                icon: _labels[t]!.$2,
+                selected: state.tab == t,
+                onTap: () => state.setTab(t),
+              ),
             ),
         ],
       ),
@@ -344,7 +374,83 @@ class _FilterBar extends StatelessWidget {
                 ],
               ],
             ),
+          if (showLanguages) const FindField(),
         ],
+      ),
+    );
+  }
+}
+
+/// Free-text filter over the frameworks of the run. Enter opens the best
+/// match on the Framework tab.
+class FindField extends StatefulWidget {
+  const FindField({super.key});
+
+  @override
+  State<FindField> createState() => _FindFieldState();
+}
+
+class _FindFieldState extends State<FindField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: context.read<DashboardState>().query,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<DashboardState>();
+    if (_controller.text != state.query) _controller.text = state.query;
+    return SizedBox(
+      width: 220,
+      height: 32,
+      child: TextField(
+        controller: _controller,
+        onChanged: state.setQuery,
+        onSubmitted: (text) {
+          if (state.openBestMatch(text)) state.setQuery('');
+        },
+        style: const TextStyle(color: kTextPrimary, fontSize: 12.5),
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 8,
+          ),
+          hintText: 'Find a framework…',
+          hintStyle: const TextStyle(color: kTextDim, fontSize: 12.5),
+          prefixIcon: const Icon(Icons.search, size: 16, color: kTextMuted),
+          prefixIconConstraints: const BoxConstraints(minWidth: 30),
+          suffixIcon: state.query.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Clear',
+                  iconSize: 14,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.close, color: kTextMuted),
+                  onPressed: () => state.setQuery(''),
+                ),
+          filled: true,
+          fillColor: kBackground,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: kBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: kBlue),
+          ),
+        ),
       ),
     );
   }

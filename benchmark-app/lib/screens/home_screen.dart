@@ -9,6 +9,7 @@ import '../widgets/loading_widget.dart';
 import 'compare_screen.dart';
 import 'framework_screen.dart';
 import 'history_screen.dart';
+import 'method_screen.dart';
 import 'overview_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -44,6 +45,7 @@ class HomeScreen extends StatelessWidget {
                 FrameworkScreen(),
                 CompareScreen(),
                 HistoryScreen(),
+                MethodScreen(),
               ],
             ),
           ),

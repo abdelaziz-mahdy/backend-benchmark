@@ -8,6 +8,7 @@ import '../utils/colors.dart';
 import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/common.dart';
+import '../widgets/implementation.dart';
 
 class OverviewScreen extends StatefulWidget {
   const OverviewScreen({super.key});
@@ -26,12 +27,14 @@ class _OverviewScreenState extends State<OverviewScreen> {
     if (run == null) return const SizedBox.shrink();
     final backends = state.visibleBackends;
     if (backends.isEmpty) {
-      return const PageBody(
+      return PageBody(
         children: [
           EmptyState(
             icon: Icons.filter_list_off,
-            title: 'No frameworks match the filters',
-            message: 'Pick another scenario or clear the language filter.',
+            title: state.query.trim().isNotEmpty
+                ? 'No framework matches "${state.query.trim()}"'
+                : 'No frameworks match the filters',
+            message: 'Pick another scenario or clear the filters.',
           ),
         ],
       );
@@ -45,6 +48,12 @@ class _OverviewScreenState extends State<OverviewScreen> {
     return PageBody(
       children: [
         _MethodNote(run: run, scenario: state.scenario!),
+        _RankBy(
+          state: state,
+          columns: columns,
+          sortBy: sortBy,
+          onSort: (m) => setState(() => _sortBy = m),
+        ),
         _Leaders(state: state, backends: backends),
         SectionCard(
           title: 'Leaderboard',
@@ -84,16 +93,16 @@ class _MethodNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final v1 = run.methodology == 'v1';
+    final state = context.read<DashboardState>();
+    final v1 = run.isLegacy;
     final reps = run.params['reps'];
     final text = v1
-        ? 'v1 method: Locust ramped to 10,000 users over 120 s, one run, 1 CPU '
-              'per app. Not comparable with current results.'
-        : 'Sustainable load = highest request rate held with p99 < 100 ms and '
-              '< 1% errors. Each app gets 2 pinned cores; numbers are the '
-              'median of ${reps ?? 3} runs.';
+        ? 'Old v1 method (Locust, 10,000 users, 1 CPU per app). '
+              'Not comparable with current results.'
+        : 'Numbers are the highest load each app held within the latency '
+              'and error limits, on 2 cores, median of ${reps ?? 3} runs.';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
       decoration: BoxDecoration(
         color: (v1 ? kYellow : kBlue).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(kRadius),
@@ -101,39 +110,132 @@ class _MethodNote extends StatelessWidget {
           color: (v1 ? kYellow : kBlue).withValues(alpha: 0.3),
         ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        alignment: WrapAlignment.spaceBetween,
+        runSpacing: 4,
         children: [
-          Icon(
-            v1 ? Icons.warning_amber_rounded : Icons.info_outline,
-            size: 16,
-            color: v1 ? kYellow : kBlue,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: '${scenarioLabel(scenario)}: ',
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  v1 ? Icons.warning_amber_rounded : Icons.info_outline,
+                  size: 16,
+                  color: v1 ? kYellow : kBlue,
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '${scenarioLabel(scenario)}: ',
+                          style: const TextStyle(
+                            color: kTextPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        TextSpan(text: '${scenarioHelp(scenario)} '),
+                        TextSpan(text: text),
+                      ],
+                    ),
                     style: const TextStyle(
-                      color: kTextPrimary,
-                      fontWeight: FontWeight.w600,
+                      color: kTextSecondary,
+                      fontSize: 12.5,
                     ),
                   ),
-                  TextSpan(text: '${scenarioHelp(scenario)} '),
-                  TextSpan(text: text),
-                  TextSpan(
-                    text: '  ${run.machine.label}',
-                    style: const TextStyle(color: kTextDim),
-                  ),
-                ],
-              ),
-              style: const TextStyle(color: kTextSecondary, fontSize: 12.5),
+                ),
+              ],
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () => state.setTab(DashboardTab.method),
+            icon: const Icon(Icons.arrow_forward, size: 14),
+            label: const Text(
+              "How it's measured",
+              style: TextStyle(fontSize: 12.5),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Decision presets: plain-language names for the sort metric.
+class _RankBy extends StatelessWidget {
+  final DashboardState state;
+  final List<Metric> columns;
+  final Metric sortBy;
+  final ValueChanged<Metric> onSort;
+
+  const _RankBy({
+    required this.state,
+    required this.columns,
+    required this.sortBy,
+    required this.onSort,
+  });
+
+  static final _presets = <(String, Metric, String?)>[
+    ('Most load', Metrics.sustainable, null),
+    ('Most load (v1 avg)', Metrics.avgRps, null),
+    ('Cheapest per core', Metrics.rpsPerCore, null),
+    ('Least memory', Metrics.memory, null),
+    (
+      'Lowest p99',
+      Metrics.p99,
+      'Careful: each p99 is measured at that framework\'s own sustainable '
+          'load, so a slower framework can show a lower p99 by serving less.',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = _presets.where((p) => columns.contains(p.$2)).toList();
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(right: 4),
+          child: Text(
+            'Rank by',
+            style: TextStyle(color: kTextMuted, fontSize: 12),
+          ),
+        ),
+        for (final (label, metric, caveat) in shown)
+          Tooltip(
+            message: caveat ?? metric.help,
+            waitDuration: const Duration(milliseconds: 300),
+            child: ChoiceChip(
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(label),
+                  if (caveat != null) ...[
+                    const SizedBox(width: 4),
+                    const Icon(Icons.info_outline, size: 12, color: kYellow),
+                  ],
+                ],
+              ),
+              selected: sortBy == metric,
+              onSelected: (_) => onSort(metric),
+              labelStyle: TextStyle(
+                fontSize: 12,
+                color: sortBy == metric ? kTextPrimary : kTextMuted,
+              ),
+              selectedColor: kOrange.withValues(alpha: 0.18),
+              backgroundColor: kBackground,
+              side: BorderSide(color: sortBy == metric ? kOrange : kBorder),
+              showCheckmark: false,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+      ],
     );
   }
 }
@@ -326,13 +428,24 @@ class _LeaderTable extends StatelessWidget {
 
   Widget _nameCell(BackendResult b) {
     final flags = resultFlags(b, state.resultOf(b));
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Flexible(child: BackendLabel(backend: b)),
-        if (flags.isNotEmpty) ...[
-          const SizedBox(width: 8),
-          Wrap(spacing: 4, children: flags),
-        ],
+        Row(
+          children: [
+            Flexible(child: BackendLabel(backend: b)),
+            if (flags.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Wrap(spacing: 4, children: flags),
+            ],
+          ],
+        ),
+        if (b.implementation != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 18, top: 2),
+            child: ImplLine(backend: b),
+          ),
       ],
     );
   }
@@ -517,6 +630,11 @@ class _LeaderCards extends StatelessWidget {
                       _CompareToggle(state: state, backendKey: ranked[i].key),
                     ],
                   ),
+                  if (ranked[i].implementation != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 22, top: 2),
+                      child: ImplLine(backend: ranked[i]),
+                    ),
                   const SizedBox(height: 6),
                   Padding(
                     padding: const EdgeInsets.only(left: 22, right: 8),

@@ -9,6 +9,7 @@ import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/charts.dart';
 import '../widgets/common.dart';
+import '../widgets/implementation.dart';
 
 class CompareScreen extends StatefulWidget {
   const CompareScreen({super.key});
@@ -335,15 +336,18 @@ class _Table extends StatelessWidget {
   Widget build(BuildContext context) {
     final results = selected.map(state.resultOf).whereType<ScenarioResult>();
     final metrics = Metrics.available(results, Metrics.all);
+    final sha = state.run!.dirty ? null : state.run!.gitSha;
     return SectionCard(
       title: 'Side by side',
-      subtitle: 'Best value per row in green.',
+      subtitle:
+          'Best value per row in green. The lower half shows how each one is '
+          'implemented, so you can judge whether the comparison is fair.',
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
           headingRowHeight: 40,
           dataRowMinHeight: 34,
-          dataRowMaxHeight: 34,
+          dataRowMaxHeight: double.infinity,
           columnSpacing: 28,
           horizontalMargin: 4,
           columns: [
@@ -355,7 +359,6 @@ class _Table extends StatelessWidget {
             ),
             for (final b in selected)
               DataColumn(
-                numeric: true,
                 label: Row(
                   children: [
                     ColorDot(color: BackendColors.of(b.key), size: 8),
@@ -371,11 +374,95 @@ class _Table extends StatelessWidget {
                 ),
               ),
           ],
-          rows: [for (final m in metrics) _row(m)],
+          rows: [
+            for (final m in metrics) _row(m),
+            _heading('Implementation'),
+            _textRow('Server', (b) => b.implementation?.server),
+            _textRow('Concurrency', (b) => b.implementation?.concurrency),
+            _textRow('DB access', (b) => b.implementation?.dbAccess),
+            _textRow('DB pool', (b) => b.implementation?.pool),
+            _textRow('API', (b) => b.apiLabel),
+            _textRow('Database', (b) => b.storageLabel),
+            _textRow('Version', (b) => b.version),
+            _textRow('Runtime', (b) => b.runtime),
+            DataRow(
+              cells: [
+                _label('Source'),
+                for (final b in selected)
+                  DataCell(
+                    b.sourceUrl == null
+                        ? _dim('—')
+                        : _cell(
+                            SourceLink(
+                              url: b.sourceUrlAt(sha) ?? b.sourceUrl!,
+                              label: 'backends/${b.path}',
+                            ),
+                          ),
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
+
+  static const _cellWidth = 230.0;
+
+  Widget _cell(Widget child) => ConstrainedBox(
+    constraints: const BoxConstraints(maxWidth: _cellWidth),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: child,
+    ),
+  );
+
+  Widget _dim(String s) =>
+      Text(s, style: const TextStyle(color: kTextDim, fontSize: 12.5));
+
+  DataCell _label(String text) => DataCell(
+    Text(text, style: const TextStyle(color: kTextSecondary, fontSize: 12.5)),
+  );
+
+  DataRow _heading(String text) => DataRow(
+    color: WidgetStatePropertyAll(kBlue.withValues(alpha: 0.06)),
+    cells: [
+      DataCell(
+        Text(
+          text,
+          style: const TextStyle(
+            color: kTextPrimary,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      for (final _ in selected) const DataCell(SizedBox.shrink()),
+    ],
+  );
+
+  DataRow _textRow(String label, String? Function(BackendResult) value) =>
+      DataRow(
+        cells: [
+          _label(label),
+          for (final b in selected)
+            DataCell(
+              value(b) == null
+                  ? _dim('—')
+                  : _cell(
+                      Text(
+                        value(b)!,
+                        softWrap: true,
+                        style: const TextStyle(
+                          color: kTextSecondary,
+                          fontSize: 12.5,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+            ),
+        ],
+      );
 
   DataRow _row(Metric m) {
     final best = state.rank(selected, m).first.key;

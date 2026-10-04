@@ -58,10 +58,14 @@ void main() {
       await shot('3-compare');
       state.setTab(DashboardTab.history);
       await shot('4-history');
+      state.setTab(DashboardTab.method);
+      await shot('5-method');
       final legacy = state.index.firstWhere((e) => e.isLegacy);
       await t.runAsync(() => state.selectRun(legacy));
       state.setTab(DashboardTab.overview);
-      await shot('5-legacy-overview');
+      await shot('6-legacy-overview');
+      state.setTab(DashboardTab.framework);
+      await shot('7-legacy-framework');
     });
   }
 }
