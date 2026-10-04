@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0",
-    "pg": "^8.18.0"
+    "express": "^5.2.1",
+    "pg": "^8.23.1"
   }
 }
