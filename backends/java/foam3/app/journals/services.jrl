@@ -57,26 +57,27 @@ p({
   """
 })
 
-// HTTP endpoints. authenticate:false: NanoRouter does not wrap these in
-// AuthWebAgent, so no session or login is needed (the benchmark is anonymous).
+// NoteService, served with FOAM's box RPC at /service/noteService.
+// serve:true + boxClass: NanoRouter wraps NoteServiceSkeleton in a
+// ServiceWebAgent, which parses the posted Envelope and replies with an
+// Envelope holding an RPCReturnMessage (or an RPCErrorMessage).
+// authenticate:false: SessionServerBox accepts calls without a sessionId (they
+// run in FOAM's shared "anonymous" session) and skips the service permission.
 p({
   "class": "foam.core.boot.CSpec",
-  "name": "notes",
+  "name": "noteService",
+  "lazy": false,
+  "serve": true,
   "authenticate": false,
-  "pm": false,
-  "serviceClass": "bench.notes.NoteWebAgent"
+  "boxClass": "bench.notes.NoteServiceSkeleton",
+  "serviceClass": "bench.notes.NoteServiceImpl",
+  "client": "{\"class\":\"bench.notes.ClientNoteService\",\"delegate\":{\"class\":\"foam.box.HTTPBox\",\"url\":\"service/noteService\"}}"
 })
 
-p({
-  "class": "foam.core.boot.CSpec",
-  "name": "no_db_endpoint",
-  "authenticate": false,
-  "pm": false,
-  "serviceClass": "bench.notes.NoDbWebAgent"
-})
-
-// Replaces FOAM's own "health" service (foam.core.app.HealthWebAgent) with one
-// that also checks Postgres in the postgres variant.
+// GET /service/health. Replaces FOAM's own "health" service
+// (foam.core.app.HealthWebAgent), which reports UP as soon as the server runs
+// and knows nothing about Postgres, with one that also checks noteDAO and, in
+// the postgres variant, a Postgres connection.
 p({
   "class": "foam.core.boot.CSpec",
   "name": "health",

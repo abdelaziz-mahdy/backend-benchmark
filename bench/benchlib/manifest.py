@@ -28,7 +28,7 @@ class Item:
 
     @property
     def api_style(self):
-        """"rest" (default) or "serverpod_rpc"; see bench/scenarios/lib.js."""
+        """"rest" (default), "serverpod_rpc" or "foam_rpc"; see bench/scenarios/lib.js."""
         return self.manifest.get("api_style", "rest")
 
     @property

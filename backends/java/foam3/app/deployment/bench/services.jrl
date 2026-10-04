@@ -1,6 +1,5 @@
 // FOAM's Jetty HttpServer, reconfigured for the benchmark:
-//   - every path goes to bench.notes.RootRouter (FOAM's NanoRouter, mounted at /),
-//     so /notes/... reaches the "notes" CSpec, /health the "health" CSpec, and so on
+//   - only FOAM's NanoRouter, at its usual /service/* (noteService, health)
 //   - no static files, CSP filter, error pages or websockets
 //   - gzip off for all paths, as for the other backends
 // The port comes from -Dhttp.port (run-docker.sh -W 8000).
@@ -18,8 +17,8 @@ p({
     "excludedGzipPaths": ["/*"],
     "servletMappings": [{
       "class": "foam.core.servlet.ServletMapping",
-      "className": "bench.notes.RootRouter",
-      "pathSpec": "/*"
+      "className": "foam.core.http.NanoRouter",
+      "pathSpec": "/service/*"
     }],
     "errorMappings": [],
     "filterMappings": []
