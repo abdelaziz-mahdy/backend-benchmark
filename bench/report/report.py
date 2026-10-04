@@ -206,6 +206,15 @@ def describe_backend(backends_dir, key, item):
     }
 
 
+def _display_name(item, key):
+    """Variants of one backend need distinct names ("foam3 (embedded)")."""
+    name = item.get("name", key)
+    variant = item.get("variant")
+    if variant and key.endswith(f"-{variant}") and variant not in name:
+        return f"{name} ({variant})"
+    return name
+
+
 def build_run(run_dir, problems, backends_dir=None):
     backends_dir = backends_dir or BACKENDS
     meta = json.loads((run_dir / "run.json").read_text())
@@ -218,7 +227,8 @@ def build_run(run_dir, problems, backends_dir=None):
     for key, item in sorted(meta.get("items", {}).items()):
         entry = {
             "key": key,
-            "name": item.get("name", key),
+            # Variants of one backend need distinct names ("foam3 (embedded)").
+            "name": _display_name(item, key),
             "language": item.get("language"),
             "framework": item.get("framework"),
             "version": item.get("version"),

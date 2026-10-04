@@ -13,7 +13,17 @@ class Rank {
   final double? value;
   final double? leader;
 
-  const Rank(this.position, this.total, this.value, this.leader);
+  /// How many backends share this value (1 = no tie). Tied backends share
+  /// the same position ("competition" ranking: 1, 1, 1, 4, …).
+  final int tied;
+
+  const Rank(
+    this.position,
+    this.total,
+    this.value,
+    this.leader, {
+    this.tied = 1,
+  });
 
   /// value / leader for higher-is-better metrics, null when undefined.
   double? get shareOfLeader {
@@ -198,11 +208,19 @@ class DashboardState extends ChangeNotifier {
     final ranked = rank(scenarioBackends, metric);
     final i = ranked.indexWhere((b) => b.key == backend.key);
     if (i < 0) return null;
+    final value = _value(backend, metric);
+    final same = value == null
+        ? 1
+        : ranked.where((b) => _value(b, metric) == value).length;
+    final first = value == null
+        ? i
+        : ranked.indexWhere((b) => _value(b, metric) == value);
     return Rank(
-      i + 1,
+      first + 1,
       ranked.length,
-      _value(backend, metric),
+      value,
       _value(ranked.first, metric),
+      tied: same,
     );
   }
 

@@ -1,0 +1,7 @@
+{
+  "finished_at": "2026-10-04T09:50:31+00:00",
+  "framework_version": "1.8.1",
+  "image_digest": "sha256:31c2eba40c7b02960b1d439361c86e97c7f744520902d6f460c19cb2c30bfb87",
+  "runtime": "go 1.27",
+  "status": "ok"
+}
