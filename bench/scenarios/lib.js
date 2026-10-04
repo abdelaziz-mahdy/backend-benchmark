@@ -5,6 +5,10 @@ import http from 'k6/http';
 export const BASE = __ENV.BASE_URL || 'http://benchmark:8000';
 export const SEED_ROWS = parseInt(__ENV.SEED_ROWS || '10000', 10);
 export const PAGE = 20;
+// Paged reads start within the first PAGE_WINDOW rows. Deep OFFSETs make
+// Postgres scan every skipped row, which turned db_read into a Postgres
+// benchmark (3 DB cores saturated with the app at ~85% CPU).
+export const PAGE_WINDOW = 200;
 // "rest" (the API contract) or "serverpod_rpc" (POST /note/<method>), set
 // from backend.yaml so every backend runs the same four operations.
 const RPC = (__ENV.API_STYLE || 'rest') === 'serverpod_rpc';
@@ -43,7 +47,7 @@ function rpc(method, body, name) {
 }
 
 export function readPage() {
-  const offset = Math.floor(Math.random() * (SEED_ROWS - PAGE));
+  const offset = Math.floor(Math.random() * PAGE_WINDOW);
   if (RPC) return rpc('getNotes', { limit: PAGE, offset }, 'list');
   return http.get(`${BASE}/notes/?limit=${PAGE}&offset=${offset}`, { tags: { name: 'list' } });
 }

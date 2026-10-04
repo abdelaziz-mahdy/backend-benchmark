@@ -34,7 +34,7 @@ For each backend × variant × scenario × rep:
 | Scenario | Requests |
 |---|---|
 | `no_db` | `GET /no_db_endpoint/` |
-| `db_read` | 50% `GET /notes/?limit=20&offset=N`, 50% `GET /notes/{id}` |
+| `db_read` | 50% `GET /notes/?limit=20&offset=N` (N < 200), 50% `GET /notes/{id}` (any of 10k) |
 | `db_write` | `POST /notes/` |
 | `db_mixed` | 40% paged list, 40% by id, 20% create |
 
