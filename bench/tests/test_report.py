@@ -77,3 +77,30 @@ def test_check_flags_bad_runs(tmp_path):
 
 def test_clean_nan():
     assert report.clean({"a": [float("nan"), 1.0], "b": float("inf")}) == {"a": [None, 1.0], "b": None}
+
+
+def test_latest_view_takes_newest_result_per_backend(tmp_path):
+    old = make_run(tmp_path, "2026-10-01_m_a_0001", {
+        "go-mux": {"name": "go mux", "scenarios": {"no_db": {"status": "ok"}}},
+        "rust-actix-web": {"name": "rust", "scenarios": {"no_db": {"status": "ok"}}},
+    })
+    make_rep(old / "go-mux" / "no_db" / "rep-1", [(1000, True)])
+    make_rep(old / "rust-actix-web" / "no_db" / "rep-1", [(4000, True)])
+    new = make_run(tmp_path, "2026-10-02_m_b_0002", {"go-mux": {"name": "go mux", "scenarios": {"no_db": {"status": "ok"}}}})
+    make_rep(new / "go-mux" / "no_db" / "rep-1", [(2000, True)])
+    other_machine = make_run(tmp_path, "2026-10-03_x_c_0003", {"go-mux": {"name": "go mux", "scenarios": {"no_db": {"status": "ok"}}}}, machine="x")
+    make_rep(other_machine / "go-mux" / "no_db" / "rep-1", [(9000, True)])
+
+    problems = report.Problems()
+    summaries = report.build_all(tmp_path, problems)
+    views = {v["id"]: v for v in report.latest_views(summaries)}
+    assert set(views) == {"latest_m2pro-10c-32g_v2", "latest_x_v2"}
+    view = views["latest_m2pro-10c-32g_v2"]
+    backends = {b["key"]: b for b in view["backends"]}
+    assert backends["go-mux"]["scenarios"]["no_db"]["sustainable_rps"]["median"] == 2000
+    assert backends["go-mux"]["scenarios"]["no_db"]["from_run"] == "2026-10-02_m_b_0002"
+    assert backends["rust-actix-web"]["scenarios"]["no_db"]["from_run"] == "2026-10-01_m_a_0001"
+    assert view["runs"] == ["2026-10-01_m_a_0001", "2026-10-02_m_b_0002"]
+    entry = report.index_entry(view, "x")
+    assert entry["kind"] == "latest"
+    assert entry["headline"]["go-mux"]["no_db"]["sustainable_rps"] == 2000
