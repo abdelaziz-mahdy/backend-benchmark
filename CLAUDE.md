@@ -20,6 +20,16 @@ A multi-language backend benchmarking suite. Each backend runs in Docker against
 `GET /health`, `GET /no_db_endpoint/`, `POST /notes/`, `GET /notes/?limit=&offset=`, `GET /notes/{id}`.
 DB settings from `DATABASE_HOST/PORT/NAME/USER/PASSWORD` (defaults db/5432/postgres/postgres/postgres).
 
+## Running benchmarks
+
+```bash
+bench/run.sh --smoke                 # build + check every backend, no load
+bench/run.sh --only go/mux --reps 1  # subset
+bench/run.sh                         # full run, writes results/runs/<run_id>/
+python3 bench/report/report.py       # regenerate benchmark-app/assets/results/
+cd bench && python3 -m pytest tests  # runner/report unit tests
+```
+
 ## Adding / removing a backend
 
 Add a folder with `backend.yaml` + `app/`; delete the folder to remove it. Past results stay in `results/`.

@@ -5,6 +5,9 @@ import http from 'k6/http';
 export const BASE = __ENV.BASE_URL || 'http://benchmark:8000';
 export const SEED_ROWS = parseInt(__ENV.SEED_ROWS || '10000', 10);
 export const PAGE = 20;
+// "rest" (the API contract) or "serverpod_rpc" (POST /note/<method>), set
+// from backend.yaml so every backend runs the same four operations.
+const RPC = (__ENV.API_STYLE || 'rest') === 'serverpod_rpc';
 
 const RATE = parseInt(__ENV.RATE || '100', 10);
 
@@ -35,23 +38,29 @@ export function randomId() {
   return 1 + Math.floor(Math.random() * SEED_ROWS);
 }
 
+function rpc(method, body, name) {
+  return http.post(`${BASE}/note/${method}`, JSON.stringify(body), Object.assign({ tags: { name } }, JSON_HEADERS));
+}
+
 export function readPage() {
   const offset = Math.floor(Math.random() * (SEED_ROWS - PAGE));
+  if (RPC) return rpc('getNotes', { limit: PAGE, offset }, 'list');
   return http.get(`${BASE}/notes/?limit=${PAGE}&offset=${offset}`, { tags: { name: 'list' } });
 }
 
 export function readOne() {
+  if (RPC) return rpc('getNote', { id: randomId() }, 'get');
   return http.get(`${BASE}/notes/${randomId()}`, { tags: { name: 'get' } });
 }
 
+const NOTE = { title: 'Sample Note', content: 'This is a note content.' };
+
 export function writeOne() {
-  return http.post(
-    `${BASE}/notes/`,
-    JSON.stringify({ title: 'Sample Note', content: 'This is a note content.' }),
-    Object.assign({ tags: { name: 'create' } }, JSON_HEADERS),
-  );
+  if (RPC) return rpc('createNote', { note: NOTE }, 'create');
+  return http.post(`${BASE}/notes/`, JSON.stringify(NOTE), Object.assign({ tags: { name: 'create' } }, JSON_HEADERS));
 }
 
 export function noDb() {
+  if (RPC) return rpc('noDbEndpoint', {}, 'no_db');
   return http.get(`${BASE}/no_db_endpoint/`, { tags: { name: 'no_db' } });
 }

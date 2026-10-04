@@ -1,0 +1,41 @@
+name: Validate benchmark results
+
+on:
+  pull_request:
+    paths:
+      - 'results/**'
+      - 'bench/**'
+      - 'backends/**/backend.yaml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies
+        run: pip install pyyaml pytest
+
+      - name: Runner and report unit tests
+        working-directory: bench
+        run: python -m pytest -q tests
+
+      - name: Only new run folders are added
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          changed=$(git diff --name-status "origin/${{ github.base_ref }}"...HEAD -- results/ | grep -v '^A' || true)
+          if [ -n "$changed" ]; then
+            echo "Existing results must not be modified or deleted:"
+            echo "$changed"
+            exit 1
+          fi
+
+      - name: Validate results
+        run: python bench/report/report.py --check
+
+      - name: Build dashboard data
+        run: python bench/report/report.py --out /tmp/results

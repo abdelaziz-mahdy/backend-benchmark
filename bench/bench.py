@@ -85,6 +85,7 @@ class Stack:
         args = ["run", "--rm", "--no-deps", "k6", "run", "--quiet", "--no-color"]
         if out_name:
             args += ["--summary-export", f"/out/{out_name}"]
+        env.setdefault("API_STYLE", self.item.api_style)
         for k, v in env.items():
             args += ["-e", f"{k}={v}"]
         args.append(f"/scenarios/{script}")
@@ -96,7 +97,7 @@ class Stack:
 
 def wait_healthy(stack):
     deadline = time.time() + HEALTH_TIMEOUT_S
-    url = f"http://127.0.0.1:{PORT}/health"
+    url = f"http://127.0.0.1:{PORT}{stack.item.health_path}"
     while time.time() < deadline:
         try:
             with urllib.request.urlopen(url, timeout=2) as r:
@@ -336,6 +337,27 @@ def smoke(item, cpus):
     if ok:
         base = f"http://127.0.0.1:{PORT}"
 
+        rpc = item.api_style == "serverpod_rpc"
+
+        def op(name, arg=None):
+            """The four benchmark operations, in the backend's API style."""
+            if rpc:
+                body = {
+                    "no_db": {},
+                    "create": {"note": arg},
+                    "list": arg,
+                    "get": {"id": arg},
+                }[name]
+                method = {"no_db": "noDbEndpoint", "create": "createNote", "list": "getNotes", "get": "getNote"}[name]
+                return call("POST", f"/note/{method}", body)
+            if name == "no_db":
+                return call("GET", "/no_db_endpoint/")
+            if name == "create":
+                return call("POST", "/notes/", arg)
+            if name == "list":
+                return call("GET", f"/notes/?limit={arg['limit']}&offset={arg['offset']}")
+            return call("GET", f"/notes/{arg}")
+
         def call(method, path, body=None):
             data = json.dumps(body).encode() if body is not None else None
             req = urllib.request.Request(base + path, data=data, method=method, headers={"Content-Type": "application/json"})
@@ -347,20 +369,21 @@ def smoke(item, cpus):
             except OSError as e:
                 return 0, str(e)
 
-        checks.append(("GET /no_db_endpoint/", call("GET", "/no_db_endpoint/"), {200}))
+        checks.append(("no_db", op("no_db"), {200}))
         if item.scenarios != ["no_db"]:
-            checks.append(("POST /notes/", call("POST", "/notes/", {"title": "t", "content": "c"}), {200, 201}))
-            checks.append(("POST /notes/", call("POST", "/notes/", {"title": "t2", "content": "c2"}), {200, 201}))
-            list_res = call("GET", "/notes/?limit=1&offset=1")
-            checks.append(("GET /notes/?limit=1&offset=1", list_res, {200}))
+            checks.append(("create", op("create", {"title": "t", "content": "c"}), {200, 201}))
+            checks.append(("create", op("create", {"title": "t2", "content": "c2"}), {200, 201}))
+            list_res = op("list", {"limit": 1, "offset": 1})
+            checks.append(("list limit=1 offset=1", list_res, {200}))
             try:
                 rows = json.loads(list_res[1])
                 paged_ok = isinstance(rows, list) and len(rows) == 1 and rows[0].get("title") == "t2"
             except (ValueError, AttributeError, KeyError, IndexError):
                 paged_ok = False
             checks.append(("paging returns 1 row, the 2nd note", (200 if paged_ok else 0, list_res[1][:200]), {200}))
-            checks.append(("GET /notes/1", call("GET", "/notes/1"), {200}))
-            checks.append(("GET /notes/999999 -> 404", call("GET", "/notes/999999"), {404}))
+            checks.append(("get id=1", op("get", 1), {200}))
+            if not rpc:  # RPC returns null with 200 for a missing row
+                checks.append(("get missing -> 404", op("get", 999999), {404}))
     else:
         print(stack.logs())
     stack.down()

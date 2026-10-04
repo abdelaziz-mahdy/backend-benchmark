@@ -30,11 +30,19 @@ benchmark-app/      # Flutter web dashboard
      - id: postgres
        db: postgres          # or: none (backend stores data itself)
        pgbouncer: false      # optional, route DB traffic through pgbouncer
+   # optional:
+   # api_style: rest         # or serverpod_rpc (see bench/README.md)
+   # health_path: /health
+   # notes: one line shown in the dashboard
    ```
 
 3. Implement the API contract below. Read DB settings from
    `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`
    (defaults `db`, `5432`, `postgres`, `postgres`, `postgres`).
+4. Run it the way it runs in production: release build, production server,
+   and use the CPUs given in `BENCH_CPUS` (2) — e.g. one worker per CPU for
+   single-threaded runtimes. Keep the DB pool at about 20 connections in total.
+5. Check it: `bench/run.sh --smoke --only <language>/<framework>`.
 
 That is all: the runner discovers every `backend.yaml`.
 
@@ -53,14 +61,35 @@ in the dashboard's history.
 | `GET /notes/?limit=20&offset=N` | rows ordered by id, at most `limit` |
 | `GET /notes/{id}` | one row, 404 when missing |
 
-Table: `notes(id SERIAL PRIMARY KEY, title TEXT NOT NULL, content TEXT NOT NULL)`.
+Create the table however the framework normally does (migrations, ORM). The
+runner seeds data through `POST /notes/`, so table and column names are up to you;
+ids must start at 1 on a fresh database.
 
 ## Running benchmarks
 
-The shared runner lands in `bench/` (see `bench/README.md` once present).
+```bash
+bench/run.sh --smoke     # every backend builds and answers correctly
+bench/run.sh             # full run (several hours)
+```
+
+See [bench/README.md](bench/README.md) for options and what a run measures.
+
+## Submitting results
+
+Results from your own machine are welcome as a pull request.
+
+1. Run on a clean checkout of `main` (the run is marked `dirty` otherwise),
+   with nothing else heavy running. Docker needs at least 6 CPUs.
+2. `bench/run.sh --contributor <your-handle>` (all backends, or `--only` a few).
+3. Commit only the new folder `results/runs/<run_id>/` and open a PR.
+   Do not edit other runs or any generated file.
+4. CI validates the folder (`bench/report/report.py --check`).
+
+Runs are compared only with runs from the same machine and methodology; the
+dashboard groups them by machine.
 
 ## Results history
 
-Each run writes to a new `results/runs/<date>_<machine>_<sha>/` folder.
-Nothing under `results/` is edited after it is written; compare runs only
-when machine and methodology match (the dashboard enforces this).
+Each run writes to a new `results/runs/<date>_<machine>_<sha>_<rand>/` folder.
+Nothing under `results/` is edited after it is written. The dashboard data
+(`benchmark-app/assets/results/`) is generated from these folders by CI.

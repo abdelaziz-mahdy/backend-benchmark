@@ -27,6 +27,15 @@ class Item:
     scenarios: list = field(default_factory=lambda: list(ALL_SCENARIOS))
 
     @property
+    def api_style(self):
+        """"rest" (default) or "serverpod_rpc"; see bench/scenarios/lib.js."""
+        return self.manifest.get("api_style", "rest")
+
+    @property
+    def health_path(self):
+        return self.manifest.get("health_path", "/health")
+
+    @property
     def profiles(self):
         profiles = []
         if self.variant.db == "postgres":
