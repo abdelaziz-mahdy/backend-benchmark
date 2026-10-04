@@ -65,3 +65,13 @@ String _percentShare(double share) {
 String formatMb(double mb) => mb >= 1000
     ? '${(mb / 1024).toStringAsFixed(1)} GB'
     : '${formatNumber(mb)} MB';
+
+/// Axis/tooltip formatter for a memory chart whose largest value is [maxMb]:
+/// one unit for the whole chart ("0.5 GB / 1.0 GB" or "50 MB / 100 MB"),
+/// never a mix such as "2.0K MB".
+String Function(double) memoryAxisFormatter(double maxMb) {
+  if (maxMb >= 1000) {
+    return (v) => '${(v / 1024).toStringAsFixed(1)} GB';
+  }
+  return (v) => '${formatNumber(v)} MB';
+}

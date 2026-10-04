@@ -40,3 +40,17 @@ final kSegmentedStyle = ButtonStyle(
   ),
   side: const WidgetStatePropertyAll(BorderSide(color: kBorder)),
 );
+
+/// Text style for button labels and dropdowns: the theme's label style (which
+/// carries the font family) at a given size. A bare TextStyle in a
+/// ButtonStyle drops the family and falls back to the engine default.
+TextStyle labelStyle(
+  BuildContext context,
+  double size, {
+  FontWeight? weight,
+  Color? color,
+}) => Theme.of(context).textTheme.labelLarge!.copyWith(
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+);
