@@ -265,14 +265,24 @@ class _Leaders extends StatelessWidget {
   }
 
   Widget _leader(Metric m) {
-    final best = state.rank(backends, m).first;
+    final ranked = state.rank(backends, m);
+    final best = ranked.first;
     final value = m.value(state.resultOf(best)!);
+    // Several frameworks can share the top value (e.g. all capped by the load
+    // generator); naming only the first would invent a winner.
+    final tied = [
+      for (final b in ranked)
+        if (value != null && m.value(state.resultOf(b)!) == value) b,
+    ];
+    final isTie = tied.length > 1;
     return Tooltip(
-      message: m.help,
+      message: isTie
+          ? '${m.help}\n\nTied: ${tied.map((b) => b.name).join(', ')}'
+          : m.help,
       waitDuration: const Duration(milliseconds: 300),
       child: InkWell(
         borderRadius: BorderRadius.circular(kRadius),
-        onTap: () => state.openFramework(best.key),
+        onTap: isTie ? null : () => state.openFramework(best.key),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
@@ -293,10 +303,17 @@ class _Leaders extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              ColorDot(color: BackendColors.of(best.key), size: 8),
+              if (isTie)
+                for (final b in tied.take(4))
+                  Padding(
+                    padding: const EdgeInsets.only(right: 2),
+                    child: ColorDot(color: BackendColors.of(b.key), size: 8),
+                  )
+              else
+                ColorDot(color: BackendColors.of(best.key), size: 8),
               const SizedBox(width: 6),
               Text(
-                best.name,
+                isTie ? '${tied.length} tied' : best.name,
                 style: const TextStyle(
                   color: kTextPrimary,
                   fontSize: 13,
