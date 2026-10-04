@@ -28,7 +28,9 @@ For each backend × variant × scenario × rep:
 3. Warm up for 30 s, then step the load with k6's open-model
    `constant-arrival-rate` executor: 250, 500, 1k … 64k requests/s, 30 s each.
 4. Stop at the first step that misses the SLO (p99 < 100 ms, errors < 1%,
-   achieved ≥ 95% of target), then test the midpoint once.
+   achieved ≥ 95% of target), then halve the gap between the last passing and
+   first failing rate up to 4 times, stopping once it is under 6% (methodology
+   v2.1; v2 tested a single midpoint).
 5. Sample CPU and memory of every container each second; tear down.
 
 | Scenario | Requests |

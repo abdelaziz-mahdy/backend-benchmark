@@ -59,7 +59,7 @@ class MethodScreen extends StatelessWidget {
             '${_num(err)}% of requests fail and at least ${_num(served)}% of '
             'the requested rate is actually served.',
         'Sustainable load (the headline) is the highest passing step; the run '
-            'stops at the first failing step and then tests the midpoint. '
+            'stops at the first failing step and then ${_refine(run)}. '
             'Peak throughput is the most requests per second served at any '
             'step, whatever the latency.',
         'Latency percentiles, CPU and memory are reported at the sustainable '
@@ -323,4 +323,15 @@ class _Bullets extends StatelessWidget {
         ),
     ],
   );
+}
+
+/// How the run narrowed the limit after the first failing step.
+String _refine(RunSummary run) {
+  final steps = run.params['refine_steps'];
+  final tol = run.params['refine_tolerance'];
+  if (steps is num && tol is num) {
+    return 'halves the gap to the last passing step up to ${steps.toInt()} '
+        'times, until it is within ${(tol * 100).round()}%';
+  }
+  return 'tests the midpoint once';
 }

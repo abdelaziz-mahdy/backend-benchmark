@@ -187,6 +187,8 @@ def new_run(run_id, steps, reps, cpus, contributor):
             "steps": steps,
             "step_seconds": slo.STEP_SECONDS,
             "warmup_seconds": slo.WARMUP_SECONDS,
+            "refine_steps": slo.REFINE_STEPS,
+            "refine_tolerance": slo.REFINE_TOLERANCE,
             "reps": reps,
             "seed_rows": slo.SEED_ROWS,
             "slo": {"p99_ms": slo.SLO_P99_MS, "error_rate": slo.SLO_ERROR_RATE, "achieved_ratio": slo.SLO_ACHIEVED_RATIO},
@@ -292,8 +294,10 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores):
     for rate in steps:
         if not do_step(rate):
             break
-    mid = slo.refine_rate(rows)
-    if mid:
+    for _ in range(slo.REFINE_STEPS):
+        mid = slo.refine_rate(rows)
+        if not mid:
+            break
         do_step(mid, refine=True)
     sampler.stop()
     stack.down()

@@ -117,7 +117,9 @@ Before DB scenarios the runner truncates `notes` and seeds 10,000 rows via SQL
 2. Warmup: 30 s at the first step rate (discarded).
 3. Step load, open model (`constant-arrival-rate`): rates 250, 500, 1k, 2k, 4k, 8k,
    16k, 32k, 64k req/s, 30 s each. Stop after the first step that breaks the SLO.
-4. Refine: test the midpoint between the last passing and first failing rate (one 30 s step).
+4. Refine: binary search between the last passing and first failing rate, up to
+   4 probes of 30 s, stopping when the gap is under 6% (methodology v2.1, see
+   `docs/planned-work/2026-10-04-finer-load-search.md`; v2 tested one midpoint).
 5. Sample backend + db CPU/memory every second (`docker stats`).
 6. `compose down -v`.
 

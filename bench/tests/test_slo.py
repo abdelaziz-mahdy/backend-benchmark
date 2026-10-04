@@ -104,3 +104,53 @@ def test_aggregate_median_and_spread():
 def test_median_rep_index():
     reps = [{"sustainable_rps": 3, "peak_rps": 0}, {"sustainable_rps": 1, "peak_rps": 0}, {"sustainable_rps": 2, "peak_rps": 0}]
     assert slo.median_rep_index(reps) == 2
+
+
+def simulate(true_limit, steps=slo.STEPS):
+    """Run the runner's search (doubling, then bounded bisection) against a
+    backend that passes every rate <= true_limit."""
+    rows = []
+    for rate in steps:
+        rows.append(step(rate, p99=10 if rate <= true_limit else 500))
+        if not rows[-1]["pass"]:
+            break
+    probes = 0
+    for _ in range(slo.REFINE_STEPS):
+        mid = slo.refine_rate(rows)
+        if not mid:
+            break
+        probes += 1
+        rows.append(step(mid, p99=10 if mid <= true_limit else 500))
+    return slo.summarize_rep(rows)["sustainable_rps"], probes, rows
+
+
+def test_bisection_reports_within_tolerance():
+    for limit in [300, 777, 1234, 5000, 11000, 17500, 23999, 30000, 47000]:
+        found, probes, rows = simulate(limit)
+        assert found <= limit
+        assert probes <= slo.REFINE_STEPS
+        assert (limit - found) / limit <= 0.0625 + 0.01, (limit, found)
+        rates = [r["target_rps"] for r in rows]
+        assert len(rates) == len(set(rates)), "a rate was tested twice"
+
+
+def test_refine_stops_when_bracket_is_tight():
+    rows = [step(10000), step(10500, p99=500)]
+    assert slo.refine_rate(rows) is None  # 5% < 6% tolerance
+    assert slo.refine_rate(rows, tolerance=0.01) == 10250
+
+
+def test_refine_stops_on_empty_bracket_from_noise():
+    # 4000 passed, then a probe at 3000 failed: no valid bracket left.
+    rows = [step(2000), step(4000), step(8000, p99=500), step(3000, p99=500)]
+    assert slo.refine_rate(rows) is None
+
+
+def test_refine_never_repeats_a_tested_rate():
+    rows = [step(250), step(300, p99=500), step(275, p99=500)]
+    # bracket 250..275 is 10% wide; midpoint rounds to 250 or 300 -> stop
+    assert slo.refine_rate(rows) is None
+
+
+def test_methodology_is_v21():
+    assert slo.METHODOLOGY == "v2.1"
