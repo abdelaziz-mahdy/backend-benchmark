@@ -1,857 +1,409 @@
-import 'dart:math' as math;
-
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/benchmark_data.dart';
-import '../providers/benchmark_provider.dart';
+import '../models/metrics.dart';
+import '../models/results.dart';
+import '../state/dashboard_state.dart';
 import '../utils/colors.dart';
 import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
+import '../widgets/charts.dart';
+import '../widgets/common.dart';
 
-/// Metrics used for the radar and comparison charts.
-class _MetricDef {
-  final String label;
-  final String summaryKey;
-  final bool inverted; // true = lower real value is better
-
-  const _MetricDef(this.label, this.summaryKey, {this.inverted = false});
-}
-
-const _radarMetrics = [
-  _MetricDef('Requests/s', 'Average Requests/s'),
-  _MetricDef('Avg Response', 'Average Response Time (ms)', inverted: true),
-  _MetricDef('P99 Response', 'Average Response Time 99% (ms)', inverted: true),
-  _MetricDef('CPU Efficiency', 'CPU Efficiency'),
-  _MetricDef('DB Efficiency', 'DB Efficiency'),
-  _MetricDef('Mem Efficiency', 'Memory Efficiency'),
-];
-
-const _tableMetrics = [
-  _MetricDef('Requests/s', 'Average Requests/s'),
-  _MetricDef('Avg Response (ms)', 'Average Response Time (ms)', inverted: true),
-  _MetricDef('P50 Response (ms)', 'Average Response Time 50% (ms)',
-      inverted: true),
-  _MetricDef('P75 Response (ms)', 'Average Response Time 75% (ms)',
-      inverted: true),
-  _MetricDef('P99 Response (ms)', 'Average Response Time 99% (ms)',
-      inverted: true),
-  _MetricDef('Server CPU %', 'Average Server CPU Usage', inverted: true),
-  _MetricDef('DB CPU %', 'Average Database CPU Usage', inverted: true),
-  _MetricDef('Server Mem (MB)', 'Average Server Memory (MB)', inverted: true),
-  _MetricDef('CPU Efficiency', 'CPU Efficiency'),
-  _MetricDef('DB Efficiency', 'DB Efficiency'),
-  _MetricDef('Memory Efficiency', 'Memory Efficiency'),
-  _MetricDef('Failures/s', 'Average Failures/s', inverted: true),
-];
-
-class CompareScreen extends StatelessWidget {
+class CompareScreen extends StatefulWidget {
   const CompareScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<BenchmarkProvider>(
-      builder: (context, provider, _) {
-        final allServices = _filteredServiceNames(provider);
-        final selected = provider.compareServices
-            .where((s) => allServices.contains(s))
-            .toList();
+  State<CompareScreen> createState() => _CompareScreenState();
+}
 
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1400),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: _SectionTitle(title: 'Select Frameworks'),
-                  ),
-                  const SizedBox(height: 8),
-                  _FrameworkSelector(
-                    allServices: allServices,
-                    selected: provider.compareServices,
-                    onToggle: provider.toggleCompareService,
-                  ),
-                  const SizedBox(height: 24),
-                  if (selected.length < 2)
-                    _EmptyState()
-                  else ...[
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: _SectionTitle(title: 'Performance Radar'),
-                    ),
-                    const SizedBox(height: 8),
-                    _RadarSection(
-                      selected: selected,
-                      data: provider.data!,
-                    ),
-                    const SizedBox(height: 24),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: _SectionTitle(title: 'Metric Comparison'),
-                    ),
-                    const SizedBox(height: 8),
-                    _BarComparisonSection(
-                      selected: selected,
-                      data: provider.data!,
-                    ),
-                    const SizedBox(height: 24),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: _SectionTitle(title: 'Detailed Comparison'),
-                    ),
-                    const SizedBox(height: 8),
-                    _ComparisonTable(
-                      selected: selected,
-                      data: provider.data!,
-                    ),
-                  ],
-                  const SizedBox(height: 32),
-                ],
-              ),
-            ),
+enum _OverTime { cpu, memory, dbCpu, rps }
+
+class _CompareScreenState extends State<CompareScreen> {
+  _OverTime _overTime = _OverTime.cpu;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<DashboardState>();
+    final visible = state.visibleBackends;
+    if (state.run == null || visible.isEmpty) {
+      return const PageBody(
+        children: [
+          EmptyState(
+            icon: Icons.filter_list_off,
+            title: 'No frameworks match the filters',
           ),
+        ],
+      );
+    }
+    final selected = [
+      for (final k in state.compareKeys)
+        ?visible.where((b) => b.key == k).firstOrNull,
+    ];
+    return PageBody(
+      children: [
+        _Chooser(state: state, visible: visible),
+        if (selected.length < 2)
+          const EmptyState(
+            icon: Icons.compare_arrows,
+            title: 'Pick at least two frameworks to compare',
+            message: 'Tap the chips above, or tick rows on the Overview.',
+          )
+        else ...[
+          _Bars(state: state, selected: selected),
+          if (selected.any((b) => state.resultOf(b)!.steps.isNotEmpty))
+            _steps(state, selected),
+          _overTimeCard(state, selected),
+          _Table(state: state, selected: selected),
+        ],
+      ],
+    );
+  }
+
+  Widget _steps(DashboardState state, List<BackendResult> selected) {
+    final series = [
+      for (final b in selected)
+        if (state.resultOf(b)!.steps.isNotEmpty)
+          StepSeries(b, state.resultOf(b)!.steps),
+    ];
+    return LayoutBuilder(
+      builder: (context, c) {
+        final a = SectionCard(
+          title: 'Throughput per load step',
+          subtitle:
+              'Where each line leaves the dashed diagonal, it stops keeping up.',
+          child: Column(
+            children: [
+              StepLoadChart(series: series, mode: StepChartMode.throughput),
+              const SizedBox(height: 8),
+              ChartLegend(backends: selected),
+            ],
+          ),
+        );
+        final b = SectionCard(
+          title: 'p99 latency per load step',
+          subtitle: 'Above the orange line the SLO is missed.',
+          child: Column(
+            children: [
+              StepLoadChart(series: series, mode: StepChartMode.p99),
+              const SizedBox(height: 8),
+              ChartLegend(backends: selected),
+            ],
+          ),
+        );
+        if (c.maxWidth < 900) {
+          return Column(children: [a, const SizedBox(height: 16), b]);
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: a),
+            const SizedBox(width: 16),
+            Expanded(child: b),
+          ],
         );
       },
     );
   }
 
-  List<String> _filteredServiceNames(BenchmarkProvider provider) {
-    switch (provider.testTypeFilter) {
-      case TestTypeFilter.db:
-        return provider.dbServices;
-      case TestTypeFilter.noDb:
-        return provider.noDbServices;
-      case TestTypeFilter.all:
-        return provider.data?.keys.toList() ?? [];
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Section title
-// ---------------------------------------------------------------------------
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  const _SectionTitle({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: kTextPrimary,
-        letterSpacing: -0.3,
+  Widget _overTimeCard(DashboardState state, List<BackendResult> selected) {
+    final series = [
+      for (final b in selected)
+        if (!state.resultOf(b)!.timeseries.isEmpty)
+          (b, state.resultOf(b)!.timeseries),
+    ];
+    if (series.isEmpty) return const SizedBox.shrink();
+    final available = {
+      _OverTime.cpu: series.any((s) => s.$2.series.containsKey('app_cpu')),
+      _OverTime.memory: series.any(
+        (s) => s.$2.series.containsKey('app_mem_mb'),
       ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Empty state
-// ---------------------------------------------------------------------------
-
-class _EmptyState extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 80),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.compare_arrows, size: 48, color: kBorder),
-            SizedBox(height: 12),
-            Text(
-              'Select at least 2 frameworks to compare',
-              style: TextStyle(color: kTextMuted, fontSize: 14),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Framework selector chips
-// ---------------------------------------------------------------------------
-
-class _FrameworkSelector extends StatelessWidget {
-  final List<String> allServices;
-  final Set<String> selected;
-  final ValueChanged<String> onToggle;
-
-  const _FrameworkSelector({
-    required this.allServices,
-    required this.selected,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: kCardBg,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: kBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Select 2\u20134 frameworks to compare',
-              style: const TextStyle(color: kTextDim, fontSize: 12),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: allServices.map((name) {
-                final isSelected = selected.contains(name);
-                final color = ServiceColors.getColor(name);
-                final label = BenchmarkProvider.frameworkName(name);
-                final atMax = selected.length >= 4 && !isSelected;
-
-                return GestureDetector(
-                  onTap: atMax
-                      ? () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Maximum 4 frameworks selected'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        }
-                      : () => onToggle(name),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? color.withValues(alpha: 0.15)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSelected ? color : kBorder,
-                        width: isSelected ? 1.5 : 1,
-                      ),
-                    ),
-                    child: Opacity(
-                      opacity: atMax ? 0.4 : 1.0,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: isSelected ? color : kTextDim,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight:
-                                  isSelected ? FontWeight.w600 : FontWeight.w400,
-                              color: isSelected ? kTextPrimary : kTextMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Radar chart section
-// ---------------------------------------------------------------------------
-
-class _RadarSection extends StatelessWidget {
-  final List<String> selected;
-  final Map<String, BenchmarkService> data;
-
-  const _RadarSection({required this.selected, required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    final normalized = _normalizeRadar(selected, data);
-    // Collect raw values for the value table
-    final rawValues = <String, List<double>>{};
-    for (final service in selected) {
-      rawValues[service] = _radarMetrics
-          .map((m) => data[service]?.summary[m.summaryKey] ?? 0)
-          .toList();
-    }
-
-    return Card(
-      color: kCardBg,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: kBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Legend
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: selected.map((name) {
-                final color = ServiceColors.getColor(name);
-                return Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      BenchmarkProvider.frameworkName(name),
-                      style: const TextStyle(color: kTextSecondary, fontSize: 12),
-                    ),
-                  ],
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-            // Radar chart
-            SizedBox(
-              height: 350,
-              child: RadarChart(
-                RadarChartData(
-                  radarShape: RadarShape.polygon,
-                  dataSets: normalized.entries.map((entry) {
-                    final color = ServiceColors.getColor(entry.key);
-                    return RadarDataSet(
-                      dataEntries: entry.value
-                          .map((v) => RadarEntry(value: v))
-                          .toList(),
-                      borderColor: color,
-                      fillColor: color.withValues(alpha: 0.15),
-                      borderWidth: 2,
-                      entryRadius: 3,
-                    );
-                  }).toList(),
-                  radarBackgroundColor: Colors.transparent,
-                  borderData: FlBorderData(show: false),
-                  radarBorderData:
-                      const BorderSide(color: kBorder, width: 0.5),
-                  tickBorderData:
-                      const BorderSide(color: kBorder, width: 0.5),
-                  gridBorderData:
-                      const BorderSide(color: kBorder, width: 0.5),
-                  tickCount: 4,
-                  ticksTextStyle: const TextStyle(
-                    color: Colors.transparent,
-                    fontSize: 0,
-                  ),
-                  titlePositionPercentageOffset: 0.2,
-                  titleTextStyle: const TextStyle(
-                    color: kTextMuted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  getTitle: (index, angle) {
-                    return RadarChartTitle(
-                      text: _radarMetrics[index].label,
-                    );
-                  },
-                ),
+      _OverTime.dbCpu: series.any((s) => s.$2.series.containsKey('db_cpu')),
+      _OverTime.rps: series.any((s) => s.$2.series.containsKey('rps')),
+    };
+    final mode = available[_overTime]! ? _overTime : _OverTime.cpu;
+    final (field, format) = switch (mode) {
+      _OverTime.cpu => ('app_cpu', (double v) => '${v.toStringAsFixed(0)}%'),
+      _OverTime.memory => ('app_mem_mb', (double v) => '${formatNumber(v)} MB'),
+      _OverTime.dbCpu => ('db_cpu', (double v) => '${v.toStringAsFixed(0)}%'),
+      _OverTime.rps => ('rps', formatNumber),
+    };
+    return SectionCard(
+      title: 'Over time',
+      subtitle:
+          'Whole run, warmup included. Faster frameworks run more steps, so their lines are longer.',
+      trailing: SegmentedButton<_OverTime>(
+        showSelectedIcon: false,
+        style: const ButtonStyle(visualDensity: VisualDensity.compact),
+        segments: [
+          for (final e in available.entries)
+            if (e.value)
+              ButtonSegment(
+                value: e.key,
+                label: Text(switch (e.key) {
+                  _OverTime.cpu => 'CPU',
+                  _OverTime.memory => 'Memory',
+                  _OverTime.dbCpu => 'DB CPU',
+                  _OverTime.rps => 'rps',
+                }, style: const TextStyle(fontSize: 12)),
               ),
-            ),
-            const SizedBox(height: 12),
-            // Radar value table — shows actual values for each axis
-            _RadarValueTable(
-              selected: selected,
-              rawValues: rawValues,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Outer edge = best performance. Values normalized across all frameworks.',
-              style: const TextStyle(color: kTextDim, fontSize: 11),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Normalizes radar values across ALL frameworks (not just selected)
-  /// so the chart accurately represents relative performance.
-  Map<String, List<double>> _normalizeRadar(
-      List<String> services, Map<String, BenchmarkService> data) {
-    final result = <String, List<double>>{};
-
-    for (final service in services) {
-      result[service] = List.filled(_radarMetrics.length, 0.0);
-    }
-
-    for (var i = 0; i < _radarMetrics.length; i++) {
-      final metric = _radarMetrics[i];
-
-      // Collect values from ALL frameworks for global normalization
-      final allValues = <double>[];
-      for (final entry in data.entries) {
-        final v = entry.value.summary[metric.summaryKey] ?? 0;
-        if (v > 0) allValues.add(v);
-      }
-
-      if (allValues.isEmpty) continue;
-
-      final globalMin = allValues.reduce(math.min);
-      final globalMax = allValues.reduce(math.max);
-      final range = globalMax - globalMin;
-
-      for (final service in services) {
-        final value = data[service]?.summary[metric.summaryKey] ?? 0;
-        double normalized;
-        if (range == 0) {
-          normalized = 1.0;
-        } else {
-          normalized = (value - globalMin) / range;
-          if (metric.inverted) {
-            normalized = 1.0 - normalized;
-          }
-        }
-        result[service]![i] = normalized.clamp(0.05, 1.0);
-      }
-    }
-
-    return result;
-  }
-}
-
-/// Shows actual raw values for each radar axis per framework.
-class _RadarValueTable extends StatelessWidget {
-  final List<String> selected;
-  final Map<String, List<double>> rawValues;
-
-  const _RadarValueTable({
-    required this.selected,
-    required this.rawValues,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        headingRowHeight: 32,
-        dataRowMinHeight: 28,
-        dataRowMaxHeight: 28,
-        columnSpacing: 16,
-        headingRowColor: WidgetStateProperty.all(
-          kBorder.withValues(alpha: 0.2),
-        ),
-        dataRowColor: WidgetStateProperty.all(Colors.transparent),
-        border: TableBorder(
-          horizontalInside: BorderSide(color: kBorder.withValues(alpha: 0.3)),
-        ),
-        columns: [
-          const DataColumn(
-            label: Text('Metric',
-                style: TextStyle(
-                    color: kTextMuted, fontSize: 11, fontWeight: FontWeight.w600)),
-          ),
-          ...selected.map((name) {
-            final color = ServiceColors.getColor(name);
-            return DataColumn(
-              label: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration:
-                        BoxDecoration(color: color, shape: BoxShape.circle),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    BenchmarkProvider.frameworkName(name),
-                    style: const TextStyle(
-                        color: kTextSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            );
-          }),
         ],
-        rows: List.generate(_radarMetrics.length, (i) {
-          final metric = _radarMetrics[i];
-          // Find best value across selected for highlighting
-          final vals = selected.map((s) => rawValues[s]![i]).toList();
-          final best = metric.inverted
-              ? vals.where((v) => v > 0).fold<double>(double.infinity, math.min)
-              : vals.fold<double>(0, math.max);
-
-          return DataRow(
-            cells: [
-              DataCell(Text(metric.label,
-                  style: const TextStyle(color: kTextMuted, fontSize: 11))),
-              ...selected.map((service) {
-                final value = rawValues[service]![i];
-                final isBest = value == best && vals.where((v) => v == best).length < vals.length;
-                return DataCell(
-                  Text(
-                    formatNumber(value),
-                    style: TextStyle(
-                      color: isBest ? kGreen : kTextSecondary,
-                      fontSize: 11,
-                      fontWeight:
-                          isBest ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                );
-              }),
-            ],
-          );
-        }),
+        selected: {mode},
+        onSelectionChanged: (s) => setState(() => _overTime = s.first),
       ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Grouped bar comparison section
-// ---------------------------------------------------------------------------
-
-class _BarComparisonSection extends StatelessWidget {
-  final List<String> selected;
-  final Map<String, BenchmarkService> data;
-
-  const _BarComparisonSection({required this.selected, required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: kCardBg,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: kBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: _radarMetrics.map((metric) {
-            return _MetricBarGroup(
-              metric: metric,
-              selected: selected,
-              data: data,
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-}
-
-class _MetricBarGroup extends StatelessWidget {
-  final _MetricDef metric;
-  final List<String> selected;
-  final Map<String, BenchmarkService> data;
-
-  const _MetricBarGroup({
-    required this.metric,
-    required this.selected,
-    required this.data,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final values = <String, double>{};
-    for (final service in selected) {
-      values[service] = data[service]?.summary[metric.summaryKey] ?? 0;
-    }
-    final maxVal = values.values.fold<double>(0, math.max);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                metric.label,
-                style: const TextStyle(
-                  color: kTextSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (metric.inverted) ...[
-                const SizedBox(width: 6),
-                const Text(
-                  '(lower is better)',
-                  style: TextStyle(color: kTextDim, fontSize: 10),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 6),
-          ...selected.map((service) {
-            final value = values[service]!;
-            final color = ServiceColors.getColor(service);
-            final ratio = maxVal > 0 ? value / maxVal : 0.0;
+          TimeSeriesChart(series: series, field: field, format: format),
+          const SizedBox(height: 8),
+          ChartLegend(backends: [for (final s in series) s.$1]),
+        ],
+      ),
+    );
+  }
+}
 
-            // Determine if this is the best value for the metric
-            final isBest = metric.inverted
-                ? value ==
-                    values.values
-                        .where((v) => v > 0)
-                        .fold<double>(double.infinity, math.min)
-                : value == values.values.fold<double>(0, math.max);
+class _Chooser extends StatelessWidget {
+  final DashboardState state;
+  final List<BackendResult> visible;
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+  const _Chooser({required this.state, required this.visible});
+
+  @override
+  Widget build(BuildContext context) {
+    final ranked = state.rank(visible, state.headline);
+    final full = state.compareKeys.length >= DashboardState.maxCompare;
+    return SectionCard(
+      title: 'Frameworks',
+      subtitle: full
+          ? 'Comparing the maximum of ${DashboardState.maxCompare}. Remove one to add another.'
+          : 'Pick 2 to ${DashboardState.maxCompare}. Ordered by ${state.headline.label.toLowerCase()}.',
+      trailing: state.compareKeys.isEmpty
+          ? TextButton(
+              onPressed: () {
+                for (final b in ranked.take(3)) {
+                  state.toggleCompare(b.key);
+                }
+              },
+              child: const Text('Top 3'),
+            )
+          : TextButton(
+              onPressed: () {
+                for (final k in [...state.compareKeys]) {
+                  state.toggleCompare(k);
+                }
+              },
+              child: const Text('Clear'),
+            ),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (final b in ranked)
+            _chip(
+              b,
+              state.compareKeys.contains(b.key),
+              state.canAddCompare(b.key),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(BackendResult b, bool on, bool enabled) {
+    final color = BackendColors.of(b.key);
+    return FilterChip(
+      avatar: ColorDot(color: enabled ? color : kTextDim, size: 9),
+      label: Text(b.name),
+      selected: on,
+      onSelected: enabled ? (_) => state.toggleCompare(b.key) : null,
+      showCheckmark: false,
+      labelStyle: TextStyle(
+        fontSize: 12.5,
+        color: on ? kTextPrimary : (enabled ? kTextSecondary : kTextDim),
+      ),
+      backgroundColor: kBackground,
+      disabledColor: kBackground,
+      selectedColor: color.withValues(alpha: 0.18),
+      side: BorderSide(color: on ? color : kBorder),
+      tooltip: enabled
+          ? null
+          : 'Compare holds up to ${DashboardState.maxCompare}',
+    );
+  }
+}
+
+/// One small bar group per metric; the best value is bold.
+class _Bars extends StatelessWidget {
+  final DashboardState state;
+  final List<BackendResult> selected;
+
+  const _Bars({required this.state, required this.selected});
+
+  @override
+  Widget build(BuildContext context) {
+    final results = selected.map(state.resultOf).whereType<ScenarioResult>();
+    final metrics = Metrics.available(results, [
+      state.headline,
+      Metrics.peak,
+      Metrics.p99,
+      Metrics.cpu,
+      Metrics.memory,
+      Metrics.rpsPerCore,
+    ]);
+    return LayoutBuilder(
+      builder: (context, c) {
+        final cols = c.maxWidth >= 1100 ? 3 : (c.maxWidth >= 700 ? 2 : 1);
+        final w = (c.maxWidth - 16 * (cols - 1)) / cols;
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            for (final m in metrics) SizedBox(width: w, child: _group(m)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _group(Metric m) {
+    final values = {
+      for (final b in selected) b.key: m.value(state.resultOf(b)!),
+    };
+    final present = values.values.whereType<double>();
+    final max = present.isEmpty ? 0.0 : present.reduce((a, b) => a > b ? a : b);
+    final best = state.rank(selected, m).first.key;
+    return SectionCard(
+      title: m.label,
+      subtitle: m.higherIsBetter ? 'Higher is better' : 'Lower is better',
+      child: Column(
+        children: [
+          for (final b in selected)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [
                   SizedBox(
-                    width: 120,
+                    width: 110,
                     child: Text(
-                      BenchmarkProvider.frameworkName(service),
-                      style: TextStyle(
-                        color: isBest ? kGreen : kTextMuted,
-                        fontSize: 11,
-                        fontWeight:
-                            isBest ? FontWeight.w600 : FontWeight.normal,
-                      ),
+                      b.name,
                       overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        return Stack(
-                          children: [
-                            Container(
-                              height: 18,
-                              decoration: BoxDecoration(
-                                color: kBorder.withValues(alpha: 0.3),
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 400),
-                              curve: Curves.easeOut,
-                              height: 18,
-                              width: constraints.maxWidth * ratio,
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.7),
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 70,
-                    child: Text(
-                      formatNumber(value),
-                      style: TextStyle(
-                        color: isBest ? kGreen : kTextSecondary,
-                        fontSize: 11,
-                        fontWeight:
-                            isBest ? FontWeight.w600 : FontWeight.normal,
+                      style: const TextStyle(
+                        color: kTextSecondary,
+                        fontSize: 12,
                       ),
+                    ),
+                  ),
+                  Expanded(
+                    child: InlineBar(
+                      value: values[b.key],
+                      max: max,
+                      color: BackendColors.of(b.key),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      formatMetricShort(m, values[b.key]),
                       textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: b.key == best ? kTextPrimary : kTextSecondary,
+                        fontWeight: b.key == best
+                            ? FontWeight.w700
+                            : FontWeight.w400,
+                        fontSize: 12.5,
+                      ),
                     ),
                   ),
                 ],
               ),
-            );
-          }),
+            ),
         ],
       ),
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Comparison table
-// ---------------------------------------------------------------------------
+class _Table extends StatelessWidget {
+  final DashboardState state;
+  final List<BackendResult> selected;
 
-class _ComparisonTable extends StatelessWidget {
-  final List<String> selected;
-  final Map<String, BenchmarkService> data;
-
-  const _ComparisonTable({required this.selected, required this.data});
+  const _Table({required this.state, required this.selected});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: kCardBg,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: kBorder),
-      ),
-      clipBehavior: Clip.antiAlias,
+    final results = selected.map(state.resultOf).whereType<ScenarioResult>();
+    final metrics = Metrics.available(results, Metrics.all);
+    return SectionCard(
+      title: 'Side by side',
+      subtitle: 'Best value per row in green.',
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          headingRowColor: WidgetStateProperty.all(
-            kBorder.withValues(alpha: 0.3),
-          ),
-          dataRowColor: WidgetStateProperty.all(Colors.transparent),
-          border: TableBorder(
-            horizontalInside: BorderSide(color: kBorder.withValues(alpha: 0.5)),
-            verticalInside: BorderSide(color: kBorder.withValues(alpha: 0.3)),
-          ),
-          columnSpacing: 24,
+          headingRowHeight: 40,
+          dataRowMinHeight: 34,
+          dataRowMaxHeight: 34,
+          columnSpacing: 28,
+          horizontalMargin: 4,
           columns: [
             const DataColumn(
               label: Text(
                 'Metric',
-                style: TextStyle(
-                  color: kTextPrimary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: kTextMuted, fontSize: 12),
               ),
             ),
-            ...selected.map((name) {
-              final color = ServiceColors.getColor(name);
-              return DataColumn(
+            for (final b in selected)
+              DataColumn(
+                numeric: true,
                 label: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
+                    ColorDot(color: BackendColors.of(b.key), size: 8),
                     const SizedBox(width: 6),
                     Text(
-                      BenchmarkProvider.frameworkName(name),
+                      b.name,
                       style: const TextStyle(
                         color: kTextPrimary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                        fontSize: 12.5,
                       ),
                     ),
                   ],
                 ),
-              );
-            }),
+              ),
           ],
-          rows: _tableMetrics.map((metric) {
-            // Gather values
-            final values = <String, double>{};
-            for (final service in selected) {
-              values[service] =
-                  data[service]?.summary[metric.summaryKey] ?? 0;
-            }
-
-            // Find best and worst
-            final positiveValues =
-                values.entries.where((e) => e.value > 0).toList();
-
-            String? bestService;
-            String? worstService;
-
-            if (positiveValues.length >= 2) {
-              if (metric.inverted) {
-                bestService = positiveValues
-                    .reduce((a, b) => a.value < b.value ? a : b)
-                    .key;
-                worstService = positiveValues
-                    .reduce((a, b) => a.value > b.value ? a : b)
-                    .key;
-              } else {
-                bestService = positiveValues
-                    .reduce((a, b) => a.value > b.value ? a : b)
-                    .key;
-                worstService = positiveValues
-                    .reduce((a, b) => a.value < b.value ? a : b)
-                    .key;
-              }
-            }
-
-            return DataRow(
-              cells: [
-                DataCell(
-                  Text(
-                    metric.label,
-                    style: const TextStyle(
-                      color: kTextSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                ...selected.map((service) {
-                  final value = values[service]!;
-                  final isBest = service == bestService;
-                  final isWorst = service == worstService;
-
-                  Color textColor;
-                  FontWeight weight;
-                  if (isBest) {
-                    textColor = kGreen;
-                    weight = FontWeight.w700;
-                  } else if (isWorst) {
-                    textColor = kTextDim;
-                    weight = FontWeight.w400;
-                  } else {
-                    textColor = kTextSecondary;
-                    weight = FontWeight.w400;
-                  }
-
-                  return DataCell(
-                    Text(
-                      formatNumber(value),
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 12,
-                        fontWeight: weight,
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            );
-          }).toList(),
+          rows: [for (final m in metrics) _row(m)],
         ),
       ),
+    );
+  }
+
+  DataRow _row(Metric m) {
+    final best = state.rank(selected, m).first.key;
+    return DataRow(
+      cells: [
+        DataCell(
+          Row(
+            children: [
+              Text(
+                m.label,
+                style: const TextStyle(color: kTextSecondary, fontSize: 12.5),
+              ),
+              InfoIcon(m.help),
+            ],
+          ),
+        ),
+        for (final b in selected)
+          DataCell(
+            Text(
+              formatMetric(m, m.value(state.resultOf(b)!)),
+              style: TextStyle(
+                color: b.key == best && m.value(state.resultOf(b)!) != null
+                    ? kGreen
+                    : kTextSecondary,
+                fontSize: 12.5,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

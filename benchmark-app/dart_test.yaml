@@ -1,0 +1,3 @@
+tags:
+  tour:
+    skip: "screenshot tour; run with --tags tour --update-goldens"
