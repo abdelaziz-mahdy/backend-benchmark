@@ -1,7 +1,7 @@
 name: asp.net core
 language: c_sharp
 framework: aspnetcore
-version: "10.0.0"
+version: "10.0 (EF Core 10.0.12)"
 runtime: .NET 10
 variants:
   - id: postgres
