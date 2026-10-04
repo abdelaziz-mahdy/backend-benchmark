@@ -183,7 +183,7 @@ class _Leaders extends StatelessWidget {
               Text(
                 m.higherIsBetter
                     ? 'Most ${m.short.toLowerCase()}'
-                    : 'Lowest ${m.short}',
+                    : 'Lowest ${m.short.toLowerCase()}',
                 style: const TextStyle(color: kTextMuted, fontSize: 12),
               ),
               const SizedBox(width: 10),
