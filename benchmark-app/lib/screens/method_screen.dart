@@ -9,8 +9,10 @@ import '../widgets/app_header.dart';
 import '../widgets/common.dart';
 import '../widgets/implementation.dart';
 
-/// How the numbers are made: short sections with a table of contents.
-/// Also where the run shown in the dashboard is changed.
+/// How the numbers are made. Four key facts up front; every section shows a
+/// one-line summary and opens its details on tap, so the page reads in
+/// seconds and the rest is there for the curious. Also where the run shown
+/// in the dashboard is changed.
 class MethodScreen extends StatefulWidget {
   const MethodScreen({super.key});
 
@@ -21,14 +23,16 @@ class MethodScreen extends StatefulWidget {
 class _Section {
   final String id;
   final String title;
+  final String summary;
   final Widget body;
   final GlobalKey key = GlobalKey();
 
-  _Section(this.id, this.title, this.body);
+  _Section(this.id, this.title, this.summary, this.body);
 }
 
 class _MethodScreenState extends State<MethodScreen> {
   bool _contentsOpen = false;
+  final Set<String> _open = {};
 
   @override
   Widget build(BuildContext context) {
@@ -40,14 +44,17 @@ class _MethodScreenState extends State<MethodScreen> {
       builder: (context, c) {
         final narrow = c.maxWidth < 900;
         final pad = c.maxWidth < kNarrow ? 12.0 : 24.0;
+        final title = PageTitle(
+          title: "How it's measured",
+          subtitle: run.isLegacy
+              ? 'An old run with the previous (v1) method'
+              : 'The short version first; tap a section for details',
+          onBack: state.goHome,
+        );
         final content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            PageTitle(
-              title: "How it's measured",
-              subtitle: 'Method, fairness rules, flags and glossary',
-              onBack: state.goHome,
-            ),
+            if (!run.isLegacy) _keyFacts(run),
             if (narrow) ...[
               const SizedBox(height: 12),
               _ContentsList(
@@ -59,10 +66,18 @@ class _MethodScreenState extends State<MethodScreen> {
               ),
             ],
             for (final s in sections) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               KeyedSubtree(
                 key: s.key,
-                child: SectionCard(title: s.title, child: s.body),
+                child: _Collapsible(
+                  title: s.title,
+                  summary: s.summary,
+                  open: _open.contains(s.id),
+                  onToggle: () => setState(() {
+                    if (!_open.remove(s.id)) _open.add(s.id);
+                  }),
+                  child: s.body,
+                ),
               ),
             ],
           ],
@@ -73,21 +88,33 @@ class _MethodScreenState extends State<MethodScreen> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
               child: narrow
-                  ? content
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [title, const SizedBox(height: 12), content],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(child: content),
-                        const SizedBox(width: 24),
-                        SizedBox(
-                          width: 200,
-                          child: _ContentsList(
-                            sections: sections,
-                            collapsible: false,
-                            open: true,
-                            onToggle: () {},
-                            onJump: _jump,
-                          ),
+                        // Title spans both columns so the contents box lines
+                        // up with the first card.
+                        title,
+                        const SizedBox(height: 16),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: content),
+                            const SizedBox(width: 24),
+                            SizedBox(
+                              width: 200,
+                              child: _ContentsList(
+                                sections: sections,
+                                collapsible: false,
+                                open: true,
+                                onToggle: () {},
+                                onJump: _jump,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -99,7 +126,13 @@ class _MethodScreenState extends State<MethodScreen> {
     );
   }
 
+  /// Opens the section, then scrolls to it.
   void _jump(_Section s) {
+    setState(() => _open.add(s.id));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollTo(s));
+  }
+
+  void _scrollTo(_Section s) {
     final ctx = s.key.currentContext;
     if (ctx == null) return;
     Scrollable.ensureVisible(
@@ -110,22 +143,100 @@ class _MethodScreenState extends State<MethodScreen> {
   }
 
   List<_Section> _sections(DashboardState state, RunSummary run) => [
-    _Section('overview', 'Overview', _overview(run)),
-    if (!run.isLegacy) _Section('load', 'How load is applied', _load(run)),
+    if (run.isLegacy)
+      _Section(
+        'overview',
+        'Overview',
+        'Old method, kept for history; not comparable with current runs.',
+        _overview(run),
+      ),
+    if (!run.isLegacy)
+      _Section(
+        'load',
+        'How load is applied',
+        'k6 raises the request rate step by step until the app falls behind.',
+        _load(run),
+      ),
     _Section(
       'sustainable',
       run.isLegacy
           ? 'What the v1 numbers are'
           : 'What "sustainable load" means',
+      run.isLegacy
+          ? 'Average requests per second during a user ramp.'
+          : 'The highest rate held while staying fast and error-free.',
       _sustainable(run),
     ),
-    _Section('scenarios', 'Scenarios', _scenarios(run)),
-    if (!run.isLegacy) _Section('fairness', 'Fairness rules', _fairness(run)),
-    _Section('run', 'Hardware and this run', _thisRun(state, run)),
-    _Section('flags', 'Flags and marks', _flags()),
-    _Section('glossary', 'Glossary', _glossary(run)),
-    _Section('limits', 'Known limitations', _limits(run)),
+    _Section(
+      'scenarios',
+      'Scenarios',
+      'Static JSON, database reads, inserts, and an 80/20 mix.',
+      _scenarios(run),
+    ),
+    if (!run.isLegacy)
+      _Section(
+        'fairness',
+        'Fairness rules',
+        'Same cores, memory, seed data and pool size for every framework.',
+        _fairness(run),
+      ),
+    _Section(
+      'run',
+      'Hardware and this run',
+      '${run.machine.cpu} · ${run.date ?? 'undated'} · change the run here.',
+      _thisRun(state, run),
+    ),
+    _Section(
+      'flags',
+      'Flags and marks',
+      'What † (load-generator limit) and ± (noisy repetitions) mean.',
+      _flags(),
+    ),
+    _Section(
+      'glossary',
+      'Glossary',
+      'Every metric in one line.',
+      _glossary(run),
+    ),
+    _Section(
+      'limits',
+      'Known limitations',
+      'What these numbers cannot tell you.',
+      _limits(run),
+    ),
   ];
+
+  /// Four facts that answer "how was this measured?" at a glance.
+  Widget _keyFacts(RunSummary run) {
+    final slo = (run.params['slo'] as Map?) ?? const {};
+    final reps = run.params['reps'] ?? 3;
+    final steps = (run.params['steps'] as List?)?.whereType<num>().toList();
+    final range = steps == null || steps.isEmpty
+        ? 'from 250 req/s'
+        : '${_k(steps.first)} to ${_k(steps.last)} req/s';
+    return TileGrid(
+      minTileWidth: 165,
+      children: [
+        StatTile(
+          label: 'Each app gets',
+          value: '${_cores(run)} cores',
+          detail: 'pinned, nothing else on them',
+        ),
+        StatTile(
+          label: 'Passing means',
+          value: 'p99 < ${_num(slo['p99_ms'] ?? 100)} ms',
+          detail:
+              'and < ${_num(((slo['error_rate'] ?? 0.01) as num) * 100)}% errors',
+        ),
+        StatTile(label: 'Load', value: 'stepped up', detail: range),
+        StatTile(
+          label: 'Every result is',
+          value: 'median of $reps',
+          detail: 'repetitions per scenario',
+        ),
+      ],
+    );
+  }
 
   // ------------------------------------------------------------ sections
 
@@ -403,6 +514,11 @@ class _MethodScreenState extends State<MethodScreen> {
         '${_num(steps.last)} req/s, doubling each time';
   }
 
+  /// 64000 -> "64k", 250 -> "250".
+  static String _k(num v) => v >= 1000
+      ? '${(v / 1000).toStringAsFixed(v % 1000 == 0 ? 0 : 1)}k'
+      : '${v.toInt()}';
+
   static String _cores(RunSummary run) {
     final cpusets = run.params['cpusets'] as Map? ?? const {};
     final cpuset = cpusets['app'];
@@ -427,6 +543,86 @@ class _MethodScreenState extends State<MethodScreen> {
 
 /// Table of contents: a quiet list on the side (desktop) or a collapsible
 /// list at the top (phone). Entries scroll to their section.
+/// Card with a title and one-line summary; the details open on tap.
+class _Collapsible extends StatelessWidget {
+  final String title;
+  final String summary;
+  final bool open;
+  final VoidCallback onToggle;
+  final Widget child;
+
+  const _Collapsible({
+    required this.title,
+    required this.summary,
+    required this.open,
+    required this.onToggle,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: kCardBg,
+        borderRadius: BorderRadius.circular(kRadius),
+        border: Border.all(
+          color: open ? kBlue.withValues(alpha: 0.4) : kBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(kRadius),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: kTextPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          summary,
+                          style: const TextStyle(
+                            color: kTextMuted,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    open ? Icons.expand_less : Icons.expand_more,
+                    color: kTextMuted,
+                    semanticLabel: open ? 'Hide details' : 'Show details',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (open)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: child,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ContentsList extends StatelessWidget {
   final List<_Section> sections;
   final bool collapsible;
