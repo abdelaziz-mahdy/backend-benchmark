@@ -5,7 +5,7 @@ Shared by the runner (deciding when to stop stepping) and the report
 """
 import statistics
 
-METHODOLOGY = "v2"
+METHODOLOGY = "v2.1"
 STEPS = [250, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000]
 STEP_SECONDS = 30
 WARMUP_SECONDS = 30
@@ -14,6 +14,11 @@ SLO_P99_MS = 100.0
 SLO_ERROR_RATE = 0.01
 SLO_ACHIEVED_RATIO = 0.95
 SPREAD_FLAG = 0.10
+# After the first failing step, binary-search between the highest passing and
+# lowest failing rate: at most REFINE_STEPS probes, stopping once the gap is
+# below REFINE_TOLERANCE of the passing rate (v2 tested a single midpoint).
+REFINE_STEPS = 4
+REFINE_TOLERANCE = 0.06
 # Above this share of its cores, k6 may be the bottleneck rather than the app.
 LOADGEN_BOUND_SHARE = 0.75
 
@@ -58,17 +63,22 @@ def passes(step):
     )
 
 
-def refine_rate(steps):
-    """Midpoint between the last passing and first failing rate, or None."""
+def refine_rate(steps, tolerance=REFINE_TOLERANCE):
+    """Next probe: midpoint between the highest passing and lowest failing
+    rate, rounded to 50 rps. None when there is no bracket (all pass, all
+    fail, or noise made a lower rate fail after a higher one passed), when
+    the bracket is already narrower than tolerance, or when rounding lands
+    on an already-tested rate."""
     passing = [s["target_rps"] for s in steps if s["pass"]]
     failing = [s["target_rps"] for s in steps if not s["pass"]]
     if not passing or not failing:
         return None
     lo, hi = max(passing), min(failing)
-    if hi <= lo:
+    if hi <= lo or (hi - lo) / lo < tolerance:
         return None
     mid = int(round((lo + hi) / 2 / 50.0) * 50)
-    return mid if lo < mid < hi else None
+    tested = {s["target_rps"] for s in steps}
+    return mid if lo < mid < hi and mid not in tested else None
 
 
 def summarize_rep(steps):

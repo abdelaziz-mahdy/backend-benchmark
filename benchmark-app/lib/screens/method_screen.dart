@@ -266,8 +266,9 @@ class _MethodScreenState extends State<MethodScreen> {
             'step',
       0 => 'stops there',
       _ =>
-        'narrows the gap between the last passing and the first failing '
-            'step with $refine extra steps',
+        'halves the gap between the last passing and the first failing '
+            'step up to $refine times, stopping once it is within '
+            '${((run.params['refine_tolerance'] as num? ?? 0.06) * 100).round()}%',
     };
     return _Facts([
       ('Load generator', 'k6, fixed request rate per step (open model)'),
