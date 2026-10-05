@@ -22,6 +22,13 @@ class Metric {
     required this.value,
   });
 
+  /// Label with the unit table cells leave out: "Sustainable load (req/s)".
+  /// Metrics whose cells carry their unit (ms, %, MB) keep the bare label.
+  String get labelWithUnit => switch (unit) {
+    Unit.rps || Unit.ratio => '$label (req/s)',
+    _ => label,
+  };
+
   /// Value plus min/max across reps when it is a direct stat.
   Stat? stat(ScenarioResult r) => r.stats[id];
 }

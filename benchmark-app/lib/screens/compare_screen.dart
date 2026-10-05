@@ -545,7 +545,7 @@ class _Table extends StatelessWidget {
           child: Tooltip(
             message: m.help,
             waitDuration: const Duration(milliseconds: 400),
-            child: Text(m.label, style: _labelStyle),
+            child: Text(m.labelWithUnit, style: _labelStyle),
           ),
         ),
         for (final b in selected)
@@ -591,7 +591,7 @@ class _Table extends StatelessWidget {
                         children: [
                           SizedBox(
                             width: 120,
-                            child: Text(m.label, style: _labelStyle),
+                            child: Text(m.labelWithUnit, style: _labelStyle),
                           ),
                           Expanded(
                             child: _ValueBar(
@@ -720,7 +720,7 @@ class _AllScenarios extends StatelessWidget {
       for (final b in picked) ...b.scenarios.values,
     ]);
     return SectionCard(
-      title: '${metric.label} in every scenario',
+      title: '${metric.labelWithUnit} in every scenario',
       subtitle:
           'Best per scenario in green; equal values are not ranked. '
           'Tap a scenario for the rest of its numbers.',
