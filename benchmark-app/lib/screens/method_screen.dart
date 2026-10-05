@@ -189,7 +189,7 @@ class _MethodScreenState extends State<MethodScreen> {
     _Section(
       'flags',
       'Flags and marks',
-      'What † (load-generator limit) and ± (noisy repetitions) mean.',
+      'What † (load-generator limit), ± (noisy repetitions) and ‡ (restarted) mean.',
       _flags(),
     ),
     _Section(
@@ -282,7 +282,9 @@ class _MethodScreenState extends State<MethodScreen> {
       (
         'Stop rule',
         'The run stops at the first step that misses the limits, then '
-            '$refineText.',
+            '$refineText. After every failing step it waits until the app '
+            'answers quickly again, so a backlog from the overload does not '
+            'spoil the next step.',
       ),
     ]);
   }
@@ -425,6 +427,12 @@ class _MethodScreenState extends State<MethodScreen> {
         'Treat small differences with care.',
       ),
       _flagRow(
+        const Text('‡', style: TextStyle(color: kBlue, fontSize: 14)),
+        'Stopped responding under overload and did not recover by itself; '
+        'the runner restarted it (keeping its data) and kept measuring. '
+        'Says something about resilience, not just speed.',
+      ),
+      _flagRow(
         const Flag(text: 'load-gen limit', tooltip: '', color: kBlue),
         'The same load-generator limit, as shown on the Details page.',
       ),
@@ -496,9 +504,9 @@ class _MethodScreenState extends State<MethodScreen> {
     'One machine, one Docker VM: absolute numbers are specific to it. Only '
         'runs on the same machine with the same method are comparable, which '
         'is why History never mixes them.',
-    'Storage variants (such as FOAM3 embedded vs Postgres) share the same '
-        'request path, so they can be capped by that path rather than by '
-        'storage.',
+    'Storage variants of one framework (such as FOAM3 embedded vs '
+        'Postgres) only separate where storage is the bottleneck; where the '
+        "framework's request handling is the limit they show similar numbers.",
     'p99 is taken at each framework\'s own sustainable load: a slower '
         'framework can show a lower p99 simply by serving less traffic.',
     'Implementation details for runs made before the field existed come '

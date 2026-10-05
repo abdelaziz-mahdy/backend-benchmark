@@ -154,3 +154,19 @@ def test_refine_never_repeats_a_tested_rate():
 
 def test_methodology_is_v21():
     assert slo.METHODOLOGY == "v2.1"
+
+
+def test_first_rep_climbs_every_step():
+    assert slo.start_steps(slo.STEPS, 0) == slo.STEPS
+    assert slo.start_steps(slo.STEPS, None) == slo.STEPS
+
+
+def test_later_reps_skip_steps_far_below_the_first_result():
+    # 23k sustained: start at 8k, keeping 8k and 16k as warm passing steps.
+    assert slo.start_steps(slo.STEPS, 23000) == [8000, 16000, 32000, 64000]
+    # exactly on a step: that quarter is kept
+    assert slo.start_steps(slo.STEPS, 16000) == [4000, 8000, 16000, 32000, 64000]
+
+
+def test_low_results_keep_the_whole_ladder():
+    assert slo.start_steps(slo.STEPS, 1000) == slo.STEPS

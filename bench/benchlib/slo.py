@@ -19,6 +19,10 @@ SPREAD_FLAG = 0.10
 # below REFINE_TOLERANCE of the passing rate (v2 tested a single midpoint).
 REFINE_STEPS = 4
 REFINE_TOLERANCE = 0.06
+# Reps after the first skip doubling steps below 1/START_FRACTION of the
+# first rep's result: they always pass and only cost time. The two or three
+# steps kept below the result still warm the app up.
+START_FRACTION = 4
 # Above this share of its cores, k6 may be the bottleneck rather than the app.
 LOADGEN_BOUND_SHARE = 0.75
 
@@ -79,6 +83,14 @@ def refine_rate(steps, tolerance=REFINE_TOLERANCE):
     mid = int(round((lo + hi) / 2 / 50.0) * 50)
     tested = {s["target_rps"] for s in steps}
     return mid if lo < mid < hi and mid not in tested else None
+
+
+def start_steps(steps, known_best):
+    """The doubling steps a rep climbs, given an earlier rep's sustainable
+    rate (0 or None: climb them all)."""
+    if not known_best:
+        return list(steps)
+    return [s for s in steps if s >= known_best / START_FRACTION] or list(steps)
 
 
 def summarize_rep(steps):

@@ -238,6 +238,11 @@ Future<void> settle(WidgetTester t) async {
 
 void main() {
   group('models', () {
+    test('restarts parse and default to zero', () {
+      expect(ScenarioResult.fromJson({'restarts': 2}).restarts, 2);
+      expect(ScenarioResult.fromJson({}).restarts, 0);
+    });
+
     test('missing fields parse as null, not crash', () {
       final r = ScenarioResult.fromJson({'reps': 1});
       expect(r.stats, isEmpty);

@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from benchlib import foam_rpc, machine, manifest, slo
+from benchlib import foam_rpc, machine, manifest, recovery, slo
 from benchlib.stats import Sampler
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -95,6 +95,17 @@ class Stack:
 
     def logs(self):
         return self.run("logs", "--no-color", "--tail", "60", "benchmark").stdout
+
+
+def health_probe(stack):
+    """One health request: (ok, seconds)."""
+    url = f"http://127.0.0.1:{PORT}{stack.item.health_path}"
+    start = time.monotonic()
+    try:
+        with urllib.request.urlopen(url, timeout=5) as r:
+            return r.status == 200, time.monotonic() - start
+    except (urllib.error.URLError, ConnectionError, TimeoutError, OSError):
+        return False, time.monotonic() - start
 
 
 def wait_healthy(stack):
@@ -189,6 +200,8 @@ def new_run(run_id, steps, reps, cpus, contributor):
             "warmup_seconds": slo.WARMUP_SECONDS,
             "refine_steps": slo.REFINE_STEPS,
             "refine_tolerance": slo.REFINE_TOLERANCE,
+            "start_fraction": slo.START_FRACTION,
+            "recovery_timeout_s": recovery.TIMEOUT_S,
             "reps": reps,
             "seed_rows": slo.SEED_ROWS,
             "slo": {"p99_ms": slo.SLO_P99_MS, "error_rate": slo.SLO_ERROR_RATE, "achieved_ratio": slo.SLO_ACHIEVED_RATIO},
@@ -232,7 +245,17 @@ def cached_from(run_meta, item_key, scenario, digest, reps):
 # ---------------------------------------------------------------- one rep
 
 
-def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores):
+def known_best(scenario_dir):
+    """Sustainable rate of the first finished rep of this scenario, or 0."""
+    path = scenario_dir / "rep-1" / "steps.csv"
+    if not path.exists():
+        return 0
+    with path.open() as f:
+        passing = [int(r["target_rps"]) for r in csv.DictReader(f) if r["pass"] == "True"]
+    return max(passing, default=0)
+
+
+def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0):
     rep_dir.mkdir(parents=True, exist_ok=True)
     stack.env["OUT_DIR"] = str(rep_dir)
     stack.down()
@@ -256,6 +279,8 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores):
     stack.k6(f"{scenario}.js", RATE=steps[0], DURATION=f"{slo.WARMUP_SECONDS}s", SEED_ROWS=slo.SEED_ROWS)
 
     rows = []
+
+    stopped = [False]  # set when the app cannot be brought back
 
     def do_step(rate, refine=False):
         start = time.time()
@@ -283,6 +308,30 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores):
         row["start_s"] = round(start - t0, 1)
         row["end_s"] = round(end - t0, 1)
         row["pass"] = slo.passes(row)
+        row["recovery_s"] = 0.0
+        row["restarted"] = False
+        if not row["pass"]:
+            # Let a backlog from the overload drain before the next probe.
+            recovered, waited = recovery.wait_recovered(lambda: health_probe(stack))
+            row["recovery_s"] = round(waited, 1)
+            if not recovered:
+                # The app is stuck (e.g. out of memory). Restart its container,
+                # keeping its data, and re-warm, so later probes measure
+                # capacity rather than a dead process. Recorded per step.
+                log(f"    backend did not recover within {recovery.TIMEOUT_S:.0f} s; restarting it")
+                row["restarted"] = True
+                stack.run("restart", "benchmark")
+                if wait_healthy(stack):
+                    passing = [r["target_rps"] for r in rows if r["pass"]]
+                    stack.k6(
+                        f"{scenario}.js",
+                        RATE=max(passing) if passing else steps[0],
+                        DURATION=f"{recovery.REWARM_S:.0f}s",
+                        SEED_ROWS=slo.SEED_ROWS,
+                    )
+                else:
+                    log("    backend did not come back after a restart")
+                    stopped[0] = True
         rows.append(row)
         log(
             f"    {rate:>6} rps -> {row['achieved_rps']:>8.0f} achieved, p99 {row['p99_ms']:7.1f} ms, "
@@ -291,11 +340,19 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores):
         )
         return row["pass"]
 
-    for rate in steps:
+    ladder = slo.start_steps(steps, best)
+    if ladder != steps:
+        log(f"    starting at {ladder[0]} rps (rep 1 sustained {best})")
+    for rate in ladder:
         if not do_step(rate):
             break
+    if not any(r["pass"] for r in rows):
+        # The shortened ladder started too high for this rep: walk back down.
+        for rate in reversed([s for s in steps if s < ladder[0]]):
+            if stopped[0] or do_step(rate):
+                break
     for _ in range(slo.REFINE_STEPS):
-        mid = slo.refine_rate(rows)
+        mid = None if stopped[0] else slo.refine_rate(rows)
         if not mid:
             break
         do_step(mid, refine=True)
@@ -452,6 +509,11 @@ def main():
     run_dir, run_meta = new_run(args.run_id, steps, args.reps, cpus, args.contributor)
     cpus = run_meta["params"]["cpusets"]  # a resumed run keeps its original split
     run_json = run_dir / "run.json"
+    # What this invocation will run; bench/status.py reads it to show progress.
+    run_meta["plan"] = [
+        {"key": i.key, "scenarios": [s for s in i.scenarios if not wanted or s in wanted]} for i in items
+    ]
+    write_json(run_json, run_meta)
 
     for item in items:
         entry = run_meta["items"].setdefault(item.key, {"scenarios": {}})
@@ -499,7 +561,8 @@ def main():
                     log(f"   {scenario} rep {rep}: already done")
                     continue
                 log(f"   {scenario} rep {rep}/{args.reps}")
-                result = run_rep(stack, item, scenario, steps, rep_dir, digest, cpus["k6_cores"])
+                best = known_best(run_dir / item.key / scenario) if rep > 1 else 0
+                result = run_rep(stack, item, scenario, steps, rep_dir, digest, cpus["k6_cores"], best)
                 result.update(
                     finished_at=dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                     framework_version=item.manifest.get("version"),

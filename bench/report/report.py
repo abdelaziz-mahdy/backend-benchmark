@@ -44,6 +44,8 @@ STEP_FIELDS = [
     "k6_bound",
     "pass",
     "refine",
+    "recovery_s",
+    "restarted",
 ]
 REQUIRED_RUN_KEYS = ["id", "started_at", "machine", "methodology", "params", "items"]
 
@@ -75,6 +77,7 @@ def read_steps(path):
         r["pass"] = bool(r.get("pass"))
         r["k6_bound"] = bool(r.get("k6_bound"))
         r["refine"] = bool(r.get("refine"))
+        r["restarted"] = bool(r.get("restarted"))
     return rows
 
 
@@ -123,6 +126,9 @@ def scenario_summary(sdir, problems):
     if not reps:
         return None
     out = slo.aggregate(reps)
+    # Times the app had to be restarted because it did not recover from an
+    # overloaded step (all reps together).
+    out["restarts"] = sum(1 for steps in rep_steps for s in steps if s.get("restarted"))
     mid = slo.median_rep_index(reps)
     out["steps"] = [{k: s.get(k) for k in STEP_FIELDS} for s in rep_steps[mid]]
     out["timeseries"] = read_timeseries(rep_dirs[mid] / "timeseries.csv")

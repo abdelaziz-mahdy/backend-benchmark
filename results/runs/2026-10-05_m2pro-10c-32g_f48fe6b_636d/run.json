@@ -1,0 +1,160 @@
+{
+  "contributor": null,
+  "dirty": false,
+  "docker": {
+    "cpus": 10,
+    "mem_gb": 11.7,
+    "version": "29.8.1"
+  },
+  "finished_at": "2026-10-05T22:12:42+00:00",
+  "git_sha": "f48fe6b",
+  "id": "2026-10-05_m2pro-10c-32g_f48fe6b_636d",
+  "items": {
+    "java-foam3-embedded": {
+      "api_style": "foam_rpc",
+      "db": "none",
+      "framework": "foam3",
+      "image_digest": "sha256:a28561831ac8b826dcc443117f822ce8982074aab83b878afef423aa711724af",
+      "implementation": {
+        "concurrency": "Jetty thread pool (FOAM defaults), ZGC, heap 75% of container",
+        "db_access": "embedded: in-memory MDAO + journal file; postgres: FOAM PostgresDAO (JDBC)",
+        "pool": "20 (commons-dbcp2, postgres variant only)",
+        "server": "FOAM3 Jetty HttpServer with NanoRouter at /service/*"
+      },
+      "language": "java",
+      "name": "foam3",
+      "notes": "FOAM NoteService over box RPC. embedded: in-memory MDAO + FOAM journal file; postgres: FOAM's PostgresDAO (JDBC). Both via EasyDAO with SequenceNumberDAO ids.",
+      "path": "java/foam3",
+      "pgbouncer": false,
+      "runtime": "java 25",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "embedded",
+      "version": "a0e878e"
+    },
+    "java-foam3-postgres": {
+      "api_style": "foam_rpc",
+      "db": "postgres",
+      "framework": "foam3",
+      "image_digest": "sha256:a28561831ac8b826dcc443117f822ce8982074aab83b878afef423aa711724af",
+      "implementation": {
+        "concurrency": "Jetty thread pool (FOAM defaults), ZGC, heap 75% of container",
+        "db_access": "embedded: in-memory MDAO + journal file; postgres: FOAM PostgresDAO (JDBC)",
+        "pool": "20 (commons-dbcp2, postgres variant only)",
+        "server": "FOAM3 Jetty HttpServer with NanoRouter at /service/*"
+      },
+      "language": "java",
+      "name": "foam3",
+      "notes": "FOAM NoteService over box RPC. embedded: in-memory MDAO + FOAM journal file; postgres: FOAM's PostgresDAO (JDBC). Both via EasyDAO with SequenceNumberDAO ids.",
+      "path": "java/foam3",
+      "pgbouncer": false,
+      "runtime": "java 25",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "a0e878e"
+    }
+  },
+  "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.0.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+  },
+  "methodology": "v2.1",
+  "params": {
+    "cpusets": {
+      "app": "0-1",
+      "db": "2-4",
+      "k6": "5-8",
+      "k6_cores": 4
+    },
+    "images": {
+      "db": "postgres:18.6",
+      "k6": "grafana/k6:2.3.0",
+      "pgbouncer": "edoburu/pgbouncer:v1.26.0-p0"
+    },
+    "memory": {
+      "app": "2g",
+      "db": "2g"
+    },
+    "refine_steps": 4,
+    "refine_tolerance": 0.06,
+    "reps": 3,
+    "seed_rows": 10000,
+    "slo": {
+      "achieved_ratio": 0.95,
+      "error_rate": 0.01,
+      "p99_ms": 100.0
+    },
+    "step_seconds": 30,
+    "steps": [
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000,
+      16000,
+      32000,
+      64000
+    ],
+    "warmup_seconds": 30
+  },
+  "plan": [
+    {
+      "key": "java-foam3-embedded",
+      "scenarios": [
+        "no_db",
+        "db_read",
+        "db_write",
+        "db_mixed"
+      ]
+    },
+    {
+      "key": "java-foam3-postgres",
+      "scenarios": [
+        "no_db",
+        "db_read",
+        "db_write",
+        "db_mixed"
+      ]
+    }
+  ],
+  "started_at": "2026-10-05T19:13:47+00:00"
+}

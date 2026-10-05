@@ -46,16 +46,33 @@ export function randomId() {
   return 1 + Math.floor(Math.random() * SEED_ROWS);
 }
 
-// ---- foam_rpc: the request FOAM's own JS client (ClientNoteService stub over
-// foam.box.HTTPBox) sends, captured from a real call. The body is a
-// foam.box.Envelope holding a foam.box.RPCMessage; args[0] is the Context
-// argument, which the client always sends as null. Bodies are prebuilt
-// strings; only the numbers are spliced in.
+// ---- foam_rpc: the request FOAM's own client sends. FOAM clients talk
+// through foam.box.SessionClientBox, which wraps every call as
+// Envelope{ SessionedMessage{ sessionId, RPCMessage } }; args[0] is the
+// Context argument, always null. Each virtual user keeps its own session id,
+// like a real client. Without it the server sees a sessionless call, creates
+// an "anonymous" session and writes it to the journaled session DAO on EVERY
+// request, which serializes all calls on one file journal (found with thread
+// dumps: ~760 of 1000 Jetty threads waiting in AbstractF3FileJournal.put).
+// Bodies are prebuilt strings; only the numbers are spliced in.
 const FOAM_URL = `${BASE}/service/noteService`;
-const FOAM_HEAD = '{"class":"foam.box.Envelope","message":{"class":"foam.box.RPCMessage","name":"';
-const FOAM_TAIL = ']},"replyBox":{"class":"foam.box.HTTPReplyBox"}}';
-const FOAM_NO_DB = `${FOAM_HEAD}noDb","args":[null${FOAM_TAIL}`;
-const FOAM_CREATE = `${FOAM_HEAD}createNote","args":[null,{"class":"bench.notes.Note","title":"Sample Note","content":"This is a note content."}${FOAM_TAIL}`;
+const FOAM_TAIL = ']}},"replyBox":{"class":"foam.box.HTTPReplyBox"}}';
+// One session for the whole load generator, like one API client calling
+// FOAM. A session per k6 VU looked more "real" but under overload k6 spins up
+// thousands of VUs, each became a heavy FOAM session, and the JVM ran out of
+// heap (OutOfMemoryError) — an artifact of k6, not of FOAM's request path.
+const FOAM_SESSION = __ENV.FOAM_SESSION || 'bench-client';
+// Built on first use (cheap; kept from when the id depended on __VU).
+let foamHeadForVu = null;
+function foamHead() {
+  if (foamHeadForVu === null) {
+    foamHeadForVu =
+      '{"class":"foam.box.Envelope","message":{"class":"foam.box.SessionedMessage",' +
+      `"sessionId":"${FOAM_SESSION}","message":{"class":"foam.box.RPCMessage","name":"`;
+  }
+  return foamHeadForVu;
+}
+const FOAM_NOTE = '{"class":"bench.notes.Note","title":"Sample Note","content":"This is a note content."}';
 const FOAM_PARAMS = {
   // FOAM answers an exception with HTTP 200 and an RPCErrorMessage, so the
   // body is read (responseType) and checked in foam().
@@ -84,13 +101,13 @@ function rpc(method, body, name) {
 
 export function readPage() {
   const offset = Math.floor(Math.random() * PAGE_WINDOW);
-  if (FOAM) return foam(`${FOAM_HEAD}getNotes","args":[null,${PAGE},${offset}${FOAM_TAIL}`, 'list');
+  if (FOAM) return foam(`${foamHead()}getNotes","args":[null,${PAGE},${offset}${FOAM_TAIL}`, 'list');
   if (RPC) return rpc('getNotes', { limit: PAGE, offset }, 'list');
   return http.get(`${BASE}/notes/?limit=${PAGE}&offset=${offset}`, { tags: { name: 'list' } });
 }
 
 export function readOne() {
-  if (FOAM) return foam(`${FOAM_HEAD}getNote","args":[null,${randomId()}${FOAM_TAIL}`, 'get');
+  if (FOAM) return foam(`${foamHead()}getNote","args":[null,${randomId()}${FOAM_TAIL}`, 'get');
   if (RPC) return rpc('getNote', { id: randomId() }, 'get');
   return http.get(`${BASE}/notes/${randomId()}`, { tags: { name: 'get' } });
 }
@@ -98,13 +115,13 @@ export function readOne() {
 const NOTE = { title: 'Sample Note', content: 'This is a note content.' };
 
 export function writeOne() {
-  if (FOAM) return foam(FOAM_CREATE, 'create');
+  if (FOAM) return foam(`${foamHead()}createNote","args":[null,${FOAM_NOTE}${FOAM_TAIL}`, 'create');
   if (RPC) return rpc('createNote', { note: NOTE }, 'create');
   return http.post(`${BASE}/notes/`, JSON.stringify(NOTE), Object.assign({ tags: { name: 'create' } }, JSON_HEADERS));
 }
 
 export function noDb() {
-  if (FOAM) return foam(FOAM_NO_DB, 'no_db');
+  if (FOAM) return foam(`${foamHead()}noDb","args":[null${FOAM_TAIL}`, 'no_db');
   if (RPC) return rpc('noDbEndpoint', {}, 'no_db');
   return http.get(`${BASE}/no_db_endpoint/`, { tags: { name: 'no_db' } });
 }

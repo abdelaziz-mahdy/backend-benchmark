@@ -27,10 +27,18 @@ For each backend × variant × scenario × rep:
    the API (`scenarios/seed.js`), so every backend is seeded the same way.
 3. Warm up for 30 s, then step the load with k6's open-model
    `constant-arrival-rate` executor: 250, 500, 1k … 64k requests/s, 30 s each.
+   Reps 2 and 3 skip the steps below a quarter of rep 1's result (they always
+   pass), so with rep 1 at 23k they start at 8k.
 4. Stop at the first step that misses the SLO (p99 < 100 ms, errors < 1%,
    achieved ≥ 95% of target), then halve the gap between the last passing and
    first failing rate up to 4 times, stopping once it is under 6% (methodology
-   v2.1; v2 tested a single midpoint).
+   v2.1; v2 tested a single midpoint). After every failing step the runner
+   waits until the health path answers in < 100 ms three times in a row (max
+   30 s, then 5 s more) so a backlog left by the overload does not poison the
+   next probe; the wait is stored per step as `recovery_s`. If the app is still
+   not answering after 30 s (e.g. it ran out of memory), the runner restarts
+   its container (data kept), re-warms it for 15 s at the last passing rate and
+   continues; the step is marked `restarted` and the dashboard shows ‡.
 5. Sample CPU and memory of every container each second; tear down.
 
 | Scenario | Requests |
@@ -74,8 +82,15 @@ the same four operations to `POST /note/<method>` (see `scenarios/lib.js`).
 
 `foam_rpc` sends what FOAM's own client sends for a service call: `POST
 /service/noteService` with a `foam.box.Envelope` holding a
-`foam.box.RPCMessage` (`name` = the `NoteService` method, `args` = `[null,
-...]`, the null being the Context argument), and reads back an Envelope with
+`foam.box.SessionedMessage` (one `sessionId` for the whole load generator,
+i.e. one API client, as FOAM's `SessionClientBox` adds to every call; a
+session per k6 VU ran FOAM out of heap under overload because k6 spawns
+thousands of VUs then) around a `foam.box.RPCMessage`
+(`name` = the `NoteService` method, `args` = `[null, ...]`, the null being
+the Context argument). Without the session wrapper FOAM journals a new
+anonymous session on every request and all calls queue on that one file
+journal — methodology v2.1 runs before this fix measured that, not FOAM.
+It reads back an Envelope with
 an `RPCReturnMessage` (result in `data`). FOAM reports exceptions as an
 `RPCErrorMessage` with HTTP 200, so for this style k6 reads the body and
 counts such replies in the `rpc_failed` metric, which the runner adds to the
