@@ -239,7 +239,7 @@ class _MetricPicker extends StatelessWidget {
                     child: Tooltip(
                       message: m.help,
                       waitDuration: const Duration(milliseconds: 400),
-                      child: Text(m.label),
+                      child: Text(m.labelWithUnit),
                     ),
                   ),
               ],
@@ -906,7 +906,7 @@ class _Grid extends StatelessWidget {
     final rankMetric = metrics.contains(shown) ? shown : metrics.first;
     final table = Table(
       columnWidths: {
-        0: const FixedColumnWidth(118),
+        0: const FixedColumnWidth(168),
         for (var i = 0; i < scenarios.length; i++)
           i + 1: const FixedColumnWidth(96),
       },
@@ -937,7 +937,7 @@ class _Grid extends StatelessWidget {
                   message: m.help,
                   waitDuration: const Duration(milliseconds: 400),
                   child: Text(
-                    m.label,
+                    m.labelWithUnit,
                     style: m == rankMetric
                         ? _label.copyWith(
                             color: kTextPrimary,

@@ -25,7 +25,7 @@ String formatPercent(double value) {
 String formatMetric(Metric metric, double? value) {
   if (value == null) return '—';
   return switch (metric.unit) {
-    Unit.rps => '${formatNumber(value)} rps',
+    Unit.rps => '${formatNumber(value)} req/s',
     Unit.ms => formatMs(value),
     Unit.percent => _percentShare(value),
     Unit.cpu => '${value.toStringAsFixed(0)}%',

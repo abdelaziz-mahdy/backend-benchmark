@@ -168,7 +168,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           '${first?.machine.label ?? g.groupKey}${legacy ? ' · v1 method' : ''}',
       subtitle: [
         '${g.runs.length} run${g.runs.length == 1 ? '' : 's'}',
-        '${g.metric.label} · ${scenarioLabel(g.scenario)}',
+        '${g.metric.labelWithUnit} · ${scenarioLabel(g.scenario)}',
         if (legacy) 'v1 numbers are not comparable with v2',
       ].join(' · '),
       child: lines.isEmpty

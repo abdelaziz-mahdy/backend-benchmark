@@ -297,7 +297,9 @@ void main() {
     });
 
     test('formatting', () {
-      expect(formatMetric(Metrics.sustainable, 40000), '40.0K rps');
+      expect(formatMetric(Metrics.sustainable, 40000), '40.0K req/s');
+      expect(Metrics.sustainable.labelWithUnit, 'Sustainable load (req/s)');
+      expect(Metrics.p99.labelWithUnit, 'p99 latency');
       expect(formatMetric(Metrics.p99, 0.85), '0.85 ms');
       expect(formatMetric(Metrics.p99, 1500), '1.5 s');
       expect(formatMetric(Metrics.errors, 0.0004), '0.04%');
@@ -525,7 +527,7 @@ void main() {
       for (final s in ['No DB', 'DB read', 'DB write', 'DB mixed']) {
         expect(find.text(s), findsWidgets, reason: s);
       }
-      expect(find.text('Peak throughput'), findsOneWidget);
+      expect(find.text('Peak throughput (req/s)'), findsOneWidget);
       expect(find.text('App memory'), findsOneWidget);
       expect(find.textContaining('Rank by'), findsOneWidget);
       // go-mux: tied #1 of 4 in No DB, #2 of 4 in DB read, #2 of 5 in mixed.
@@ -596,7 +598,10 @@ void main() {
         find.text('foam3 vs rust-actix vs go-mux vs django-sync'),
         findsOneWidget,
       );
-      expect(find.text('Sustainable load in every scenario'), findsOneWidget);
+      expect(
+        find.text('Sustainable load (req/s) in every scenario'),
+        findsOneWidget,
+      );
       expect(find.textContaining('Side by side'), findsOneWidget);
       expect(find.text('Implementation'), findsOneWidget);
       expect(find.text(goImpl['server']!), findsOneWidget);
@@ -750,7 +755,7 @@ void main() {
       await t.tap(find.widgetWithText(ActionChip, 'DB mixed'));
       await settle(t);
       expect(state.scenario, 'db_mixed');
-      expect(find.text('500 rps'), findsWidgets);
+      expect(find.text('500 req/s'), findsWidgets);
       expect(t.takeException(), isNull);
     });
 
@@ -828,7 +833,7 @@ void main() {
       await t.tap(find.text('foam3'));
       await settle(t);
       expect(state.expandedKey, 'foam3');
-      expect(find.text('Peak throughput'), findsOneWidget);
+      expect(find.text('Peak throughput (req/s)'), findsOneWidget);
       await t.tap(find.text('Compare with the leaders'));
       await settle(t);
       expect(state.page, DashboardPage.compare);

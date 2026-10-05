@@ -380,7 +380,7 @@ class _History extends StatelessWidget {
     }
     final metric = Metrics.headlineFor(backend.scenarios.values);
     return SectionCard(
-      title: 'History · ${metric.label}',
+      title: 'History · ${metric.labelWithUnit}',
       subtitle:
           'Every run of ${backend.name} on ${entry.machine.cpu}, same method.',
       child: HistoryChart(
