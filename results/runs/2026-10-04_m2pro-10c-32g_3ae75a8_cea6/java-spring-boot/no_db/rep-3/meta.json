@@ -1,0 +1,7 @@
+{
+  "finished_at": "2026-10-05T02:09:38+00:00",
+  "framework_version": "4.1.1",
+  "image_digest": "sha256:466de069a1e60a04547300f94b056456f675600723ebe8a540175f4da49d50f0",
+  "runtime": "java 25",
+  "status": "ok"
+}
