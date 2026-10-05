@@ -1,6 +1,517 @@
 {
  "runs": [
   {
+   "id": "latest_m2pro-10c-32g_v2.1",
+   "kind": "latest",
+   "date": "2026-10-04",
+   "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.0.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+   },
+   "methodology": "v2.1",
+   "dirty": false,
+   "contributor": null,
+   "backends": [
+    "c_sharp-dot-net",
+    "dart-server-pod",
+    "go-mux",
+    "java-foam3-embedded",
+    "java-foam3-postgres",
+    "java-spring-boot",
+    "javascript-express-bun",
+    "javascript-express-node",
+    "python-django-async",
+    "python-django-sync",
+    "python-fast-api",
+    "rust-actix-web"
+   ],
+   "names": {
+    "c_sharp-dot-net": "asp.net core",
+    "dart-server-pod": "serverpod",
+    "go-mux": "go mux",
+    "java-foam3-embedded": "foam3 (embedded)",
+    "java-foam3-postgres": "foam3 (postgres)",
+    "java-spring-boot": "spring boot",
+    "javascript-express-bun": "express (bun)",
+    "javascript-express-node": "express (node)",
+    "python-django-async": "django (async)",
+    "python-django-sync": "django (sync)",
+    "python-fast-api": "fastapi",
+    "rust-actix-web": "rust actix-web"
+   },
+   "scenarios": [
+    "db_mixed",
+    "db_read",
+    "db_write",
+    "no_db"
+   ],
+   "runs": [
+    "2026-10-04_m2pro-10c-32g_3ae75a8_cea6"
+   ],
+   "headline": {
+    "c_sharp-dot-net": {
+     "db_mixed": {
+      "sustainable_rps": 22000.0,
+      "peak_rps": 22950.6,
+      "p50_ms": 1.305125,
+      "p99_ms": 70.71740614999999,
+      "error_rate": 0.0,
+      "app_cpu": 179.09642857142853,
+      "app_mem_mb": 382.5327272727273
+     },
+     "db_read": {
+      "sustainable_rps": 24000.0,
+      "peak_rps": 24595.8,
+      "p50_ms": 1.225291,
+      "p99_ms": 85.39555015999993,
+      "error_rate": 0.0,
+      "app_cpu": 176.87472727272728,
+      "app_mem_mb": 797.7327272727277
+     },
+     "db_write": {
+      "sustainable_rps": 17000.0,
+      "peak_rps": 18012.9,
+      "p50_ms": 1.095167,
+      "p99_ms": 31.022580639999997,
+      "error_rate": 0.0,
+      "app_cpu": 140.07267857142855,
+      "app_mem_mb": 232.09636363636366
+     },
+     "no_db": {
+      "sustainable_rps": 48000.0,
+      "peak_rps": 57520.8,
+      "p50_ms": 0.109,
+      "p99_ms": 61.31007978999999,
+      "error_rate": 0.0,
+      "app_cpu": 150.48999999999998,
+      "app_mem_mb": 152.50714285714292
+     }
+    },
+    "dart-server-pod": {
+     "db_mixed": {
+      "sustainable_rps": 4250.0,
+      "peak_rps": 4748.433333333333,
+      "p50_ms": 0.413791,
+      "p99_ms": 3.2587704999999763,
+      "error_rate": 0.0,
+      "app_cpu": 80.7870909090909,
+      "app_mem_mb": 55.47472727272727
+     },
+     "db_read": {
+      "sustainable_rps": 5250.0,
+      "peak_rps": 5250.033333333334,
+      "p50_ms": 0.513417,
+      "p99_ms": 21.219643749999943,
+      "error_rate": 0.0,
+      "app_cpu": 94.46290909090902,
+      "app_mem_mb": 55.58690909090908
+     },
+     "db_write": {
+      "sustainable_rps": 5500.0,
+      "peak_rps": 5630.266666666666,
+      "p50_ms": 0.637917,
+      "p99_ms": 17.41019457999999,
+      "error_rate": 0.0,
+      "app_cpu": 85.39036363636365,
+      "app_mem_mb": 55.44054545454544
+     },
+     "no_db": {
+      "sustainable_rps": 17000.0,
+      "peak_rps": 17648.9,
+      "p50_ms": 13.408125,
+      "p99_ms": 64.54532968,
+      "error_rate": 0.0,
+      "app_cpu": 110.97636363636369,
+      "app_mem_mb": 60.66927272727274
+     }
+    },
+    "go-mux": {
+     "db_mixed": {
+      "sustainable_rps": 22000.0,
+      "peak_rps": 23401.833333333332,
+      "p50_ms": 1.717542,
+      "p99_ms": 59.29556636,
+      "error_rate": 0.0,
+      "app_cpu": 120.44071428571428,
+      "app_mem_mb": 378.9218181818182
+     },
+     "db_read": {
+      "sustainable_rps": 25000.0,
+      "peak_rps": 27555.366666666665,
+      "p50_ms": 2.794792,
+      "p99_ms": 56.43409623999997,
+      "error_rate": 0.0,
+      "app_cpu": 126.04482142857147,
+      "app_mem_mb": 433.5945454545453
+     },
+     "db_write": {
+      "sustainable_rps": 19000.0,
+      "peak_rps": 21477.033333333333,
+      "p50_ms": 0.8225,
+      "p99_ms": 75.95142799999986,
+      "error_rate": 0.0,
+      "app_cpu": 122.69607142857144,
+      "app_mem_mb": 395.7464285714286
+     },
+     "no_db": {
+      "sustainable_rps": 48000.0,
+      "peak_rps": 57536.0,
+      "p50_ms": 0.118291,
+      "p99_ms": 60.49329303999999,
+      "error_rate": 0.0,
+      "app_cpu": 106.5546428571429,
+      "app_mem_mb": 100.94892857142857
+     }
+    },
+    "java-foam3-embedded": {
+     "db_mixed": {
+      "sustainable_rps": 9000.0,
+      "peak_rps": 9784.866666666667,
+      "p50_ms": 0.165,
+      "p99_ms": 22.13889024,
+      "error_rate": 0.0,
+      "app_cpu": 112.32890909090911,
+      "app_mem_mb": 2033.2171636363635
+     },
+     "db_read": {
+      "sustainable_rps": 9000.0,
+      "peak_rps": 9825.2,
+      "p50_ms": 0.168291,
+      "p99_ms": 22.977166,
+      "error_rate": 0.0,
+      "app_cpu": 114.7103636363636,
+      "app_mem_mb": 2021.3759999999995
+     },
+     "db_write": {
+      "sustainable_rps": 8000.0,
+      "peak_rps": 8000.033333333334,
+      "p50_ms": 0.164833,
+      "p99_ms": 11.015667,
+      "error_rate": 0.0,
+      "app_cpu": 103.54854545454546,
+      "app_mem_mb": 1960.6248727272707
+     },
+     "no_db": {
+      "sustainable_rps": 11000.0,
+      "peak_rps": 11420.633333333333,
+      "p50_ms": 0.158125,
+      "p99_ms": 30.831972029999985,
+      "error_rate": 0.0,
+      "app_cpu": 123.88818181818178,
+      "app_mem_mb": 2027.2407272727282
+     }
+    },
+    "java-foam3-postgres": {
+     "db_mixed": {
+      "sustainable_rps": 8000.0,
+      "peak_rps": 8188.3,
+      "p50_ms": 0.244125,
+      "p99_ms": 26.787278009999984,
+      "error_rate": 0.0,
+      "app_cpu": 117.3370909090909,
+      "app_mem_mb": 1953.3824
+     },
+     "db_read": {
+      "sustainable_rps": 8000.0,
+      "peak_rps": 8964.2,
+      "p50_ms": 0.254167,
+      "p99_ms": 19.195125,
+      "error_rate": 0.0,
+      "app_cpu": 124.40925925925924,
+      "app_mem_mb": 1943.343407407407
+     },
+     "db_write": {
+      "sustainable_rps": 8000.0,
+      "peak_rps": 8513.433333333332,
+      "p50_ms": 0.541208,
+      "p99_ms": 58.13716616,
+      "error_rate": 0.0,
+      "app_cpu": 136.038,
+      "app_mem_mb": 1971.4420363636384
+     },
+     "no_db": {
+      "sustainable_rps": 9500.0,
+      "peak_rps": 9823.666666666666,
+      "p50_ms": 0.156083,
+      "p99_ms": 46.612791,
+      "error_rate": 0.0,
+      "app_cpu": 113.60629629629629,
+      "app_mem_mb": 2011.1359999999981
+     }
+    },
+    "java-spring-boot": {
+     "db_mixed": {
+      "sustainable_rps": 15500.0,
+      "peak_rps": 15702.6,
+      "p50_ms": 0.348708,
+      "p99_ms": 9.781613319999998,
+      "error_rate": 0.0,
+      "app_cpu": 160.67727272727274,
+      "app_mem_mb": 659.1607142857144
+     },
+     "db_read": {
+      "sustainable_rps": 21000.0,
+      "peak_rps": 21917.933333333334,
+      "p50_ms": 0.685875,
+      "p99_ms": 50.25628303999999,
+      "error_rate": 0.0,
+      "app_cpu": 184.08418181818175,
+      "app_mem_mb": 711.1163636363641
+     },
+     "db_write": {
+      "sustainable_rps": 18000.0,
+      "peak_rps": 18476.1,
+      "p50_ms": 1.218542,
+      "p99_ms": 76.91072299999999,
+      "error_rate": 0.0,
+      "app_cpu": 185.5619642857142,
+      "app_mem_mb": 738.4089285714284
+     },
+     "no_db": {
+      "sustainable_rps": 46000.0,
+      "peak_rps": 56992.46666666667,
+      "p50_ms": 1.045291,
+      "p99_ms": 63.53272139999999,
+      "error_rate": 0.0,
+      "app_cpu": 144.00571428571425,
+      "app_mem_mb": 670.3214285714284
+     }
+    },
+    "javascript-express-bun": {
+     "db_mixed": {
+      "sustainable_rps": 30000.0,
+      "peak_rps": 30282.733333333334,
+      "p50_ms": 13.0266455,
+      "p99_ms": 62.16699858,
+      "error_rate": 0.0,
+      "app_cpu": 185.13339285714278,
+      "app_mem_mb": 168.26964285714286
+     },
+     "db_read": {
+      "sustainable_rps": 34000.0,
+      "peak_rps": 35008.03333333333,
+      "p50_ms": 9.300396,
+      "p99_ms": 57.13585265999999,
+      "error_rate": 0.0,
+      "app_cpu": 182.90910714285715,
+      "app_mem_mb": 250.82545454545462
+     },
+     "db_write": {
+      "sustainable_rps": 23000.0,
+      "peak_rps": 24487.466666666667,
+      "p50_ms": 1.417208,
+      "p99_ms": 78.89655615999999,
+      "error_rate": 0.0,
+      "app_cpu": 156.33109090909093,
+      "app_mem_mb": 224.6581818181817
+     },
+     "no_db": {
+      "sustainable_rps": 48000.0,
+      "peak_rps": 57499.6,
+      "p50_ms": 0.125125,
+      "p99_ms": 61.80573008,
+      "error_rate": 0.0,
+      "app_cpu": 117.75745454545456,
+      "app_mem_mb": 161.45714285714277
+     }
+    },
+    "javascript-express-node": {
+     "db_mixed": {
+      "sustainable_rps": 27000.0,
+      "peak_rps": 26911.133333333335,
+      "p50_ms": 4.8384789999999995,
+      "p99_ms": 59.26940449999999,
+      "error_rate": 0.0,
+      "app_cpu": 188.20000000000005,
+      "app_mem_mb": 490.7181818181821
+     },
+     "db_read": {
+      "sustainable_rps": 30000.0,
+      "peak_rps": 29952.8,
+      "p50_ms": 4.3192915,
+      "p99_ms": 45.031941249999996,
+      "error_rate": 0.0,
+      "app_cpu": 185.88125,
+      "app_mem_mb": 482.68749999999983
+     },
+     "db_write": {
+      "sustainable_rps": 20000.0,
+      "peak_rps": 22503.133333333335,
+      "p50_ms": 0.889834,
+      "p99_ms": 75.732334,
+      "error_rate": 0.0,
+      "app_cpu": 161.03,
+      "app_mem_mb": 494.31071428571425
+     },
+     "no_db": {
+      "sustainable_rps": 48000.0,
+      "peak_rps": 57196.7,
+      "p50_ms": 0.138667,
+      "p99_ms": 60.48845559999999,
+      "error_rate": 0.0,
+      "app_cpu": 135.28464285714287,
+      "app_mem_mb": 263.29636363636365
+     }
+    },
+    "python-django-async": {
+     "db_mixed": {
+      "sustainable_rps": 450.0,
+      "peak_rps": 494.56666666666666,
+      "p50_ms": 10.212499999999999,
+      "p99_ms": 64.35258290999998,
+      "error_rate": 0.0,
+      "app_cpu": 171.25909090909087,
+      "app_mem_mb": 176.52181818181816
+     },
+     "db_read": {
+      "sustainable_rps": 450.0,
+      "peak_rps": 493.56666666666666,
+      "p50_ms": 13.9739165,
+      "p99_ms": 84.593833,
+      "error_rate": 0.0,
+      "app_cpu": 177.26363636363632,
+      "app_mem_mb": 181.10545454545448
+     },
+     "db_write": {
+      "sustainable_rps": 450.0,
+      "peak_rps": 498.8666666666667,
+      "p50_ms": 7.4407084999999995,
+      "p99_ms": 59.92418083999999,
+      "error_rate": 0.0,
+      "app_cpu": 164.13357142857146,
+      "app_mem_mb": 165.74999999999997
+     },
+     "no_db": {
+      "sustainable_rps": 3250.0,
+      "peak_rps": 3248.866666666667,
+      "p50_ms": 15.861417,
+      "p99_ms": 83.07555395,
+      "error_rate": 0.0,
+      "app_cpu": 163.3847272727273,
+      "app_mem_mb": 237.8163636363636
+     }
+    },
+    "python-django-sync": {
+     "db_mixed": {
+      "sustainable_rps": 4250.0,
+      "peak_rps": 4596.033333333334,
+      "p50_ms": 2.948333,
+      "p99_ms": 14.987084,
+      "error_rate": 0.0,
+      "app_cpu": 193.0554545454545,
+      "app_mem_mb": 261.98727272727257
+     },
+     "db_read": {
+      "sustainable_rps": 4250.0,
+      "peak_rps": 4647.866666666667,
+      "p50_ms": 3.554167,
+      "p99_ms": 30.789042,
+      "error_rate": 0.0,
+      "app_cpu": 192.87999999999997,
+      "app_mem_mb": 263.9163636363637
+     },
+     "db_write": {
+      "sustainable_rps": 4750.0,
+      "peak_rps": 5140.533333333334,
+      "p50_ms": 3.975917,
+      "p99_ms": 42.155166,
+      "error_rate": 0.0,
+      "app_cpu": 196.0409090909091,
+      "app_mem_mb": 262.55925925925936
+     },
+     "no_db": {
+      "sustainable_rps": 14000.0,
+      "peak_rps": 15244.066666666668,
+      "p50_ms": 3.972292,
+      "p99_ms": 76.13840872999998,
+      "error_rate": 0.0,
+      "app_cpu": 201.69272727272727,
+      "app_mem_mb": 222.71428571428564
+     }
+    },
+    "python-fast-api": {
+     "db_mixed": {
+      "sustainable_rps": 2900.0,
+      "peak_rps": 3274.9333333333334,
+      "p50_ms": 1.1891455,
+      "p99_ms": 29.23575,
+      "error_rate": 0.0,
+      "app_cpu": 152.67254545454549,
+      "app_mem_mb": 521.6527272727272
+     },
+     "db_read": {
+      "sustainable_rps": 2900.0,
+      "peak_rps": 3302.6666666666665,
+      "p50_ms": 1.242125,
+      "p99_ms": 29.425651419999998,
+      "error_rate": 0.0,
+      "app_cpu": 153.7383636363636,
+      "app_mem_mb": 491.71272727272714
+     },
+     "db_write": {
+      "sustainable_rps": 3750.0,
+      "peak_rps": 3860.7,
+      "p50_ms": 2.1950415,
+      "p99_ms": 27.164189999999994,
+      "error_rate": 0.0,
+      "app_cpu": 183.99254545454542,
+      "app_mem_mb": 289.2254545454545
+     },
+     "no_db": {
+      "sustainable_rps": 31000.0,
+      "peak_rps": 30730.066666666666,
+      "p50_ms": 23.708021,
+      "p99_ms": 75.05865433,
+      "error_rate": 0.0,
+      "app_cpu": 196.85107142857143,
+      "app_mem_mb": 209.47142857142856
+     }
+    },
+    "rust-actix-web": {
+     "db_mixed": {
+      "sustainable_rps": 40000.0,
+      "peak_rps": 41940.833333333336,
+      "p50_ms": 2.6705,
+      "p99_ms": 67.10157562,
+      "error_rate": 0.0,
+      "app_cpu": 158.76160714285717,
+      "app_mem_mb": 280.5818181818182
+     },
+     "db_read": {
+      "sustainable_rps": 46000.0,
+      "peak_rps": 50027.7,
+      "p50_ms": 0.558792,
+      "p99_ms": 65.56396826999999,
+      "error_rate": 0.0,
+      "app_cpu": 162.10053571428583,
+      "app_mem_mb": 273.3464285714286
+     },
+     "db_write": {
+      "sustainable_rps": 29000.0,
+      "peak_rps": 28999.4,
+      "p50_ms": 26.287333,
+      "p99_ms": 88.37005028999995,
+      "error_rate": 0.0,
+      "app_cpu": 130.15464285714285,
+      "app_mem_mb": 198.76607142857134
+     },
+     "no_db": {
+      "sustainable_rps": 48000.0,
+      "peak_rps": 57674.066666666666,
+      "p50_ms": 0.101209,
+      "p99_ms": 61.69486018999997,
+      "error_rate": 0.0,
+      "app_cpu": 67.24357142857141,
+      "app_mem_mb": 61.13654545454547
+     }
+    }
+   },
+   "file": "runs/latest_m2pro-10c-32g_v2.1.json"
+  },
+  {
    "id": "latest_m2pro-10c-32g_v2",
    "kind": "latest",
    "date": "2026-10-04",
@@ -940,6 +1451,515 @@
     }
    },
    "file": "runs/2026-10-04_m2pro-10c-32g_bff6922_0461.json"
+  },
+  {
+   "id": "2026-10-04_m2pro-10c-32g_3ae75a8_cea6",
+   "kind": "run",
+   "date": "2026-10-04",
+   "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.0.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+   },
+   "methodology": "v2.1",
+   "dirty": false,
+   "contributor": null,
+   "backends": [
+    "c_sharp-dot-net",
+    "dart-server-pod",
+    "go-mux",
+    "java-foam3-embedded",
+    "java-foam3-postgres",
+    "java-spring-boot",
+    "javascript-express-bun",
+    "javascript-express-node",
+    "python-django-async",
+    "python-django-sync",
+    "python-fast-api",
+    "rust-actix-web"
+   ],
+   "names": {
+    "c_sharp-dot-net": "asp.net core",
+    "dart-server-pod": "serverpod",
+    "go-mux": "go mux",
+    "java-foam3-embedded": "foam3 (embedded)",
+    "java-foam3-postgres": "foam3 (postgres)",
+    "java-spring-boot": "spring boot",
+    "javascript-express-bun": "express (bun)",
+    "javascript-express-node": "express (node)",
+    "python-django-async": "django (async)",
+    "python-django-sync": "django (sync)",
+    "python-fast-api": "fastapi",
+    "rust-actix-web": "rust actix-web"
+   },
+   "scenarios": [
+    "db_mixed",
+    "db_read",
+    "db_write",
+    "no_db"
+   ],
+   "runs": null,
+   "headline": {
+    "c_sharp-dot-net": {
+     "db_mixed": {
+      "sustainable_rps": 22000.0,
+      "peak_rps": 22950.6,
+      "p50_ms": 1.305125,
+      "p99_ms": 70.71740614999999,
+      "error_rate": 0.0,
+      "app_cpu": 179.09642857142853,
+      "app_mem_mb": 382.5327272727273
+     },
+     "db_read": {
+      "sustainable_rps": 24000.0,
+      "peak_rps": 24595.8,
+      "p50_ms": 1.225291,
+      "p99_ms": 85.39555015999993,
+      "error_rate": 0.0,
+      "app_cpu": 176.87472727272728,
+      "app_mem_mb": 797.7327272727277
+     },
+     "db_write": {
+      "sustainable_rps": 17000.0,
+      "peak_rps": 18012.9,
+      "p50_ms": 1.095167,
+      "p99_ms": 31.022580639999997,
+      "error_rate": 0.0,
+      "app_cpu": 140.07267857142855,
+      "app_mem_mb": 232.09636363636366
+     },
+     "no_db": {
+      "sustainable_rps": 48000.0,
+      "peak_rps": 57520.8,
+      "p50_ms": 0.109,
+      "p99_ms": 61.31007978999999,
+      "error_rate": 0.0,
+      "app_cpu": 150.48999999999998,
+      "app_mem_mb": 152.50714285714292
+     }
+    },
+    "dart-server-pod": {
+     "db_mixed": {
+      "sustainable_rps": 4250.0,
+      "peak_rps": 4748.433333333333,
+      "p50_ms": 0.413791,
+      "p99_ms": 3.2587704999999763,
+      "error_rate": 0.0,
+      "app_cpu": 80.7870909090909,
+      "app_mem_mb": 55.47472727272727
+     },
+     "db_read": {
+      "sustainable_rps": 5250.0,
+      "peak_rps": 5250.033333333334,
+      "p50_ms": 0.513417,
+      "p99_ms": 21.219643749999943,
+      "error_rate": 0.0,
+      "app_cpu": 94.46290909090902,
+      "app_mem_mb": 55.58690909090908
+     },
+     "db_write": {
+      "sustainable_rps": 5500.0,
+      "peak_rps": 5630.266666666666,
+      "p50_ms": 0.637917,
+      "p99_ms": 17.41019457999999,
+      "error_rate": 0.0,
+      "app_cpu": 85.39036363636365,
+      "app_mem_mb": 55.44054545454544
+     },
+     "no_db": {
+      "sustainable_rps": 17000.0,
+      "peak_rps": 17648.9,
+      "p50_ms": 13.408125,
+      "p99_ms": 64.54532968,
+      "error_rate": 0.0,
+      "app_cpu": 110.97636363636369,
+      "app_mem_mb": 60.66927272727274
+     }
+    },
+    "go-mux": {
+     "db_mixed": {
+      "sustainable_rps": 22000.0,
+      "peak_rps": 23401.833333333332,
+      "p50_ms": 1.717542,
+      "p99_ms": 59.29556636,
+      "error_rate": 0.0,
+      "app_cpu": 120.44071428571428,
+      "app_mem_mb": 378.9218181818182
+     },
+     "db_read": {
+      "sustainable_rps": 25000.0,
+      "peak_rps": 27555.366666666665,
+      "p50_ms": 2.794792,
+      "p99_ms": 56.43409623999997,
+      "error_rate": 0.0,
+      "app_cpu": 126.04482142857147,
+      "app_mem_mb": 433.5945454545453
+     },
+     "db_write": {
+      "sustainable_rps": 19000.0,
+      "peak_rps": 21477.033333333333,
+      "p50_ms": 0.8225,
+      "p99_ms": 75.95142799999986,
+      "error_rate": 0.0,
+      "app_cpu": 122.69607142857144,
+      "app_mem_mb": 395.7464285714286
+     },
+     "no_db": {
+      "sustainable_rps": 48000.0,
+      "peak_rps": 57536.0,
+      "p50_ms": 0.118291,
+      "p99_ms": 60.49329303999999,
+      "error_rate": 0.0,
+      "app_cpu": 106.5546428571429,
+      "app_mem_mb": 100.94892857142857
+     }
+    },
+    "java-foam3-embedded": {
+     "db_mixed": {
+      "sustainable_rps": 9000.0,
+      "peak_rps": 9784.866666666667,
+      "p50_ms": 0.165,
+      "p99_ms": 22.13889024,
+      "error_rate": 0.0,
+      "app_cpu": 112.32890909090911,
+      "app_mem_mb": 2033.2171636363635
+     },
+     "db_read": {
+      "sustainable_rps": 9000.0,
+      "peak_rps": 9825.2,
+      "p50_ms": 0.168291,
+      "p99_ms": 22.977166,
+      "error_rate": 0.0,
+      "app_cpu": 114.7103636363636,
+      "app_mem_mb": 2021.3759999999995
+     },
+     "db_write": {
+      "sustainable_rps": 8000.0,
+      "peak_rps": 8000.033333333334,
+      "p50_ms": 0.164833,
+      "p99_ms": 11.015667,
+      "error_rate": 0.0,
+      "app_cpu": 103.54854545454546,
+      "app_mem_mb": 1960.6248727272707
+     },
+     "no_db": {
+      "sustainable_rps": 11000.0,
+      "peak_rps": 11420.633333333333,
+      "p50_ms": 0.158125,
+      "p99_ms": 30.831972029999985,
+      "error_rate": 0.0,
+      "app_cpu": 123.88818181818178,
+      "app_mem_mb": 2027.2407272727282
+     }
+    },
+    "java-foam3-postgres": {
+     "db_mixed": {
+      "sustainable_rps": 8000.0,
+      "peak_rps": 8188.3,
+      "p50_ms": 0.244125,
+      "p99_ms": 26.787278009999984,
+      "error_rate": 0.0,
+      "app_cpu": 117.3370909090909,
+      "app_mem_mb": 1953.3824
+     },
+     "db_read": {
+      "sustainable_rps": 8000.0,
+      "peak_rps": 8964.2,
+      "p50_ms": 0.254167,
+      "p99_ms": 19.195125,
+      "error_rate": 0.0,
+      "app_cpu": 124.40925925925924,
+      "app_mem_mb": 1943.343407407407
+     },
+     "db_write": {
+      "sustainable_rps": 8000.0,
+      "peak_rps": 8513.433333333332,
+      "p50_ms": 0.541208,
+      "p99_ms": 58.13716616,
+      "error_rate": 0.0,
+      "app_cpu": 136.038,
+      "app_mem_mb": 1971.4420363636384
+     },
+     "no_db": {
+      "sustainable_rps": 9500.0,
+      "peak_rps": 9823.666666666666,
+      "p50_ms": 0.156083,
+      "p99_ms": 46.612791,
+      "error_rate": 0.0,
+      "app_cpu": 113.60629629629629,
+      "app_mem_mb": 2011.1359999999981
+     }
+    },
+    "java-spring-boot": {
+     "db_mixed": {
+      "sustainable_rps": 15500.0,
+      "peak_rps": 15702.6,
+      "p50_ms": 0.348708,
+      "p99_ms": 9.781613319999998,
+      "error_rate": 0.0,
+      "app_cpu": 160.67727272727274,
+      "app_mem_mb": 659.1607142857144
+     },
+     "db_read": {
+      "sustainable_rps": 21000.0,
+      "peak_rps": 21917.933333333334,
+      "p50_ms": 0.685875,
+      "p99_ms": 50.25628303999999,
+      "error_rate": 0.0,
+      "app_cpu": 184.08418181818175,
+      "app_mem_mb": 711.1163636363641
+     },
+     "db_write": {
+      "sustainable_rps": 18000.0,
+      "peak_rps": 18476.1,
+      "p50_ms": 1.218542,
+      "p99_ms": 76.91072299999999,
+      "error_rate": 0.0,
+      "app_cpu": 185.5619642857142,
+      "app_mem_mb": 738.4089285714284
+     },
+     "no_db": {
+      "sustainable_rps": 46000.0,
+      "peak_rps": 56992.46666666667,
+      "p50_ms": 1.045291,
+      "p99_ms": 63.53272139999999,
+      "error_rate": 0.0,
+      "app_cpu": 144.00571428571425,
+      "app_mem_mb": 670.3214285714284
+     }
+    },
+    "javascript-express-bun": {
+     "db_mixed": {
+      "sustainable_rps": 30000.0,
+      "peak_rps": 30282.733333333334,
+      "p50_ms": 13.0266455,
+      "p99_ms": 62.16699858,
+      "error_rate": 0.0,
+      "app_cpu": 185.13339285714278,
+      "app_mem_mb": 168.26964285714286
+     },
+     "db_read": {
+      "sustainable_rps": 34000.0,
+      "peak_rps": 35008.03333333333,
+      "p50_ms": 9.300396,
+      "p99_ms": 57.13585265999999,
+      "error_rate": 0.0,
+      "app_cpu": 182.90910714285715,
+      "app_mem_mb": 250.82545454545462
+     },
+     "db_write": {
+      "sustainable_rps": 23000.0,
+      "peak_rps": 24487.466666666667,
+      "p50_ms": 1.417208,
+      "p99_ms": 78.89655615999999,
+      "error_rate": 0.0,
+      "app_cpu": 156.33109090909093,
+      "app_mem_mb": 224.6581818181817
+     },
+     "no_db": {
+      "sustainable_rps": 48000.0,
+      "peak_rps": 57499.6,
+      "p50_ms": 0.125125,
+      "p99_ms": 61.80573008,
+      "error_rate": 0.0,
+      "app_cpu": 117.75745454545456,
+      "app_mem_mb": 161.45714285714277
+     }
+    },
+    "javascript-express-node": {
+     "db_mixed": {
+      "sustainable_rps": 27000.0,
+      "peak_rps": 26911.133333333335,
+      "p50_ms": 4.8384789999999995,
+      "p99_ms": 59.26940449999999,
+      "error_rate": 0.0,
+      "app_cpu": 188.20000000000005,
+      "app_mem_mb": 490.7181818181821
+     },
+     "db_read": {
+      "sustainable_rps": 30000.0,
+      "peak_rps": 29952.8,
+      "p50_ms": 4.3192915,
+      "p99_ms": 45.031941249999996,
+      "error_rate": 0.0,
+      "app_cpu": 185.88125,
+      "app_mem_mb": 482.68749999999983
+     },
+     "db_write": {
+      "sustainable_rps": 20000.0,
+      "peak_rps": 22503.133333333335,
+      "p50_ms": 0.889834,
+      "p99_ms": 75.732334,
+      "error_rate": 0.0,
+      "app_cpu": 161.03,
+      "app_mem_mb": 494.31071428571425
+     },
+     "no_db": {
+      "sustainable_rps": 48000.0,
+      "peak_rps": 57196.7,
+      "p50_ms": 0.138667,
+      "p99_ms": 60.48845559999999,
+      "error_rate": 0.0,
+      "app_cpu": 135.28464285714287,
+      "app_mem_mb": 263.29636363636365
+     }
+    },
+    "python-django-async": {
+     "db_mixed": {
+      "sustainable_rps": 450.0,
+      "peak_rps": 494.56666666666666,
+      "p50_ms": 10.212499999999999,
+      "p99_ms": 64.35258290999998,
+      "error_rate": 0.0,
+      "app_cpu": 171.25909090909087,
+      "app_mem_mb": 176.52181818181816
+     },
+     "db_read": {
+      "sustainable_rps": 450.0,
+      "peak_rps": 493.56666666666666,
+      "p50_ms": 13.9739165,
+      "p99_ms": 84.593833,
+      "error_rate": 0.0,
+      "app_cpu": 177.26363636363632,
+      "app_mem_mb": 181.10545454545448
+     },
+     "db_write": {
+      "sustainable_rps": 450.0,
+      "peak_rps": 498.8666666666667,
+      "p50_ms": 7.4407084999999995,
+      "p99_ms": 59.92418083999999,
+      "error_rate": 0.0,
+      "app_cpu": 164.13357142857146,
+      "app_mem_mb": 165.74999999999997
+     },
+     "no_db": {
+      "sustainable_rps": 3250.0,
+      "peak_rps": 3248.866666666667,
+      "p50_ms": 15.861417,
+      "p99_ms": 83.07555395,
+      "error_rate": 0.0,
+      "app_cpu": 163.3847272727273,
+      "app_mem_mb": 237.8163636363636
+     }
+    },
+    "python-django-sync": {
+     "db_mixed": {
+      "sustainable_rps": 4250.0,
+      "peak_rps": 4596.033333333334,
+      "p50_ms": 2.948333,
+      "p99_ms": 14.987084,
+      "error_rate": 0.0,
+      "app_cpu": 193.0554545454545,
+      "app_mem_mb": 261.98727272727257
+     },
+     "db_read": {
+      "sustainable_rps": 4250.0,
+      "peak_rps": 4647.866666666667,
+      "p50_ms": 3.554167,
+      "p99_ms": 30.789042,
+      "error_rate": 0.0,
+      "app_cpu": 192.87999999999997,
+      "app_mem_mb": 263.9163636363637
+     },
+     "db_write": {
+      "sustainable_rps": 4750.0,
+      "peak_rps": 5140.533333333334,
+      "p50_ms": 3.975917,
+      "p99_ms": 42.155166,
+      "error_rate": 0.0,
+      "app_cpu": 196.0409090909091,
+      "app_mem_mb": 262.55925925925936
+     },
+     "no_db": {
+      "sustainable_rps": 14000.0,
+      "peak_rps": 15244.066666666668,
+      "p50_ms": 3.972292,
+      "p99_ms": 76.13840872999998,
+      "error_rate": 0.0,
+      "app_cpu": 201.69272727272727,
+      "app_mem_mb": 222.71428571428564
+     }
+    },
+    "python-fast-api": {
+     "db_mixed": {
+      "sustainable_rps": 2900.0,
+      "peak_rps": 3274.9333333333334,
+      "p50_ms": 1.1891455,
+      "p99_ms": 29.23575,
+      "error_rate": 0.0,
+      "app_cpu": 152.67254545454549,
+      "app_mem_mb": 521.6527272727272
+     },
+     "db_read": {
+      "sustainable_rps": 2900.0,
+      "peak_rps": 3302.6666666666665,
+      "p50_ms": 1.242125,
+      "p99_ms": 29.425651419999998,
+      "error_rate": 0.0,
+      "app_cpu": 153.7383636363636,
+      "app_mem_mb": 491.71272727272714
+     },
+     "db_write": {
+      "sustainable_rps": 3750.0,
+      "peak_rps": 3860.7,
+      "p50_ms": 2.1950415,
+      "p99_ms": 27.164189999999994,
+      "error_rate": 0.0,
+      "app_cpu": 183.99254545454542,
+      "app_mem_mb": 289.2254545454545
+     },
+     "no_db": {
+      "sustainable_rps": 31000.0,
+      "peak_rps": 30730.066666666666,
+      "p50_ms": 23.708021,
+      "p99_ms": 75.05865433,
+      "error_rate": 0.0,
+      "app_cpu": 196.85107142857143,
+      "app_mem_mb": 209.47142857142856
+     }
+    },
+    "rust-actix-web": {
+     "db_mixed": {
+      "sustainable_rps": 40000.0,
+      "peak_rps": 41940.833333333336,
+      "p50_ms": 2.6705,
+      "p99_ms": 67.10157562,
+      "error_rate": 0.0,
+      "app_cpu": 158.76160714285717,
+      "app_mem_mb": 280.5818181818182
+     },
+     "db_read": {
+      "sustainable_rps": 46000.0,
+      "peak_rps": 50027.7,
+      "p50_ms": 0.558792,
+      "p99_ms": 65.56396826999999,
+      "error_rate": 0.0,
+      "app_cpu": 162.10053571428583,
+      "app_mem_mb": 273.3464285714286
+     },
+     "db_write": {
+      "sustainable_rps": 29000.0,
+      "peak_rps": 28999.4,
+      "p50_ms": 26.287333,
+      "p99_ms": 88.37005028999995,
+      "error_rate": 0.0,
+      "app_cpu": 130.15464285714285,
+      "app_mem_mb": 198.76607142857134
+     },
+     "no_db": {
+      "sustainable_rps": 48000.0,
+      "peak_rps": 57674.066666666666,
+      "p50_ms": 0.101209,
+      "p99_ms": 61.69486018999997,
+      "error_rate": 0.0,
+      "app_cpu": 67.24357142857141,
+      "app_mem_mb": 61.13654545454547
+     }
+    }
+   },
+   "file": "runs/2026-10-04_m2pro-10c-32g_3ae75a8_cea6.json"
   },
   {
    "id": "2026-10-04_m2pro-10c-32g_0646fd4_6716",
