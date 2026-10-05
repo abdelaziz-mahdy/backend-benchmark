@@ -749,22 +749,32 @@ void main() {
       expect(t.takeException(), isNull);
     });
 
-    testWidgets('method page has contents, run picker and params', (t) async {
+    testWidgets('method page: key facts up front, details on demand', (
+      t,
+    ) async {
       final state = await pumpApp(t, realisticBundle());
       await t.tap(find.text("How it's measured"));
       await settle(t);
       expect(state.page, DashboardPage.method);
       expect(find.text('Contents'), findsOneWidget);
-      expect(find.text('1. Overview'), findsOneWidget);
-      expect(find.text('9. Known limitations'), findsOneWidget);
-      expect(
-        find.textContaining('3 steps, 250 to 1,000 req/s'),
-        findsOneWidget,
-      );
+      expect(find.text('1. How load is applied'), findsOneWidget);
+      expect(find.text('8. Known limitations'), findsOneWidget);
+      // Key facts are visible without opening anything.
+      expect(find.text('median of 3'), findsOneWidget);
+      expect(find.text('250 to 1k req/s'), findsOneWidget);
+      // Details stay closed until asked for.
+      expect(find.textContaining('tests the midpoint'), findsNothing);
+      expect(find.byType(DropdownButton<String>), findsNothing);
+      // A contents entry opens its section.
+      await t.tap(find.text('1. How load is applied'));
+      await settle(t);
       expect(find.textContaining('tests the midpoint'), findsOneWidget);
+      // So does tapping the section header.
+      await t.tap(find.text('Hardware and this run'));
+      await settle(t);
       expect(find.text('commit abc1234'), findsOneWidget);
       expect(find.byType(DropdownButton<String>), findsOneWidget); // run picker
-      await t.tap(find.text('9. Known limitations'));
+      await t.tap(find.text('8. Known limitations'));
       await settle(t);
       expect(t.takeException(), isNull);
     });
