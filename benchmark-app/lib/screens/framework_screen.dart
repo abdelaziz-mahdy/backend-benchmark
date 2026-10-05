@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../models/metrics.dart';
 import '../models/results.dart';
 import '../state/dashboard_state.dart';
-import '../utils/colors.dart';
 import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/charts.dart';
@@ -27,58 +26,93 @@ class _FrameworkScreenState extends State<FrameworkScreen> {
     final run = state.run;
     final backend = state.detailBackend;
     if (run == null || backend == null) {
-      return const PageBody(
+      return PageBody(
         children: [
-          EmptyState(
+          PageTitle(title: 'No framework selected', onBack: state.goHome),
+          const EmptyState(
             icon: Icons.insights_outlined,
-            title: 'No framework to show',
-            message: 'This scenario has no results.',
+            title: 'Pick a framework on the home page',
+            message: 'Tap a row, then "Full details and charts".',
           ),
         ],
       );
     }
     final result = state.resultOf(backend);
+    final flags = resultFlags(backend, result);
     return PageBody(
       children: [
-        _Finder(state: state, selected: backend),
-        ImplementationCard(
-          backend: backend,
-          flags: resultFlags(backend, result),
-          runSha: run.gitSha,
-          runDirty: run.dirty,
-          rankLine: result == null ? null : _rankLine(state, backend),
+        PageTitle(
+          title: backend.name,
+          subtitle: backend.subtitle.isEmpty ? null : backend.subtitle,
+          onBack: state.goHome,
+          trailing: _CompareAction(state: state, backend: backend),
+        ),
+        ScenarioChips(
+          scenarios: run.scenarios,
+          selected: state.scenario,
+          onSelected: state.setScenario,
+          empty: {
+            for (final s in run.scenarios)
+              if (!backend.scenarios.containsKey(s)) s,
+          },
         ),
         if (result == null)
           _NoResult(state: state, backend: backend)
         else ...[
+          _rankCard(state, backend, flags),
           _tiles(result),
-          _AcrossScenarios(state: state, backend: backend),
           if (result.steps.isNotEmpty) _stepCharts(backend, result),
           _percentiles(result),
           if (!result.timeseries.isEmpty) _resources(backend, result),
         ],
+        ImplementationCard(
+          backend: backend,
+          flags: const [],
+          runSha: run.gitSha,
+          runDirty: run.dirty,
+        ),
         _History(state: state, backend: backend),
       ],
+    );
+  }
+
+  /// "#2 of 6 by sustainable load in No DB · 83% of the best" with the
+  /// flags of this scenario written next to it.
+  Widget _rankCard(DashboardState state, BackendResult b, List<Widget> flags) {
+    final rankLine = _rankLine(state, b);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      decoration: BoxDecoration(
+        color: kCardBg,
+        borderRadius: BorderRadius.circular(kRadius),
+        border: Border.all(color: kBorder),
+      ),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [?rankLine, ...flags],
+      ),
     );
   }
 
   /// "#2 of 6 by sustainable load in No DB · 83% of the leader".
   Widget? _rankLine(DashboardState state, BackendResult b) {
     final metric = state.headline;
-    final rank = state.rankOf(b, metric);
+    final rank = state.rankOf(b, metric, state.scenario);
     if (rank == null) return null;
     final share = rank.shareOfLeader;
     final parts = [
       '${rank.tied > 1 ? 'tied ' : ''}#${rank.position} of ${rank.total} by '
           '${metric.label.toLowerCase()} in ${scenarioLabel(state.scenario!)}',
       if (rank.position == 1)
-        rank.tied > 1 ? 'tied with ${rank.tied - 1} others' : 'the leader'
+        rank.tied > 1 ? 'tied with ${rank.tied - 1} others' : 'the best'
       else if (share != null)
-        '${(share * 100).round()}% of the leader',
+        '${(share * 100).round()}% of the best',
     ];
     return Text(
       parts.join(' · '),
-      style: const TextStyle(color: kTextSecondary, fontSize: 12.5),
+      style: const TextStyle(color: kTextPrimary, fontSize: 13),
     );
   }
 
@@ -250,7 +284,7 @@ class _FrameworkScreenState extends State<FrameworkScreen> {
         child: TimeSeriesChart(
           series: [(b, ts)],
           field: 'app_mem_mb',
-          format: (v) => '${formatNumber(v)} MB',
+          formatFor: memoryAxisFormatter,
         ),
       ),
     ];
@@ -275,165 +309,6 @@ class _FrameworkScreenState extends State<FrameworkScreen> {
           ],
         );
       },
-    );
-  }
-}
-
-/// Type-ahead over every backend of the run, plus previous/next.
-class _Finder extends StatefulWidget {
-  final DashboardState state;
-  final BackendResult selected;
-
-  const _Finder({required this.state, required this.selected});
-
-  @override
-  State<_Finder> createState() => _FinderState();
-}
-
-class _FinderState extends State<_Finder> {
-  final _controller = TextEditingController();
-  final _focus = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.text = widget.selected.name;
-    _focus.addListener(() {
-      if (_focus.hasFocus) {
-        _controller.selection = TextSelection(
-          baseOffset: 0,
-          extentOffset: _controller.text.length,
-        );
-      } else {
-        _controller.text = widget.selected.name;
-      }
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant _Finder old) {
-    super.didUpdateWidget(old);
-    if (old.selected.key != widget.selected.key && !_focus.hasFocus) {
-      _controller.text = widget.selected.name;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final state = widget.state;
-    final all = state.allBackends;
-    return Row(
-      children: [
-        Expanded(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: RawAutocomplete<BackendResult>(
-              textEditingController: _controller,
-              focusNode: _focus,
-              displayStringForOption: (b) => b.name,
-              optionsBuilder: (v) {
-                // Everything while the selected name is still in the field.
-                if (!_focus.hasFocus || v.text == widget.selected.name) {
-                  return all;
-                }
-                return all.where((b) => b.matches(v.text));
-              },
-              onSelected: (b) {
-                state.setDetail(b.key);
-                _focus.unfocus();
-              },
-              fieldViewBuilder: (context, controller, focus, onSubmit) =>
-                  TextField(
-                    controller: controller,
-                    focusNode: focus,
-                    onSubmitted: (text) {
-                      final hits = all.where((b) => b.matches(text)).toList();
-                      if (hits.isNotEmpty) state.setDetail(hits.first.key);
-                      focus.unfocus();
-                    },
-                    style: const TextStyle(
-                      color: kTextPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: 'Find a framework',
-                      hintStyle: const TextStyle(color: kTextDim),
-                      prefixIcon: const Icon(
-                        Icons.search,
-                        size: 18,
-                        color: kTextMuted,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      filled: true,
-                      fillColor: kCardBg,
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: kBorder),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: kBlue),
-                      ),
-                    ),
-                  ),
-              optionsViewBuilder: (context, onSelected, options) => Align(
-                alignment: Alignment.topLeft,
-                child: Material(
-                  color: kCardBgRaised,
-                  elevation: 6,
-                  borderRadius: BorderRadius.circular(8),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxHeight: 320,
-                      maxWidth: 420,
-                    ),
-                    child: ListView(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      children: [
-                        for (final b in options)
-                          InkWell(
-                            onTap: () => onSelected(b),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              child: BackendLabel(backend: b, fontSize: 13.5),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
-        IconButton(
-          tooltip: 'Previous framework',
-          onPressed: all.length > 1 ? () => state.stepDetail(-1) : null,
-          icon: const Icon(Icons.chevron_left),
-        ),
-        IconButton(
-          tooltip: 'Next framework',
-          onPressed: all.length > 1 ? () => state.stepDetail(1) : null,
-          icon: const Icon(Icons.chevron_right),
-        ),
-      ],
     );
   }
 }
@@ -468,82 +343,6 @@ class _NoResult extends StatelessWidget {
               labelStyle: const TextStyle(fontSize: 12, color: kTextPrimary),
               backgroundColor: kBackground,
               side: const BorderSide(color: kBlue),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// This framework's headline across every scenario of the run.
-class _AcrossScenarios extends StatelessWidget {
-  final DashboardState state;
-  final BackendResult backend;
-
-  const _AcrossScenarios({required this.state, required this.backend});
-
-  @override
-  Widget build(BuildContext context) {
-    final scenarios = state.run!.scenarios
-        .where(backend.scenarios.containsKey)
-        .toList();
-    if (scenarios.length < 2) return const SizedBox.shrink();
-    final metric = Metrics.headlineFor(backend.scenarios.values);
-    final values = {
-      for (final s in scenarios) s: metric.value(backend.scenarios[s]!),
-    };
-    final max = values.values.whereType<double>().fold(
-      0.0,
-      (a, b) => a > b ? a : b,
-    );
-    return SectionCard(
-      title: '${metric.label} by scenario',
-      subtitle: 'Tap a scenario to switch to it.',
-      child: Column(
-        children: [
-          for (final s in scenarios)
-            InkWell(
-              onTap: () => state.setScenario(s),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 90,
-                      child: Text(
-                        scenarioLabel(s),
-                        style: TextStyle(
-                          color: s == state.scenario
-                              ? kTextPrimary
-                              : kTextMuted,
-                          fontSize: 12.5,
-                          fontWeight: s == state.scenario
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: InlineBar(
-                        value: values[s],
-                        max: max,
-                        color: BackendColors.of(backend.key),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 90,
-                      child: Text(
-                        formatMetric(metric, values[s]),
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          color: kTextSecondary,
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
         ],
       ),
@@ -597,6 +396,32 @@ class _History extends StatelessWidget {
           ),
         ],
         format: (v) => formatMetricShort(metric, v),
+      ),
+    );
+  }
+}
+
+/// "+ Compare" for the open framework; the tray at the bottom takes over.
+class _CompareAction extends StatelessWidget {
+  final DashboardState state;
+  final BackendResult backend;
+
+  const _CompareAction({required this.state, required this.backend});
+
+  @override
+  Widget build(BuildContext context) {
+    final on = state.compareKeys.contains(backend.key);
+    return OutlinedButton.icon(
+      onPressed: state.canAddCompare(backend.key)
+          ? () => state.toggleCompare(backend.key)
+          : null,
+      icon: Icon(on ? Icons.check : Icons.add, size: 14),
+      label: Text(on ? 'Added' : 'Compare'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: on ? kBlue : kTextSecondary,
+        side: BorderSide(color: on ? kBlue : kBorder),
+        visualDensity: VisualDensity.compact,
+        textStyle: labelStyle(context, 12),
       ),
     );
   }

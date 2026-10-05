@@ -135,16 +135,12 @@ class ImplementationCard extends StatelessWidget {
   /// Flags for the current scenario (load-gen limit, spread, note).
   final List<Widget> flags;
 
-  /// Rank line, e.g. "#2 of 6 by sustainable load · 83% of the leader".
-  final Widget? rankLine;
-
   const ImplementationCard({
     super.key,
     required this.backend,
     required this.flags,
     this.runSha,
     this.runDirty = false,
-    this.rankLine,
   });
 
   @override
@@ -205,13 +201,13 @@ class ImplementationCard extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ColorDot(color: BackendColors.of(b.key), size: 12),
+                  ColorDot(color: BackendColors.of(b.key), size: 10),
                   const SizedBox(width: 8),
                   Text(
-                    b.name,
+                    'How ${b.name} is implemented',
                     style: const TextStyle(
                       color: kTextPrimary,
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -225,7 +221,6 @@ class ImplementationCard extends StatelessWidget {
               ...flags,
             ],
           ),
-          if (rankLine != null) ...[const SizedBox(height: 6), rankLine!],
           const SizedBox(height: 12),
           const Divider(height: 1, color: kGridLine),
           const SizedBox(height: 12),
