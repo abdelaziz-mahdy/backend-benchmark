@@ -496,9 +496,9 @@ class _MethodScreenState extends State<MethodScreen> {
     'One machine, one Docker VM: absolute numbers are specific to it. Only '
         'runs on the same machine with the same method are comparable, which '
         'is why History never mixes them.',
-    'Storage variants (such as FOAM3 embedded vs Postgres) share the same '
-        'request path, so they can be capped by that path rather than by '
-        'storage.',
+    'Storage variants of one framework (such as FOAM3 embedded vs '
+        'Postgres) only separate where storage is the bottleneck; where the '
+        "framework's request handling is the limit they show similar numbers.",
     'p99 is taken at each framework\'s own sustainable load: a slower '
         'framework can show a lower p99 simply by serving less traffic.',
     'Implementation details for runs made before the field existed come '

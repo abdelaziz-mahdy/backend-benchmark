@@ -74,8 +74,13 @@ the same four operations to `POST /note/<method>` (see `scenarios/lib.js`).
 
 `foam_rpc` sends what FOAM's own client sends for a service call: `POST
 /service/noteService` with a `foam.box.Envelope` holding a
-`foam.box.RPCMessage` (`name` = the `NoteService` method, `args` = `[null,
-...]`, the null being the Context argument), and reads back an Envelope with
+`foam.box.SessionedMessage` (one `sessionId` per virtual user, as FOAM's
+`SessionClientBox` adds to every call) around a `foam.box.RPCMessage`
+(`name` = the `NoteService` method, `args` = `[null, ...]`, the null being
+the Context argument). Without the session wrapper FOAM journals a new
+anonymous session on every request and all calls queue on that one file
+journal — methodology v2.1 runs before this fix measured that, not FOAM.
+It reads back an Envelope with
 an `RPCReturnMessage` (result in `data`). FOAM reports exceptions as an
 `RPCErrorMessage` with HTTP 200, so for this style k6 reads the body and
 counts such replies in the `rpc_failed` metric, which the runner adds to the

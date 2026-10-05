@@ -10,15 +10,19 @@ ERROR = ('{"class":"foam.box.Envelope","message":{"class":"foam.box.RPCErrorMess
          '"foam.box.RemoteException","id":"java.lang.IllegalArgumentException","message":"note required"}}}')
 
 
-def test_request_bodies_match_foam_client():
+def test_request_bodies_match_foam_session_client():
+    # FOAM's SessionClientBox wraps every call in a SessionedMessage; without
+    # it the server journals a new anonymous session on each request.
     _, body = foam_rpc.request("list", {"limit": 1, "offset": 1})
     assert json.dumps(body, separators=(",", ":")) == (
-        '{"class":"foam.box.Envelope","message":{"class":"foam.box.RPCMessage","name":"getNotes",'
-        '"args":[null,1,1]},"replyBox":{"class":"foam.box.HTTPReplyBox"}}')
-    _, body = foam_rpc.request("create", {"title": "t", "content": "c"})
-    assert body["message"]["args"] == [None, {"class": "bench.notes.Note", "title": "t", "content": "c"}]
-    assert foam_rpc.request("get", 7)[1]["message"]["args"] == [None, 7]
-    assert foam_rpc.request("no_db")[1]["message"] == {"class": "foam.box.RPCMessage", "name": "noDb", "args": [None]}
+        '{"class":"foam.box.Envelope","message":{"class":"foam.box.SessionedMessage",'
+        '"sessionId":"bench-smoke","message":{"class":"foam.box.RPCMessage","name":"getNotes",'
+        '"args":[null,1,1]}},"replyBox":{"class":"foam.box.HTTPReplyBox"}}')
+    rpc = lambda op, arg=None: foam_rpc.request(op, arg)[1]["message"]["message"]
+    assert rpc("create", {"title": "t", "content": "c"})["args"] == [
+        None, {"class": "bench.notes.Note", "title": "t", "content": "c"}]
+    assert rpc("get", 7)["args"] == [None, 7]
+    assert rpc("no_db") == {"class": "foam.box.RPCMessage", "name": "noDb", "args": [None]}
 
 
 def test_unwrap_return_and_null():

@@ -1,8 +1,10 @@
 """FOAM box RPC (api_style: foam_rpc), as sent by FOAM's own JS client.
 
 A call is POST /service/<service> with a foam.box.Envelope holding a
-foam.box.RPCMessage. args[0] is the method's Context argument, always null
-on the wire. The reply is an Envelope holding an RPCReturnMessage (result in
+foam.box.SessionedMessage (FOAM's SessionClientBox adds it to every call)
+around a foam.box.RPCMessage. args[0] is the method's Context argument,
+always null on the wire. Without a session id FOAM writes a new "anonymous"
+session to its journal on every call, which is not what real clients do. The reply is an Envelope holding an RPCReturnMessage (result in
 "data", absent for null) or an RPCErrorMessage, both with HTTP 200.
 """
 import json
@@ -19,11 +21,18 @@ def note(n):
     return {"class": "bench.notes.Note", **n}
 
 
-def envelope(method, *args):
+SESSION_ID = "bench-smoke"
+
+
+def envelope(method, *args, session_id=SESSION_ID):
     """Request body for NoteService.<method>(x, *args)."""
     return {
         "class": "foam.box.Envelope",
-        "message": {"class": "foam.box.RPCMessage", "name": method, "args": [None, *args]},
+        "message": {
+            "class": "foam.box.SessionedMessage",
+            "sessionId": session_id,
+            "message": {"class": "foam.box.RPCMessage", "name": method, "args": [None, *args]},
+        },
         "replyBox": {"class": "foam.box.HTTPReplyBox"},
     }
 

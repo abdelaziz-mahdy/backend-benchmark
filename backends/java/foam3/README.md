@@ -56,7 +56,15 @@ charset=utf-8`; the first arg is the Context argument, always `null`:
 | `getNote` (missing) | `... "args":[null,999999]}` | `{"class":"foam.box.RPCReturnMessage","executionTime":0}` (no `data`: null) |
 | error | `createNote` with `[null,null]` | `{"class":"foam.box.RPCErrorMessage","data":{"class":"foam.box.RemoteException","id":"java.lang.IllegalArgumentException","message":"note required",...}}` |
 
-The full request body wraps the message:
+The full request body wraps the message the way FOAM's `SessionClientBox`
+does for every client call:
+`{"class":"foam.box.Envelope","message":{"class":"foam.box.SessionedMessage","sessionId":"<per client>","message":<message>},"replyBox":{"class":"foam.box.HTTPReplyBox"}}`.
+Leaving out the `SessionedMessage` makes `SessionServerBox` create and
+journal a new "anonymous" session on every request; under load ~760 of 1000
+Jetty threads then wait in `AbstractF3FileJournal.put` (thread dumps,
+2026-10-05) and both storage variants cap at ~8–11k rps. With sessions the
+same box served 12k rps of `noDb` at p99 4.6 ms.
+Previously documented body (without the session wrapper):
 `{"class":"foam.box.Envelope","message":<message>,"replyBox":{"class":"foam.box.HTTPReplyBox"}}`,
 and the reply is `{"class":"foam.box.Envelope","message":<message>}`. FOAM
 returns HTTP 200 for both return and error replies; the runner reads the
