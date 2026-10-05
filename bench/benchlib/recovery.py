@@ -5,12 +5,17 @@ next rate straight away then measures the aftermath of the overload rather
 than the framework's capacity (FOAM3 kept failing every follow-up probe
 for ~15 s this way). Before the next step the runner waits until the
 health endpoint answers quickly a few times in a row.
+
+Recovery turned out to be all or nothing: in the FOAM3 run of 2026-10-05
+every failing step either recovered within ~7 s or not within 120 s (an
+out-of-memory JVM). TIMEOUT_S is therefore 30 s, so a dead app is restarted
+after half a minute instead of two.
 """
 import time
 
 FAST_S = 0.1  # a health answer slower than this means the backlog is not drained
 CONSECUTIVE = 3
-TIMEOUT_S = 120.0
+TIMEOUT_S = 30.0
 SETTLE_S = 5.0
 POLL_S = 1.0
 # Warmup after a restart, at the last passing rate.

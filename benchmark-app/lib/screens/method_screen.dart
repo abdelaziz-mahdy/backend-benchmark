@@ -428,9 +428,9 @@ class _MethodScreenState extends State<MethodScreen> {
       ),
       _flagRow(
         const Text('‡', style: TextStyle(color: kBlue, fontSize: 14)),
-        'Stopped responding under overload and did not recover by itself '
-        'within 2 minutes; the runner restarted it (keeping its data) and '
-        'kept measuring. Says something about resilience, not just speed.',
+        'Stopped responding under overload and did not recover by itself; '
+        'the runner restarted it (keeping its data) and kept measuring. '
+        'Says something about resilience, not just speed.',
       ),
       _flagRow(
         const Flag(text: 'load-gen limit', tooltip: '', color: kBlue),

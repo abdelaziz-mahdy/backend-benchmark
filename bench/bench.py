@@ -200,6 +200,8 @@ def new_run(run_id, steps, reps, cpus, contributor):
             "warmup_seconds": slo.WARMUP_SECONDS,
             "refine_steps": slo.REFINE_STEPS,
             "refine_tolerance": slo.REFINE_TOLERANCE,
+            "start_fraction": slo.START_FRACTION,
+            "recovery_timeout_s": recovery.TIMEOUT_S,
             "reps": reps,
             "seed_rows": slo.SEED_ROWS,
             "slo": {"p99_ms": slo.SLO_P99_MS, "error_rate": slo.SLO_ERROR_RATE, "achieved_ratio": slo.SLO_ACHIEVED_RATIO},
@@ -243,7 +245,17 @@ def cached_from(run_meta, item_key, scenario, digest, reps):
 # ---------------------------------------------------------------- one rep
 
 
-def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores):
+def known_best(scenario_dir):
+    """Sustainable rate of the first finished rep of this scenario, or 0."""
+    path = scenario_dir / "rep-1" / "steps.csv"
+    if not path.exists():
+        return 0
+    with path.open() as f:
+        passing = [int(r["target_rps"]) for r in csv.DictReader(f) if r["pass"] == "True"]
+    return max(passing, default=0)
+
+
+def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0):
     rep_dir.mkdir(parents=True, exist_ok=True)
     stack.env["OUT_DIR"] = str(rep_dir)
     stack.down()
@@ -328,9 +340,17 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores):
         )
         return row["pass"]
 
-    for rate in steps:
+    ladder = slo.start_steps(steps, best)
+    if ladder != steps:
+        log(f"    starting at {ladder[0]} rps (rep 1 sustained {best})")
+    for rate in ladder:
         if not do_step(rate):
             break
+    if not any(r["pass"] for r in rows):
+        # The shortened ladder started too high for this rep: walk back down.
+        for rate in reversed([s for s in steps if s < ladder[0]]):
+            if stopped[0] or do_step(rate):
+                break
     for _ in range(slo.REFINE_STEPS):
         mid = None if stopped[0] else slo.refine_rate(rows)
         if not mid:
@@ -489,6 +509,11 @@ def main():
     run_dir, run_meta = new_run(args.run_id, steps, args.reps, cpus, args.contributor)
     cpus = run_meta["params"]["cpusets"]  # a resumed run keeps its original split
     run_json = run_dir / "run.json"
+    # What this invocation will run; bench/status.py reads it to show progress.
+    run_meta["plan"] = [
+        {"key": i.key, "scenarios": [s for s in i.scenarios if not wanted or s in wanted]} for i in items
+    ]
+    write_json(run_json, run_meta)
 
     for item in items:
         entry = run_meta["items"].setdefault(item.key, {"scenarios": {}})
@@ -536,7 +561,8 @@ def main():
                     log(f"   {scenario} rep {rep}: already done")
                     continue
                 log(f"   {scenario} rep {rep}/{args.reps}")
-                result = run_rep(stack, item, scenario, steps, rep_dir, digest, cpus["k6_cores"])
+                best = known_best(run_dir / item.key / scenario) if rep > 1 else 0
+                result = run_rep(stack, item, scenario, steps, rep_dir, digest, cpus["k6_cores"], best)
                 result.update(
                     finished_at=dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                     framework_version=item.manifest.get("version"),
