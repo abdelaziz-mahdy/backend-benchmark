@@ -189,7 +189,7 @@ class _MethodScreenState extends State<MethodScreen> {
     _Section(
       'flags',
       'Flags and marks',
-      'What † (load-generator limit) and ± (noisy repetitions) mean.',
+      'What † (load-generator limit), ± (noisy repetitions) and ‡ (restarted) mean.',
       _flags(),
     ),
     _Section(
@@ -425,6 +425,12 @@ class _MethodScreenState extends State<MethodScreen> {
         const Text('±', style: TextStyle(color: kBlue, fontSize: 14)),
         'Repetitions differed by more than 10% on the headline number. '
         'Treat small differences with care.',
+      ),
+      _flagRow(
+        const Text('‡', style: TextStyle(color: kBlue, fontSize: 14)),
+        'Stopped responding under overload and did not recover by itself '
+        'within 2 minutes; the runner restarted it (keeping its data) and '
+        'kept measuring. Says something about resilience, not just speed.',
       ),
       _flagRow(
         const Flag(text: 'load-gen limit', tooltip: '', color: kBlue),

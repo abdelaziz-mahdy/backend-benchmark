@@ -13,6 +13,8 @@ CONSECUTIVE = 3
 TIMEOUT_S = 120.0
 SETTLE_S = 5.0
 POLL_S = 1.0
+# Warmup after a restart, at the last passing rate.
+REWARM_S = 15.0
 
 
 def wait_recovered(probe, clock=time.monotonic, sleep=time.sleep,

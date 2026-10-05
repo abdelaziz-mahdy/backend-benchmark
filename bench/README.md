@@ -33,7 +33,10 @@ For each backend × variant × scenario × rep:
    v2.1; v2 tested a single midpoint). After every failing step the runner
    waits until the health path answers in < 100 ms three times in a row (max
    120 s, then 5 s more) so a backlog left by the overload does not poison the
-   next probe; the wait is stored per step as `recovery_s`.
+   next probe; the wait is stored per step as `recovery_s`. If the app is still
+   not answering after 120 s (e.g. it ran out of memory), the runner restarts
+   its container (data kept), re-warms it for 15 s at the last passing rate and
+   continues; the step is marked `restarted` and the dashboard shows ‡.
 5. Sample CPU and memory of every container each second; tear down.
 
 | Scenario | Requests |

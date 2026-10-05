@@ -205,6 +205,10 @@ class ScenarioResult {
   final double spread;
   final bool unstable;
   final bool loadgenBound;
+
+  /// Times the app had to be restarted because it did not recover from an
+  /// overloaded step (all repetitions together).
+  final int restarts;
   final List<LoadStep> steps;
   final TimeSeries timeseries;
   final String? fromRun;
@@ -215,6 +219,7 @@ class ScenarioResult {
     required this.spread,
     required this.unstable,
     required this.loadgenBound,
+    this.restarts = 0,
     required this.steps,
     required this.timeseries,
     required this.fromRun,
@@ -247,6 +252,7 @@ class ScenarioResult {
       spread: _num(j['spread']) ?? 0,
       unstable: j['unstable'] == true,
       loadgenBound: j['loadgen_bound'] == true,
+      restarts: (j['restarts'] as num?)?.toInt() ?? 0,
       steps: [
         ...?(j['steps'] as List?)?.whereType<Map<String, dynamic>>().map(
           LoadStep.fromJson,

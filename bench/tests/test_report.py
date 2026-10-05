@@ -190,3 +190,18 @@ def test_without_pyyaml_the_fallback_is_skipped(tmp_path, monkeypatch):
 def test_variant_names_are_distinct():
     assert report._display_name({"name": "foam3", "variant": "embedded"}, "java-foam3-embedded") == "foam3 (embedded)"
     assert report._display_name({"name": "go mux", "variant": "postgres"}, "go-mux") == "go mux"
+
+
+def test_restarts_are_counted(tmp_path):
+    run = make_run(tmp_path, "2026-10-05_m_r_0001", {"x": {"name": "x", "scenarios": {"db_write": {"status": "ok"}}}})
+    rep = run / "x" / "db_write" / "rep-1"
+    make_rep(rep, [(8000, True), (16000, False)])
+    rows = (rep / "steps.csv").read_text().splitlines()
+    rows[0] += ",restarted"
+    rows[1] += ",False"
+    rows[2] += ",True"
+    (rep / "steps.csv").write_text("\n".join(rows) + "\n")
+    problems = report.Problems()
+    s = report.build_run(run, problems)
+    assert problems == []
+    assert s["backends"][0]["scenarios"]["db_write"]["restarts"] == 1

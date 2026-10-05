@@ -480,6 +480,7 @@ class _ValueCell extends StatelessWidget {
     final marks = [
       if (r != null && r.loadgenBound) '†',
       if (r != null && r.unstable) '±',
+      if (r != null && r.restarts > 0) '‡',
     ].join();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -811,6 +812,16 @@ class _ExpandedPanel extends StatelessWidget {
         );
       }
     }
+    for (final s in present) {
+      final n = b.scenarios[s]!.restarts;
+      if (n > 0) {
+        lines.add(
+          '‡ ${scenarioLabel(s)}: under overload the app stopped responding '
+          'and had to be restarted ${n == 1 ? 'once' : '$n times'}; it did not '
+          'recover by itself.',
+        );
+      }
+    }
     if (b.notes != null) lines.add('Note: ${b.notes}');
     if (lines.isEmpty) return const [];
     return [
@@ -1037,6 +1048,7 @@ class _Footnote extends StatelessWidget {
     return Text(
       '$what  † = the load generator was the limit; the real number may be '
       'higher.  ± = repetitions differed by more than 10%.  '
+      '‡ = stopped responding under overload and was restarted.  '
       '— = not measured in that scenario.',
       style: const TextStyle(color: kTextMuted, fontSize: 11.5, height: 1.4),
     );

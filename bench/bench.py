@@ -268,6 +268,8 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores):
 
     rows = []
 
+    stopped = [False]  # set when the app cannot be brought back
+
     def do_step(rate, refine=False):
         start = time.time()
         res = stack.k6(
@@ -295,12 +297,29 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores):
         row["end_s"] = round(end - t0, 1)
         row["pass"] = slo.passes(row)
         row["recovery_s"] = 0.0
+        row["restarted"] = False
         if not row["pass"]:
             # Let a backlog from the overload drain before the next probe.
             recovered, waited = recovery.wait_recovered(lambda: health_probe(stack))
             row["recovery_s"] = round(waited, 1)
             if not recovered:
-                log(f"    backend did not recover within {recovery.TIMEOUT_S:.0f} s")
+                # The app is stuck (e.g. out of memory). Restart its container,
+                # keeping its data, and re-warm, so later probes measure
+                # capacity rather than a dead process. Recorded per step.
+                log(f"    backend did not recover within {recovery.TIMEOUT_S:.0f} s; restarting it")
+                row["restarted"] = True
+                stack.run("restart", "benchmark")
+                if wait_healthy(stack):
+                    passing = [r["target_rps"] for r in rows if r["pass"]]
+                    stack.k6(
+                        f"{scenario}.js",
+                        RATE=max(passing) if passing else steps[0],
+                        DURATION=f"{recovery.REWARM_S:.0f}s",
+                        SEED_ROWS=slo.SEED_ROWS,
+                    )
+                else:
+                    log("    backend did not come back after a restart")
+                    stopped[0] = True
         rows.append(row)
         log(
             f"    {rate:>6} rps -> {row['achieved_rps']:>8.0f} achieved, p99 {row['p99_ms']:7.1f} ms, "
@@ -313,7 +332,7 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores):
         if not do_step(rate):
             break
     for _ in range(slo.REFINE_STEPS):
-        mid = slo.refine_rate(rows)
+        mid = None if stopped[0] else slo.refine_rate(rows)
         if not mid:
             break
         do_step(mid, refine=True)
