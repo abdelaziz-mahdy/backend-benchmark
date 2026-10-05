@@ -57,14 +57,18 @@ export function randomId() {
 // Bodies are prebuilt strings; only the numbers are spliced in.
 const FOAM_URL = `${BASE}/service/noteService`;
 const FOAM_TAIL = ']}},"replyBox":{"class":"foam.box.HTTPReplyBox"}}';
-// Module state is per VU in k6, and __VU is only set once the VU runs, so
-// the prefix is built on first use.
+// One session for the whole load generator, like one API client calling
+// FOAM. A session per k6 VU looked more "real" but under overload k6 spins up
+// thousands of VUs, each became a heavy FOAM session, and the JVM ran out of
+// heap (OutOfMemoryError) — an artifact of k6, not of FOAM's request path.
+const FOAM_SESSION = __ENV.FOAM_SESSION || 'bench-client';
+// Built on first use (cheap; kept from when the id depended on __VU).
 let foamHeadForVu = null;
 function foamHead() {
   if (foamHeadForVu === null) {
     foamHeadForVu =
       '{"class":"foam.box.Envelope","message":{"class":"foam.box.SessionedMessage",' +
-      `"sessionId":"bench-${__VU}","message":{"class":"foam.box.RPCMessage","name":"`;
+      `"sessionId":"${FOAM_SESSION}","message":{"class":"foam.box.RPCMessage","name":"`;
   }
   return foamHeadForVu;
 }

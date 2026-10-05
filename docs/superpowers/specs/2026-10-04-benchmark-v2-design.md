@@ -207,6 +207,16 @@ Each PR: CI green, `flutter analyze` + `dart format` over the whole app, smoke t
   at ~6k rps for every fast framework (dotnet: DB 286% CPU, app 87%), so
   `db_read` measured Postgres, not the framework. Found in the first full run,
   which was discarded.
+- **Recovery wait after a failing step** (2026-10-05): FOAM3 needed ~15 s to
+  drain the backlog an overloaded step left behind; probing straight away
+  made every finer-search probe fail (~300 rps served, 100% errors), so its
+  result fell back to the last doubling step. The runner now waits for the
+  health path to answer fast three times in a row before the next step. The
+  other ten backends recover instantly (0 affected probes in the v2.1 run).
+- **FOAM clients send a session** (2026-10-05): without FOAM's
+  SessionedMessage wrapper every call journaled a new anonymous session,
+  serializing all requests (thread dumps: ~760 of 1000 threads waiting on the
+  journal). Real FOAM clients always send one.
 - **Seeding goes through the API** (`POST /notes/` via k6), not SQL. ORMs name
   tables differently and the FOAM embedded variant has no SQL at all.
 - **CPU sets scale with the Docker VM** (min 6 CPUs). On 10 CPUs: app 0-1,

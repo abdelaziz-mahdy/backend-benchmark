@@ -282,7 +282,9 @@ class _MethodScreenState extends State<MethodScreen> {
       (
         'Stop rule',
         'The run stops at the first step that misses the limits, then '
-            '$refineText.',
+            '$refineText. After every failing step it waits until the app '
+            'answers quickly again, so a backlog from the overload does not '
+            'spoil the next step.',
       ),
     ]);
   }

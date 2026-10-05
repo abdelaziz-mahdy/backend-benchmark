@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from benchlib import foam_rpc, machine, manifest, slo
+from benchlib import foam_rpc, machine, manifest, recovery, slo
 from benchlib.stats import Sampler
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -95,6 +95,17 @@ class Stack:
 
     def logs(self):
         return self.run("logs", "--no-color", "--tail", "60", "benchmark").stdout
+
+
+def health_probe(stack):
+    """One health request: (ok, seconds)."""
+    url = f"http://127.0.0.1:{PORT}{stack.item.health_path}"
+    start = time.monotonic()
+    try:
+        with urllib.request.urlopen(url, timeout=5) as r:
+            return r.status == 200, time.monotonic() - start
+    except (urllib.error.URLError, ConnectionError, TimeoutError, OSError):
+        return False, time.monotonic() - start
 
 
 def wait_healthy(stack):
@@ -283,6 +294,13 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores):
         row["start_s"] = round(start - t0, 1)
         row["end_s"] = round(end - t0, 1)
         row["pass"] = slo.passes(row)
+        row["recovery_s"] = 0.0
+        if not row["pass"]:
+            # Let a backlog from the overload drain before the next probe.
+            recovered, waited = recovery.wait_recovered(lambda: health_probe(stack))
+            row["recovery_s"] = round(waited, 1)
+            if not recovered:
+                log(f"    backend did not recover within {recovery.TIMEOUT_S:.0f} s")
         rows.append(row)
         log(
             f"    {rate:>6} rps -> {row['achieved_rps']:>8.0f} achieved, p99 {row['p99_ms']:7.1f} ms, "

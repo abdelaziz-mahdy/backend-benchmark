@@ -58,7 +58,9 @@ charset=utf-8`; the first arg is the Context argument, always `null`:
 
 The full request body wraps the message the way FOAM's `SessionClientBox`
 does for every client call:
-`{"class":"foam.box.Envelope","message":{"class":"foam.box.SessionedMessage","sessionId":"<per client>","message":<message>},"replyBox":{"class":"foam.box.HTTPReplyBox"}}`.
+`{"class":"foam.box.Envelope","message":{"class":"foam.box.SessionedMessage","sessionId":"bench-client","message":<message>},"replyBox":{"class":"foam.box.HTTPReplyBox"}}`
+(one session for the load generator, like one API client; a session per k6
+virtual user made FOAM run out of heap under overload).
 Leaving out the `SessionedMessage` makes `SessionServerBox` create and
 journal a new "anonymous" session on every request; under load ~760 of 1000
 Jetty threads then wait in `AbstractF3FileJournal.put` (thread dumps,
