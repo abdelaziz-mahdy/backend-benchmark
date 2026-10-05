@@ -3,7 +3,7 @@
   {
    "id": "latest_m2pro-10c-32g_v2.1",
    "kind": "latest",
-   "date": "2026-10-04",
+   "date": "2026-10-05",
    "machine": {
     "cores": 10,
     "cpu": "Apple M2 Pro",
@@ -49,7 +49,8 @@
     "no_db"
    ],
    "runs": [
-    "2026-10-04_m2pro-10c-32g_3ae75a8_cea6"
+    "2026-10-04_m2pro-10c-32g_3ae75a8_cea6",
+    "2026-10-05_m2pro-10c-32g_f48fe6b_636d"
    ],
    "headline": {
     "c_sharp-dot-net": {
@@ -168,78 +169,78 @@
     },
     "java-foam3-embedded": {
      "db_mixed": {
-      "sustainable_rps": 9000.0,
-      "peak_rps": 9784.866666666667,
-      "p50_ms": 0.165,
-      "p99_ms": 22.13889024,
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.187084,
+      "p99_ms": 6.51491768,
       "error_rate": 0.0,
-      "app_cpu": 112.32890909090911,
-      "app_mem_mb": 2033.2171636363635
+      "app_cpu": 136.5067272727273,
+      "app_mem_mb": 1928.9739636363652
      },
      "db_read": {
-      "sustainable_rps": 9000.0,
-      "peak_rps": 9825.2,
-      "p50_ms": 0.168291,
-      "p99_ms": 22.977166,
+      "sustainable_rps": 21000.0,
+      "peak_rps": 22989.966666666667,
+      "p50_ms": 0.927542,
+      "p99_ms": 40.05696999999999,
       "error_rate": 0.0,
-      "app_cpu": 114.7103636363636,
-      "app_mem_mb": 2021.3759999999995
+      "app_cpu": 158.75127272727278,
+      "app_mem_mb": 1947.7577142857153
      },
      "db_write": {
-      "sustainable_rps": 8000.0,
-      "peak_rps": 8000.033333333334,
-      "p50_ms": 0.164833,
-      "p99_ms": 11.015667,
+      "sustainable_rps": 12000.0,
+      "peak_rps": 14906.933333333332,
+      "p50_ms": 0.174,
+      "p99_ms": 41.106788279999975,
       "error_rate": 0.0,
-      "app_cpu": 103.54854545454546,
-      "app_mem_mb": 1960.6248727272707
+      "app_cpu": 138.04709090909097,
+      "app_mem_mb": 2043.587490909091
      },
      "no_db": {
-      "sustainable_rps": 11000.0,
-      "peak_rps": 11420.633333333333,
-      "p50_ms": 0.158125,
-      "p99_ms": 30.831972029999985,
+      "sustainable_rps": 23000.0,
+      "peak_rps": 23484.666666666668,
+      "p50_ms": 0.825458,
+      "p99_ms": 37.09078948,
       "error_rate": 0.0,
-      "app_cpu": 123.88818181818178,
-      "app_mem_mb": 2027.2407272727282
+      "app_cpu": 151.5435714285715,
+      "app_mem_mb": 1964.9462857142855
      }
     },
     "java-foam3-postgres": {
      "db_mixed": {
-      "sustainable_rps": 8000.0,
-      "peak_rps": 8188.3,
-      "p50_ms": 0.244125,
-      "p99_ms": 26.787278009999984,
+      "sustainable_rps": 11500.0,
+      "peak_rps": 11643.966666666667,
+      "p50_ms": 0.291459,
+      "p99_ms": 7.491761039999997,
       "error_rate": 0.0,
-      "app_cpu": 117.3370909090909,
-      "app_mem_mb": 1953.3824
+      "app_cpu": 150.13490909090913,
+      "app_mem_mb": 2027.8551272727266
      },
      "db_read": {
-      "sustainable_rps": 8000.0,
-      "peak_rps": 8964.2,
-      "p50_ms": 0.254167,
-      "p99_ms": 19.195125,
+      "sustainable_rps": 11500.0,
+      "peak_rps": 11779.866666666667,
+      "p50_ms": 0.282625,
+      "p99_ms": 9.497861259999999,
       "error_rate": 0.0,
-      "app_cpu": 124.40925925925924,
-      "app_mem_mb": 1943.343407407407
+      "app_cpu": 150.81981818181825,
+      "app_mem_mb": 2045.393454545454
      },
      "db_write": {
-      "sustainable_rps": 8000.0,
-      "peak_rps": 8513.433333333332,
-      "p50_ms": 0.541208,
-      "p99_ms": 58.13716616,
+      "sustainable_rps": 11500.0,
+      "peak_rps": 11590.466666666667,
+      "p50_ms": 0.563459,
+      "p99_ms": 9.707358519999994,
       "error_rate": 0.0,
-      "app_cpu": 136.038,
-      "app_mem_mb": 1971.4420363636384
+      "app_cpu": 160.2005454545455,
+      "app_mem_mb": 2034.390109090908
      },
      "no_db": {
-      "sustainable_rps": 9500.0,
-      "peak_rps": 9823.666666666666,
-      "p50_ms": 0.156083,
-      "p99_ms": 46.612791,
+      "sustainable_rps": 23000.0,
+      "peak_rps": 23690.866666666665,
+      "p50_ms": 0.618542,
+      "p99_ms": 35.09691124999999,
       "error_rate": 0.0,
-      "app_cpu": 113.60629629629629,
-      "app_mem_mb": 2011.1359999999981
+      "app_cpu": 146.56745454545452,
+      "app_mem_mb": 1936.9325714285708
      }
     },
     "java-spring-boot": {
@@ -1022,6 +1023,115 @@
     }
    },
    "file": "runs/latest_m2pro-10c-32g_v2.json"
+  },
+  {
+   "id": "2026-10-05_m2pro-10c-32g_f48fe6b_636d",
+   "kind": "run",
+   "date": "2026-10-05",
+   "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.0.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+   },
+   "methodology": "v2.1",
+   "dirty": false,
+   "contributor": null,
+   "backends": [
+    "java-foam3-embedded",
+    "java-foam3-postgres"
+   ],
+   "names": {
+    "java-foam3-embedded": "foam3 (embedded)",
+    "java-foam3-postgres": "foam3 (postgres)"
+   },
+   "scenarios": [
+    "db_mixed",
+    "db_read",
+    "db_write",
+    "no_db"
+   ],
+   "runs": null,
+   "headline": {
+    "java-foam3-embedded": {
+     "db_mixed": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.187084,
+      "p99_ms": 6.51491768,
+      "error_rate": 0.0,
+      "app_cpu": 136.5067272727273,
+      "app_mem_mb": 1928.9739636363652
+     },
+     "db_read": {
+      "sustainable_rps": 21000.0,
+      "peak_rps": 22989.966666666667,
+      "p50_ms": 0.927542,
+      "p99_ms": 40.05696999999999,
+      "error_rate": 0.0,
+      "app_cpu": 158.75127272727278,
+      "app_mem_mb": 1947.7577142857153
+     },
+     "db_write": {
+      "sustainable_rps": 12000.0,
+      "peak_rps": 14906.933333333332,
+      "p50_ms": 0.174,
+      "p99_ms": 41.106788279999975,
+      "error_rate": 0.0,
+      "app_cpu": 138.04709090909097,
+      "app_mem_mb": 2043.587490909091
+     },
+     "no_db": {
+      "sustainable_rps": 23000.0,
+      "peak_rps": 23484.666666666668,
+      "p50_ms": 0.825458,
+      "p99_ms": 37.09078948,
+      "error_rate": 0.0,
+      "app_cpu": 151.5435714285715,
+      "app_mem_mb": 1964.9462857142855
+     }
+    },
+    "java-foam3-postgres": {
+     "db_mixed": {
+      "sustainable_rps": 11500.0,
+      "peak_rps": 11643.966666666667,
+      "p50_ms": 0.291459,
+      "p99_ms": 7.491761039999997,
+      "error_rate": 0.0,
+      "app_cpu": 150.13490909090913,
+      "app_mem_mb": 2027.8551272727266
+     },
+     "db_read": {
+      "sustainable_rps": 11500.0,
+      "peak_rps": 11779.866666666667,
+      "p50_ms": 0.282625,
+      "p99_ms": 9.497861259999999,
+      "error_rate": 0.0,
+      "app_cpu": 150.81981818181825,
+      "app_mem_mb": 2045.393454545454
+     },
+     "db_write": {
+      "sustainable_rps": 11500.0,
+      "peak_rps": 11590.466666666667,
+      "p50_ms": 0.563459,
+      "p99_ms": 9.707358519999994,
+      "error_rate": 0.0,
+      "app_cpu": 160.2005454545455,
+      "app_mem_mb": 2034.390109090908
+     },
+     "no_db": {
+      "sustainable_rps": 23000.0,
+      "peak_rps": 23690.866666666665,
+      "p50_ms": 0.618542,
+      "p99_ms": 35.09691124999999,
+      "error_rate": 0.0,
+      "app_cpu": 146.56745454545452,
+      "app_mem_mb": 1936.9325714285708
+     }
+    }
+   },
+   "file": "runs/2026-10-05_m2pro-10c-32g_f48fe6b_636d.json"
   },
   {
    "id": "2026-10-04_m2pro-10c-32g_bff6922_0461",
