@@ -1,7 +1,14 @@
-FROM dart:3.13.5 AS build
+FROM dart:3.14.0 AS build
+# An older Serverpod release to build for the version history (see `history`
+# in backend.yaml); empty builds the version pinned in pubspec.lock.
+ARG FRAMEWORK_VERSION=
 WORKDIR /app
 COPY pubspec.yaml pubspec.lock ./
-RUN dart pub get
+RUN if [ -n "$FRAMEWORK_VERSION" ]; then \
+      sed -i "s/^  serverpod: .*/  serverpod: $FRAMEWORK_VERSION/" pubspec.yaml && \
+      rm pubspec.lock; \
+    fi && \
+    dart pub get
 COPY . .
 # dart build (not compile exe): serverpod 4 depends on sqlite3, which has native build hooks.
 RUN dart build cli --target bin/main.dart -o build/server

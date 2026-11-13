@@ -39,7 +39,11 @@ services:
         required: false
 
   benchmark:
-    build: ${APP_DIR:?APP_DIR is required}
+    build:
+      context: ${APP_DIR:?APP_DIR is required}
+      # Older release to build for the version history; empty = the pinned one.
+      args:
+        FRAMEWORK_VERSION: ${FRAMEWORK_VERSION:-}
     image: bench-app-${BACKEND_SLUG:?BACKEND_SLUG is required}
     cpuset: "${APP_CPUSET:-0-1}"
     mem_limit: 2g
