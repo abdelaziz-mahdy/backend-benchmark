@@ -1,8 +1,11 @@
 name: serverpod
 language: dart
 framework: serverpod
-version: "4.0.3"
-runtime: dart 3.13
+version: "4.1.1"
+runtime: dart 3.14
+# Older releases benchmarked alongside, for the version history.
+history:
+  - version: "4.0.3"
 variants:
   - id: postgres
     db: postgres

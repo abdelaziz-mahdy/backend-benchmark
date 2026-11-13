@@ -25,6 +25,13 @@ class Item:
     manifest: dict
     variant: Variant
     scenarios: list = field(default_factory=lambda: list(ALL_SCENARIOS))
+    # Set for an older release listed under `history:` in backend.yaml. The
+    # app is built with FRAMEWORK_VERSION=<version>; empty for the current one.
+    history_version: str = ""
+
+    @property
+    def version(self):
+        return self.history_version or self.manifest.get("version")
 
     @property
     def api_style(self):
@@ -60,18 +67,22 @@ def load_items(root: Path):
         slug = rel.replace("/", "-")
         variants = [Variant(**v) for v in manifest.get("variants") or [{"id": "postgres"}]]
         scenarios = manifest.get("scenarios") or list(ALL_SCENARIOS)
+        history = [str(h["version"]) for h in manifest.get("history") or []]
         for variant in variants:
             key = slug if len(variants) == 1 else f"{slug}-{variant.id}"
-            items.append(
-                Item(
-                    key=key,
-                    path=rel,
-                    app_dir=backend_dir / "app",
-                    manifest=manifest,
-                    variant=variant,
-                    scenarios=list(scenarios),
+            for version in [""] + history:
+                items.append(
+                    Item(
+                        # Docker image names can't hold "@", hence "-v".
+                        key=f"{key}-v{version}" if version else key,
+                        path=rel,
+                        app_dir=backend_dir / "app",
+                        manifest=manifest,
+                        variant=variant,
+                        scenarios=list(scenarios),
+                        history_version=version,
+                    )
                 )
-            )
     return items
 
 
