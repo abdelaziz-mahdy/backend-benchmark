@@ -6,6 +6,7 @@ import '../state/dashboard_state.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/calm.dart';
 import '../widgets/run_switcher.dart';
+import '../widgets/site_frame.dart';
 import 'views/compare_view.dart';
 import 'views/home_nav.dart';
 import 'views/every_number.dart';
@@ -92,98 +93,91 @@ class _HomePageState extends State<HomePage> {
       profileHeading: _profileHeading,
       child: SingleChildScrollView(
         controller: _scroll,
-        padding: const EdgeInsets.fromLTRB(16, 28, 16, 64),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: kHomeWidth),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SiteLine(state: state),
-                const SizedBox(height: 18),
-                Semantics(
-                  header: true,
-                  child: Text(
-                    'How much traffic can each backend framework handle?',
-                    style: t.h1,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
-                  child: Text(ledeFor(run), style: t.muted),
-                ),
-                if (run.isLegacy) _LegacyNote(state: state),
-                const SizedBox(height: 26),
-                SizedBox(key: _switchKey),
-                SegmentSwitch<HomeView>(
-                  label: 'Choose a view',
-                  focusNodes: _switchFocus,
-                  options: [for (final v in HomeView.values) (v, v.label)],
-                  selected: state.view,
-                  onSelected: state.setView,
-                ),
-                const SizedBox(height: 30),
-                Semantics(
-                  container: true,
-                  label: state.view.label,
-                  explicitChildNodes: true,
-                  child: KeyedSubtree(
-                    key: ValueKey('${run.id}/${state.view.name}'),
-                    child: view,
-                  ),
-                ),
-                const SizedBox(height: 44),
-                Fold(
-                  key: ValueKey('method-${run.id}'),
-                  title: 'How we tested',
-                  topLine: true,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Bullets(
-                        howWeTested(run),
-                        style: t.body.copyWith(fontSize: 15.5),
-                      ),
-                      const SizedBox(height: 12),
-                      TextLink(
-                        label: 'Full method',
-                        onTap: () => state.setPage(DashboardPage.method),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(kFootLine, style: t.small.copyWith(fontSize: 14)),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 20,
-                  children: [
-                    TextLink(
-                      label: 'History',
-                      onTap: () => state.setPage(DashboardPage.history),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SiteWidth(
+              max: kHomeWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 36),
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      'How much traffic can each backend framework handle?',
+                      style: t.h1,
                     ),
-                    TextLink(
-                      label: 'Full method',
-                      onTap: () => state.setPage(DashboardPage.method),
+                  ),
+                  const SizedBox(height: 10),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 600),
+                    child: Text(ledeFor(run), style: t.muted),
+                  ),
+                  const SizedBox(height: 12),
+                  _RunLine(state: state),
+                  if (run.isLegacy) _LegacyNote(state: state),
+                  const SizedBox(height: 26),
+                  SizedBox(key: _switchKey),
+                  SegmentSwitch<HomeView>(
+                    label: 'Choose a view',
+                    focusNodes: _switchFocus,
+                    options: [for (final v in HomeView.values) (v, v.label)],
+                    icons: const {
+                      HomeView.short: Icons.emoji_events_outlined,
+                      HomeView.one: Icons.search,
+                      HomeView.all: Icons.table_rows_outlined,
+                      HomeView.compare: Icons.compare_arrows,
+                    },
+                    selected: state.view,
+                    onSelected: state.setView,
+                  ),
+                  const SizedBox(height: 30),
+                  Semantics(
+                    container: true,
+                    label: state.view.label,
+                    explicitChildNodes: true,
+                    child: KeyedSubtree(
+                      key: ValueKey('${run.id}/${state.view.name}'),
+                      child: view,
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 44),
+                  Fold(
+                    key: ValueKey('method-${run.id}'),
+                    title: 'How we tested',
+                    topLine: true,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Bullets(
+                          howWeTested(run),
+                          style: t.body.copyWith(fontSize: 15.5),
+                        ),
+                        const SizedBox(height: 12),
+                        TextLink(
+                          label: 'Full method',
+                          onTap: () => state.setPage(DashboardPage.method),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+            const SiteFooter(),
+          ],
         ),
       ),
     );
   }
 }
 
-/// "Backend speed test · run on 5 October 2026 · Change run". The name goes
-/// back to the short answer.
-class _SiteLine extends StatelessWidget {
+/// "Results from 5 October 2026 · Change run", under the lede.
+class _RunLine extends StatelessWidget {
   final DashboardState state;
 
-  const _SiteLine({required this.state});
+  const _RunLine({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -193,22 +187,14 @@ class _SiteLine extends StatelessWidget {
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Pressable(
-          onTap: state.goHome,
-          radius: 4,
-          semanticLabel: "Backend speed test, back to who's fastest",
-          builder: (context, hovered) => Align(
-            widthFactor: 1,
-            child: Text(
-              'Backend speed test',
-              style: t.small.copyWith(
-                decoration: hovered ? TextDecoration.underline : null,
-              ),
-            ),
-          ),
+        Icon(
+          Icons.calendar_today_outlined,
+          size: 16,
+          color: context.palette.muted,
         ),
+        const SizedBox(width: 6),
         Text(
-          ' · run on ${longDate(entry?.date ?? run.date)}'
+          'Results from ${longDate(entry?.date ?? run.date)}'
           '${run.isLegacy ? ' (old method)' : ''} · ',
           style: t.small,
         ),

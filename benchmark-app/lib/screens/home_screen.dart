@@ -6,6 +6,7 @@ import '../state/dashboard_state.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/common.dart';
 import '../widgets/loading_widget.dart';
+import '../widgets/site_frame.dart';
 import 'history_screen.dart';
 import 'home_page.dart';
 import 'method_screen.dart';
@@ -76,11 +77,18 @@ class _HomeScreenState extends State<HomeScreen> {
         autofocus: true,
         onKeyEvent: _onKey,
         child: SelectionArea(
-          child: switch (state.page) {
-            DashboardPage.home => HomePage(picker: _picker),
-            DashboardPage.history => const _Page(child: HistoryScreen()),
-            DashboardPage.method => const _Page(child: MethodScreen()),
-          },
+          child: Column(
+            children: [
+              const SiteHeader(),
+              Expanded(
+                child: switch (state.page) {
+                  DashboardPage.home => HomePage(picker: _picker),
+                  DashboardPage.history => const _Page(child: HistoryScreen()),
+                  DashboardPage.method => const _Page(child: MethodScreen()),
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

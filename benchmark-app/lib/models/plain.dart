@@ -310,39 +310,40 @@ List<Band> bandsFor(List<Result> results) {
 
 // ---------------------------------------------------------------- answers
 
-/// The answer under the main test: who is fastest and who is next, in two
-/// short sentences. The groups below it show everyone else, and the note
-/// under the top group says when the test tool was the limit.
+/// [f] (a share of the fastest, 0..1) in words: "about three-quarters as
+/// fast". Readers compare words and bar lengths, not numbers.
+String asFast(double f) {
+  if (f >= 0.95) return 'about as fast';
+  if (f >= 0.85) return 'nearly as fast';
+  if (f >= 0.7) return 'about three-quarters as fast';
+  if (f >= 0.6) return 'about two-thirds as fast';
+  if (f >= 0.42) return 'about half as fast';
+  if (f >= 0.3) return 'about a third as fast';
+  if (f >= 0.18) return 'about a quarter as fast';
+  if (f >= 0.1) return 'about a tenth as fast';
+  return 'less than a tenth as fast';
+}
+
+/// The answer under a test, in words: who is fastest and how the next one
+/// compares. Numbers are one tap away on the bars, not in the sentence.
 String answerFor(List<Result> results) {
   if (results.isEmpty) return 'No framework has a result in this test.';
   final sorted = sortResults(results);
   final leader = sorted.first;
-  final top = sortResults([leader, ...closeTo(sorted, leader)]);
-  String span(List<Result> g) => spanText(
-    g.map((r) => r.value).reduce(math.min),
-    g.map((r) => r.value).reduce(math.max),
-  );
-  String who(List<Result> g) => g.length > 3
-      ? '${capFirst(numberWord(g.length))} frameworks'
-      : capFirst(_names(g));
-  final out = <String>[
-    top.length == 1
-        ? '${capFirst(leader.name)} is the fastest, with '
-              '${whole(leader.value)} requests a second.'
-        : '${who(top)} tie for fastest, with ${span(top)} requests a second.',
-  ];
-  final shown = {for (final r in top) r.key};
-  final rest = sorted.where((r) => !shown.contains(r.key)).toList();
-  if (rest.isNotEmpty) {
-    final next = rest.first;
-    final group = sortResults([next, ...closeTo(rest, next)]);
-    out.add(
-      group.length == 1
-          ? 'Next is ${next.name}, with ${whole(next.value)}.'
-          : 'Next are ${_names(group)}, with ${span(group)}.',
-    );
+  final tied = sorted.where((r) => r.value == leader.value).toList();
+  if (tied.length > 1) {
+    final who = tied.length > 3
+        ? '${capFirst(numberWord(tied.length))} frameworks'
+        : capFirst(_names(tied));
+    return tied.any((r) => r.capped)
+        ? "$who tie for fastest at our testing tool's limit, so we can't "
+              'tell them apart.'
+        : '$who tie for fastest.';
   }
-  return out.join(' ');
+  if (sorted.length == 1) return '${capFirst(leader.name)} is the only one.';
+  final next = sorted[1];
+  return '${capFirst(leader.name)} is the fastest. Next is ${next.name}, '
+      '${asFast(next.value / leader.value)}.';
 }
 
 /// Spearman's rank correlation of the frameworks both lists share; null
@@ -371,19 +372,7 @@ String otherSummary(
   List<Result> results,
   List<Result> main,
   TestInfo mainTitle,
-) {
-  if (results.isEmpty) return 'No framework has a result in this test.';
-  final sorted = sortResults(results);
-  final capped = sorted.where((r) => r.capped).toList();
-  if (capped.length >= 2 && sorted.first.capped) {
-    final n = numberWord(capped.length);
-    return "${capFirst(n)} frameworks tie at our testing tool's limit, so we can't "
-        'tell which is fastest.';
-  }
-  final leader = sorted.first;
-  return '${capFirst(leader.name)} is the fastest, with '
-      '${whole(leader.value)} requests a second.';
-}
+) => answerFor(results);
 
 // ---------------------------------------------------------------- compare
 
