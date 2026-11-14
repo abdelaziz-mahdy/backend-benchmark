@@ -418,18 +418,19 @@ class _ReplayLane extends StatelessWidget {
               style: mono(11.5, color: statusColor),
             );
             if (narrow) {
+              // Phones: the status gets its own line so it is never cut off.
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(child: name),
-                      const SizedBox(width: 8),
-                      Flexible(child: label),
-                    ],
-                  ),
+                  name,
                   const SizedBox(height: 4),
                   track,
+                  const SizedBox(height: 2),
+                  Text(
+                    status,
+                    maxLines: 2,
+                    style: mono(11.5, color: statusColor),
+                  ),
                 ],
               );
             }
