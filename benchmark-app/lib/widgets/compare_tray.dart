@@ -137,9 +137,18 @@ class CompareTray extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: body(12.5, color: kTextPrimary, weight: FontWeight.w600),
         ),
-        Text(
-          '${picked.length} of ${DashboardState.maxCompare}',
-          style: mono(11, color: kTextMuted),
+        Tooltip(
+          message: state.parkedCompare.isEmpty
+              ? ''
+              : 'Not in this run, kept for later: '
+                    '${state.parkedCompare.map(state.nameOf).join(', ')}',
+          child: Text(
+            '${picked.length} of ${DashboardState.maxCompare}'
+            '${state.parkedCompare.isEmpty ? '' : ' · ${state.parkedCompare.length} not in this run'}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: mono(11, color: kTextMuted),
+          ),
         ),
       ],
     );
@@ -150,59 +159,67 @@ class CompareTray extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
-            child: LayoutBuilder(
-              builder: (context, c) {
-                if (c.maxWidth < kNarrow) {
-                  return SizedBox(
-                    height: 56,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: LayoutBuilder(
+          builder: (context, outer) => Padding(
+            // Same frame as the page body, so chips line up with the table.
+            padding: EdgeInsets.symmetric(
+              horizontal: outer.maxWidth < kNarrow ? 0 : 28,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
+                child: LayoutBuilder(
+                  builder: (context, c) {
+                    if (c.maxWidth < kNarrow) {
+                      return SizedBox(
+                        height: 56,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            children: [
+                              _AvatarStack(
+                                picked: picked,
+                                onTap: () => _openSheet(context),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(child: status),
+                              clear,
+                              const SizedBox(width: 4),
+                              compare,
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Row(
                         children: [
-                          _AvatarStack(
-                            picked: picked,
-                            onTap: () => _openSheet(context),
+                          status,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                for (final b in picked)
+                                  DockChip(
+                                    key: ValueKey(b.key),
+                                    backend: b,
+                                    onRemove: () => state.toggleCompare(b.key),
+                                  ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(child: status),
                           clear,
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 8),
                           compare,
                         ],
                       ),
-                    ),
-                  );
-                }
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 10, 28, 10),
-                  child: Row(
-                    children: [
-                      status,
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            for (final b in picked)
-                              DockChip(
-                                key: ValueKey(b.key),
-                                backend: b,
-                                onRemove: () => state.toggleCompare(b.key),
-                              ),
-                          ],
-                        ),
-                      ),
-                      clear,
-                      const SizedBox(width: 8),
-                      compare,
-                    ],
-                  ),
-                );
-              },
+                    );
+                  },
+                ),
+              ),
             ),
           ),
         ),

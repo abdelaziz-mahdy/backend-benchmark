@@ -11,6 +11,7 @@ import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/app_header.dart';
 import '../widgets/common.dart';
+import '../widgets/race_replay.dart' show Slo;
 import '../widgets/implementation.dart';
 
 /// How the numbers are made. Four key facts up front; every section shows a
@@ -804,9 +805,11 @@ class _ContentsList extends StatelessWidget {
 }
 
 /// "How a run works", drawn from one real result: every load step the
-/// leader of the ranked scenario ran, rising left to right, green while it
-/// held the limits and red once it failed. The last green step is the
-/// sustainable load. Steps rise one after another when the page opens.
+/// best framework of the ranked scenario ran (one the load generator did
+/// not cap, when there is one), in order of rate. Each bar is what was
+/// served on a log scale, under an outline of what was asked; lime steps
+/// held the limits, red ones broke one, amber ones failed because the load
+/// generator itself was the limit. The flag marks the sustainable step.
 class _RunStaircase extends StatelessWidget {
   final DashboardState state;
 
@@ -821,109 +824,281 @@ class _RunStaircase extends StatelessWidget {
         .where((b) => (b.scenarios[s]?.steps.length ?? 0) > 1)
         .toList();
     if (ranked.isEmpty) return const SizedBox.shrink();
-    final b = ranked.first;
+    // An example the load generator capped would show its failures as the
+    // app's; prefer the best uncapped one.
+    final b = ranked.firstWhere(
+      (x) => !x.scenarios[s]!.loadgenBound,
+      orElse: () => ranked.first,
+    );
     final r = b.scenarios[s]!;
     final steps = [...r.steps]
       ..sort((a, c) => a.targetRps.compareTo(c.targetRps));
+    final slo = Slo.of(state.run!.params);
     final base = steps.first.targetRps;
-    final top = steps.last.targetRps;
-    double h(double rps) =>
-        (math.log(rps / base) / math.log(top / base)).clamp(0.0, 1.0);
+    final top = steps
+        .map((x) => math.max(x.targetRps, x.achievedRps))
+        .reduce(math.max);
+    double h(double rps) => rps <= 0
+        ? 0
+        : (math.log(math.max(rps, base) / base) / math.log(top / base)).clamp(
+            0.0,
+            1.0,
+          );
     final lastPass = steps.lastIndexWhere((x) => x.pass);
+    final firstFail = steps.indexWhere((x) => !x.pass);
     final sustainable = Metrics.sustainable.value(r);
-    final slo = (state.run!.params['slo'] as Map?)?['p99_ms'] ?? 100;
+    final pick = b == ranked.first
+        ? 'the leader'
+        : 'the best framework the load generator did not cap';
+    final ticks = [
+      for (var p = 1000.0; p <= top; p *= 10)
+        if (p > base) p,
+    ];
+    const barArea = 150.0;
+    Color tone(LoadStep x) => x.pass
+        ? kSignal
+        : x.k6Bound
+        ? kAmber
+        : kRedline;
     return SectionCard(
       eyebrow: 'How a run works',
       title: 'One real run, step by step',
       subtitle:
-          'Every load step ${b.name} ran in ${scenarioLabel(s)}. Lime steps '
-          'held p99 < ${slo is num ? slo.round() : slo} ms with < 1% errors; '
-          'red ones failed. The highest lime step is the sustainable load'
+          'Every load step ${b.name} ($pick) ran in ${scenarioLabel(s)}, '
+          'from its median repetition, in order of rate. A bar is what was '
+          'served (log scale); the outline is what was asked. Lime steps '
+          'held p99 < ${formatMs(slo.p99Ms)} with < '
+          '${(slo.errorRate * 100).toStringAsFixed(0)}% errors; red ones '
+          'broke a limit; amber ones failed because the load generator was '
+          'the limit. Narrow bars are probes between the last pass and the '
+          'first fail. The flag is the sustainable load'
           '${sustainable == null ? '' : ' (median of the repetitions: ${formatMetric(Metrics.sustainable, sustainable)})'}.',
       child: LayoutBuilder(
         builder: (context, c) {
-          final gap = c.maxWidth < 500 ? 3.0 : 6.0;
-          final barW = (c.maxWidth - gap * (steps.length - 1)) / steps.length;
+          const axis = 38.0;
+          final width = c.maxWidth - axis;
+          final gap = width < 500 ? 3.0 : 6.0;
+          final barW = (width - gap * (steps.length - 1)) / steps.length;
           final labelEvery = barW < 30 ? 2 : 1;
-          return SizedBox(
-            height: 190,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (var i = 0; i < steps.length; i++) ...[
-                  if (i > 0) SizedBox(width: gap),
-                  SizedBox(
-                    width: barW,
-                    child: Tooltip(
-                      message:
-                          '${formatNumber(steps[i].targetRps)} req/s requested · '
-                          'served ${formatNumber(steps[i].achievedRps)} · '
-                          'p99 ${formatMs(steps[i].p99)}'
-                          '${steps[i].pass ? '' : ' · failed'}',
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
+          final wide = barW >= 64;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: barArea + 24 + (wide ? 30 : 0) + 20,
+                child: Stack(
+                  children: [
+                    // Log gridlines with their rates.
+                    for (final t in ticks)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 26 + (wide ? 30 : 0) + barArea * h(t) - 7,
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: axis,
+                              child: Text(
+                                compactRps(t),
+                                style: mono(10.5, color: kTextMuted),
+                              ),
+                            ),
+                            Expanded(
+                              child: Container(height: 1, color: kGridLine),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Positioned.fill(
+                      left: axis,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          if (i == lastPass)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Icon(
-                                Icons.flag,
-                                size: 16,
-                                color: kSignal,
-                                semanticLabel: 'Highest step held',
+                          for (var i = 0; i < steps.length; i++) ...[
+                            if (i > 0) SizedBox(width: gap),
+                            SizedBox(
+                              width: barW,
+                              child: _StepBar(
+                                step: steps[i],
+                                index: i,
+                                held: i == lastPass,
+                                served: barArea * h(steps[i].achievedRps),
+                                asked: barArea * h(steps[i].targetRps),
+                                color: tone(steps[i]),
+                                reason: wide
+                                    ? (i == lastPass
+                                          ? 'p99 ${formatMs(steps[i].p99)} · held'
+                                          : slo.reason(steps[i]))
+                                    : null,
+                                showRate: i % labelEvery == 0 || i == lastPass,
+                                slo: slo,
                               ),
                             ),
-                          TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 0, end: 1),
-                            duration: motion(context, 360 + i * 45),
-                            curve: Interval(
-                              i * 45 / (360 + i * 45),
-                              1,
-                              curve: Curves.easeOutCubic,
-                            ),
-                            builder: (context, t, _) => Container(
-                              height: 14 + 120 * h(steps[i].targetRps) * t,
-                              decoration: BoxDecoration(
-                                color: steps[i].pass
-                                    ? kSignal.withValues(
-                                        alpha: i == lastPass ? 0.95 : 0.4,
-                                      )
-                                    : kRedline.withValues(alpha: 0.25),
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(4),
-                                ),
-                                border: steps[i].pass
-                                    ? null
-                                    : Border.all(color: kRedline),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          SizedBox(
-                            height: 14,
-                            child: i % labelEvery == 0 || i == lastPass
-                                ? FittedBox(
-                                    child: Text(
-                                      compactRps(steps[i].targetRps),
-                                      style: mono(
-                                        10.5,
-                                        color: i == lastPass
-                                            ? kSignal
-                                            : kTextDim,
-                                      ),
-                                    ),
-                                  )
-                                : null,
-                          ),
+                          ],
                         ],
                       ),
                     ),
-                  ),
-                ],
-              ],
-            ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    if (lastPass >= 0)
+                      TextSpan(
+                        text:
+                            'Held ${compactRps(steps[lastPass].targetRps)} '
+                            'with p99 ${formatMs(steps[lastPass].p99)}. ',
+                        style: body(12.5, color: kSignal),
+                      ),
+                    if (firstFail >= 0)
+                      TextSpan(
+                        text:
+                            'First failure at '
+                            '${compactRps(steps[firstFail].targetRps)}: '
+                            '${slo.reason(steps[firstFail])}.',
+                        style: body(
+                          12.5,
+                          color: steps[firstFail].k6Bound ? kAmber : kRedline,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _StepBar extends StatelessWidget {
+  final LoadStep step;
+  final int index;
+  final bool held;
+  final double served;
+  final double asked;
+  final Color color;
+  final String? reason;
+  final bool showRate;
+  final Slo slo;
+
+  const _StepBar({
+    required this.step,
+    required this.index,
+    required this.held,
+    required this.served,
+    required this.asked,
+    required this.color,
+    required this.reason,
+    required this.showRate,
+    required this.slo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final i = index;
+    final probe = step.refine;
+    final why = slo.reason(step);
+    return Tooltip(
+      message:
+          '${formatRps(step.targetRps)} req/s asked · served '
+          '${formatRps(step.achievedRps)} · p99 ${formatMs(step.p99)} · '
+          'errors ${(step.errorRate * 100).toStringAsFixed(2)}%'
+          '${probe ? ' · probe step' : ''}'
+          '${why.isEmpty ? ' · held' : ' · failed: $why'}',
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (held)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 2),
+              child: Icon(
+                Icons.flag,
+                size: 16,
+                color: kSignal,
+                semanticLabel: 'Highest step held',
+              ),
+            ),
+          FractionallySizedBox(
+            widthFactor: probe ? 0.62 : 1,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: motion(context, 360 + i * 45),
+              curve: Interval(
+                i * 45 / (360 + i * 45),
+                1,
+                curve: Curves.easeOutCubic,
+              ),
+              builder: (context, t, _) => SizedBox(
+                height: 6 + asked * t,
+                child: Stack(
+                  children: [
+                    // What was asked: an outline cap.
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(4),
+                          ),
+                          border: Border.all(
+                            color: color.withValues(alpha: 0.55),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // What was served.
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: (6 + served * t).clamp(0, 6 + asked * t),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: color.withValues(
+                            alpha: step.pass ? (held ? 0.95 : 0.45) : 0.4,
+                          ),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(4),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 14,
+            child: showRate
+                ? FittedBox(
+                    child: Text(
+                      compactRps(step.targetRps),
+                      style: mono(
+                        10.5,
+                        color: held ? kSignal : kTextMuted,
+                        weight: held ? FontWeight.w700 : FontWeight.w400,
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          if (reason != null)
+            SizedBox(
+              height: 30,
+              child: Text(
+                reason!,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: mono(10, color: color, height: 1.25),
+              ),
+            ),
+        ],
       ),
     );
   }

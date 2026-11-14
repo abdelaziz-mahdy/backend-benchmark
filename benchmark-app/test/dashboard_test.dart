@@ -29,6 +29,7 @@ Map<String, dynamic> scenarioJson({
   num cpu = 150,
   num mem = 100,
   bool loadgenBound = false,
+  List<Map<String, dynamic>> steps = const [],
 }) => {
   'reps': 3,
   'sustainable_rps': ?(sustainable == null ? null : stat(sustainable)),
@@ -38,8 +39,53 @@ Map<String, dynamic> scenarioJson({
   'app_mem_mb': stat(mem),
   'db_cpu': ?(dbCpu == null ? null : stat(dbCpu)),
   'loadgen_bound': loadgenBound,
-  'steps': [],
+  'steps': steps,
   'timeseries': {},
+};
+
+/// One recorded load step.
+Map<String, dynamic> step(
+  num target, {
+  num? served,
+  num p99 = 10,
+  bool pass = true,
+  bool k6 = false,
+  bool refine = false,
+}) => {
+  'target_rps': target,
+  'achieved_rps': served ?? target,
+  'error_rate': 0,
+  'p50_ms': p99 / 4,
+  'p90_ms': p99 / 2,
+  'p99_ms': p99,
+  'p999_ms': p99 * 1.5,
+  'app_cpu': 50,
+  'app_mem_mb': 100,
+  'pass': pass,
+  'k6_bound': k6,
+  'refine': refine,
+};
+
+/// A backend with recorded steps in one scenario.
+Map<String, dynamic> steppedBackend(
+  String key,
+  num sustainable,
+  List<Map<String, dynamic>> steps, {
+  String scenario = 'db_mixed',
+  bool loadgenBound = false,
+}) => {
+  'key': key,
+  'name': key,
+  'language': 'go',
+  'status': 'ok',
+  'scenarios': {
+    scenario: scenarioJson(
+      sustainable: sustainable,
+      p99: 20,
+      loadgenBound: loadgenBound,
+      steps: steps,
+    ),
+  },
 };
 
 /// A backend with one scenario (the old shape most tests use).
@@ -244,6 +290,10 @@ Finder inSheet(String text) =>
 Future<void> settle(WidgetTester t) async {
   await t.pump();
   await t.pump(const Duration(milliseconds: 400));
+  // An opened row scrolls into view after its first frame, and a scroll
+  // animation ignores taps until the frame after it ends.
+  await t.pump(const Duration(milliseconds: 400));
+  await t.pump();
 }
 
 void main() {
@@ -380,7 +430,7 @@ void main() {
       )!;
       expect((rank.position, rank.total), (3, 5));
       expect(rank.shareOfLeader, 0.5);
-      expect(rank.label, '#3 of 5');
+      expect(rank.label, 'P3 of 5');
       expect(state.expandFirstMatch('nothing-here'), isFalse);
       expect(state.expandFirstMatch('rust'), isTrue);
       expect(state.expandedKey, 'c');
@@ -540,10 +590,10 @@ void main() {
       expect(find.text('Peak throughput (req/s)'), findsOneWidget);
       expect(find.text('App memory'), findsOneWidget);
       expect(find.textContaining('Rank by'), findsOneWidget);
-      // go-mux: tied #1 of 4 in No DB, #2 of 4 in DB read, #2 of 5 in mixed.
-      expect(find.text('tied #1 of 4'), findsWidgets);
-      expect(find.text('#2 of 4'), findsWidgets);
-      expect(find.text('#2 of 5'), findsOneWidget);
+      // go-mux: tied P1 of 4 in No DB, P2 of 4 in DB read, P2 of 5 in mixed.
+      expect(find.text('tied P1 of 4'), findsWidgets);
+      expect(find.text('P2 of 4'), findsWidgets);
+      expect(find.text('P2 of 5'), findsOneWidget);
       expect(find.text('50%'), findsOneWidget); // 16K of 32K in DB mixed
       // Flags are written out, not hidden in tooltips.
       expect(find.textContaining('load generator was the limit'), findsWidgets);
@@ -566,7 +616,7 @@ void main() {
       await settle(t);
       expect(state.expandedKey, 'db-only');
       expect(find.text('—'), findsWidgets);
-      expect(find.text('#5 of 5'), findsOneWidget);
+      expect(find.text('P5 of 5'), findsOneWidget);
       expect(find.textContaining('No implementation details'), findsOneWidget);
       expect(t.takeException(), isNull);
     });
@@ -675,11 +725,13 @@ void main() {
         expect((e.widget as Text).style!.color, isNot(kSignal));
       }
       expect(find.text('='), findsAtLeastNWidgets(4)); // other rows tie too
-      // p99: alpha wins (10 ms), beta is 2.0× slower.
+      // p99 at each one's own load is context: shown, never crowned.
       final p99 = t.widget<Text>(find.text('10.0 ms'));
-      expect(p99.style!.color, kSignal);
-      expect(find.text('2.0× slower'), findsOneWidget);
+      expect(p99.style!.color, isNot(kSignal));
+      expect(find.text('2.0× slower'), findsNothing);
       // DB CPU exists only for alpha: not green, no delta, after "More rows".
+      await t.ensureVisible(find.text('More rows'));
+      await settle(t);
       await t.tap(find.text('More rows'));
       await settle(t);
       expect(find.text('Database CPU'), findsOneWidget);
@@ -745,10 +797,9 @@ void main() {
       await settle(t);
       expect(state.page, DashboardPage.details);
       expect(state.scenario, 'no_db');
-      expect(
-        find.textContaining('tied #1 of 4 by sustainable load in No DB'),
-        findsOneWidget,
-      );
+      // Tied for first in No DB: said, not a rank sentence.
+      expect(find.text('Tied for P1 with one other'), findsOneWidget);
+      expect(find.text('TIED FOR P1'), findsOneWidget);
       expect(find.text('How go-mux is implemented'), findsOneWidget);
       expect(find.text('backends/go/mux'), findsOneWidget);
       expect(find.text('at run commit abc1234'), findsOneWidget);
@@ -760,10 +811,12 @@ void main() {
         ),
       );
       await settle(t);
-      expect(
-        find.textContaining('#2 of 5 by sustainable load in DB mixed'),
-        findsOneWidget,
-      );
+      // P2 in DB mixed: who is ahead and behind, and the gap tile.
+      expect(find.text('Behind '), findsOneWidget);
+      // 2.00× behind rust-actix (32K / 16K) and ahead of foam3 (16K / 8K).
+      expect(find.text(' by 2.00×'), findsNWidgets(2));
+      expect(find.text('GAP TO P1'), findsOneWidget);
+      expect(find.text('Compare with rust-actix'), findsOneWidget);
       expect(t.takeException(), isNull);
     });
 
@@ -777,7 +830,7 @@ void main() {
       await t.tap(find.widgetWithText(ActionChip, 'DB mixed'));
       await settle(t);
       expect(state.scenario, 'db_mixed');
-      expect(find.text('500 req/s'), findsWidgets);
+      expect(find.text('500'), findsWidgets); // the headline, counted up
       expect(t.takeException(), isNull);
     });
 
@@ -933,12 +986,17 @@ void main() {
       final state = await pumpApp(t, realisticBundle());
       // Two frameworks tie at the load generator's limit in No DB: said as
       // such, not as a single winner.
-      final photo = find.text(
-        "Photo finish: 2 tied at the load generator's limit",
-      );
+      final photo = find.text('2-way photo finish');
       expect(photo, findsOneWidget);
       // (DB write has a plain two-way tie too.)
-      expect(find.text('2-way tie'), findsNWidgets(2));
+      expect(find.text('2-way tie'), findsOneWidget);
+      // The headline answers: rust-actix leads DB read and DB mixed alone.
+      expect(find.text('rust-actix leads 2 of 4 scenarios'), findsOneWidget);
+      expect(
+        find.text('DB read and DB mixed: 1.33× to 2.00× ahead of go-mux.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('No DB is a 2-way photo finish'), findsOne);
       // DB mixed: rust-actix 32K leads go-mux 16K by 2×.
       expect(find.text('2.00× ahead of go-mux'), findsOneWidget);
       await t.tap(photo);
@@ -979,7 +1037,13 @@ void main() {
       state.setMetric(Metrics.p99);
       await settle(t);
       expect(find.text('LOWER IS BETTER'), findsOneWidget);
-      expect(find.text('Who has the lowest p99 latency?'), findsOneWidget);
+      // Latency is context, not a race: the headline says so, and no P1
+      // is crowned in lime.
+      expect(
+        find.text('Lowest p99 latency, each at its own sustainable load'),
+        findsOneWidget,
+      );
+      expect(find.text('P99 LATENCY · CONTEXT, NOT A RACE'), findsOneWidget);
       expect(t.takeException(), isNull);
     });
 
@@ -1023,6 +1087,248 @@ void main() {
         expect(contrast(c, kCardBg), greaterThanOrEqualTo(4.5));
         expect(contrast(c, kCardBgRaised), greaterThanOrEqualTo(4.5));
       }
+    });
+  });
+
+  group('round 2', () {
+    test('numbers are honest: whole req/s, no "-100%", longer is better', () {
+      expect(formatMetric(Metrics.sustainable, 258), '258 req/s');
+      expect(formatMetricShort(Metrics.avgRps, 47.2), '47');
+      expect(formatMetricShort(Metrics.p99, 47.2), '47.2 ms');
+      // 258 vs 55.1K is 99.5% behind: a ratio, not a rounded "−100%".
+      expect(gapToLeader(Metrics.sustainable, 258, 55100), '214× behind');
+      expect(gapToLeader(Metrics.sustainable, 30000, 40000), '−25%');
+      expect(barShare(Metrics.p99, 20, 10), 0.5);
+      expect(barShare(Metrics.sustainable, 20, 40), 0.5);
+      expect(
+        shortRunId('2026-10-04_m2pro-10c-32g_3ae75a8_cea6'),
+        '2026-10-04 · 3ae75a8',
+      );
+    });
+
+    test('a full tray is never emptied behind the user\'s back', () async {
+      final bundle = MapBundle(
+        files(
+          [indexEntry('r1')],
+          {
+            'r1': [
+              for (final (k, v) in [
+                ('a', 1),
+                ('b', 2),
+                ('c', 3),
+                ('d', 4),
+                ('e', 5),
+              ])
+                backend(k, sustainable: v),
+            ],
+          },
+        ),
+      );
+      final state = DashboardState(ResultsService(bundle));
+      await state.load();
+      for (final k in ['a', 'b', 'c', 'd']) {
+        state.toggleCompare(k);
+      }
+      expect(state.compareWithLeaders('e'), isFalse);
+      expect(state.compareKeys, ['a', 'b', 'c', 'd']);
+      expect(state.page, DashboardPage.home);
+      expect(state.comparePair('e', 'a'), isFalse);
+      state.toggleCompare('d');
+      expect(state.comparePair('e', 'a'), isTrue);
+      expect(state.compareKeys, ['a', 'b', 'c', 'e']);
+      expect(state.page, DashboardPage.compare);
+    });
+
+    test('picks a run lacks are parked and come back', () async {
+      final bundle = MapBundle(
+        files(
+          [indexEntry('r1'), indexEntry('r2')],
+          {
+            'r1': [backend('a', sustainable: 1), backend('b', sustainable: 2)],
+            'r2': [backend('b', sustainable: 2)],
+          },
+        ),
+      );
+      final state = DashboardState(ResultsService(bundle));
+      await state.load();
+      state.toggleCompare('a');
+      state.toggleCompare('b');
+      await state.selectRun(state.index[1]);
+      expect(state.compareKeys, ['b']);
+      expect(state.parkedCompare, ['a']);
+      await state.selectRun(state.index[0]);
+      expect(state.compareKeys, ['b', 'a']);
+      expect(state.parkedCompare, isEmpty);
+    });
+
+    test('v1 results show today\'s names and keep the old one', () async {
+      final legacyRun = {
+        'id': 'legacy-v1',
+        'kind': 'legacy',
+        'methodology': 'v1',
+        'machine': {'slug': 'm', 'cpu': 'CPU', 'cores': 1, 'ram_gb': 1},
+        'params': {},
+        'backends': [
+          {
+            'key': 'go-mux',
+            'name': 'golang mux',
+            'language': 'go',
+            'scenarios': {
+              'no_db_test': {'avg_rps': stat(700)},
+            },
+          },
+        ],
+      };
+      final bundle = MapBundle({
+        'assets/results/index.json': jsonEncode({
+          'runs': [
+            {
+              ...indexEntry('r1'),
+              'names': {'go-mux': 'go mux'},
+            },
+            {
+              ...indexEntry('legacy-v1', kind: 'legacy', methodology: 'v1'),
+              'names': {'go-mux': 'golang mux'},
+            },
+          ],
+        }),
+        'assets/results/runs/r1.json': files(
+          [indexEntry('r1')],
+          {
+            'r1': [backend('go-mux', sustainable: 1)],
+          },
+        )['assets/results/runs/r1.json']!,
+        'assets/results/runs/legacy-v1.json': jsonEncode(legacyRun),
+      });
+      final state = DashboardState(ResultsService(bundle));
+      await state.load();
+      await state.selectRun(state.index[1]);
+      final b = state.run!.backend('go-mux')!;
+      expect(b.name, 'go mux');
+      expect(b.subtitle, contains('v1 name: golang mux'));
+      expect(Metrics.avgRps.value(b.scenarios['no_db_test']!), 700);
+    });
+
+    testWidgets('compare adds a like-for-like row and replays the steps', (
+      t,
+    ) async {
+      final bundle = MapBundle(
+        files(
+          [indexEntry('r1')],
+          {
+            'r1': [
+              steppedBackend('alpha', 1000, [
+                step(250, p99: 5),
+                step(500, p99: 8),
+                step(1000, p99: 12),
+              ]),
+              steppedBackend('beta', 500, [
+                step(250, p99: 9),
+                step(500, p99: 30),
+                step(1000, served: 900, p99: 150, pass: false),
+              ]),
+            ],
+          },
+        ),
+      );
+      final state = await pumpApp(t, bundle, size: const Size(1400, 2400));
+      state.toggleCompare('alpha');
+      state.toggleCompare('beta');
+      state.setScenario('db_mixed');
+      state.openCompare();
+      await settle(t);
+      expect(find.textContaining('alpha wins all 1'), findsOneWidget);
+      // Both held 500 req/s: p99 there is like for like, best in lime.
+      expect(find.text('AT A SHARED LOAD · 500 REQ/S'), findsOneWidget);
+      final shared = t.widget<Text>(find.text('8.00 ms'));
+      expect(shared.style!.color, kSignal);
+      expect(find.text('3.8× slower'), findsNWidgets(2)); // p99 and median
+      // The replay ends on the last recorded step.
+      expect(find.text('Watch the load climb'), findsOneWidget);
+      expect(
+        find.textContaining('out at 1.0K: p99 150 ms, served 90%'),
+        findsOneWidget,
+      );
+      await t.tap(find.byTooltip('Replay the race'));
+      await t.pump(const Duration(milliseconds: 100));
+      expect(find.text('250 req/s'), findsOneWidget); // back at the start
+      await t.pump(const Duration(seconds: 2));
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('the method example skips a result the load generator capped', (
+      t,
+    ) async {
+      final bundle = MapBundle(
+        files(
+          [indexEntry('r1')],
+          {
+            'r1': [
+              steppedBackend('capped', 2000, [
+                step(1000),
+                step(2000),
+                step(4000, served: 2100, p99: 300, pass: false, k6: true),
+              ], loadgenBound: true),
+              steppedBackend('free', 1000, [
+                step(500),
+                step(1000, p99: 60),
+                step(2000, served: 1500, p99: 250, pass: false),
+              ]),
+            ],
+          },
+        ),
+      );
+      final state = await pumpApp(t, bundle);
+      state.setPage(DashboardPage.method);
+      await settle(t);
+      expect(
+        find.textContaining(
+          'free (the best framework the load generator did not cap)',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('First failure at 2k: p99 250 ms, served 75%'),
+        findsOneWidget,
+      );
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('400 px: "Showing" is one menu with every metric', (t) async {
+      final state = await pumpApp(
+        t,
+        realisticBundle(),
+        size: const Size(400, 1600),
+      );
+      await t.tap(find.byTooltip('Choose the number shown'));
+      await settle(t);
+      await t.tap(find.text('p99 latency').last);
+      await settle(t);
+      expect(state.metric, Metrics.p99);
+      // Context metric: no lime leader, said as the lowest.
+      expect(find.text('TIED LOWEST'), findsWidgets);
+      expect(find.text('LEADER'), findsNothing);
+      expect(t.takeException(), isNull);
+    });
+
+    test('text on the strongest heat cell stays readable', () {
+      double lum(Color c) {
+        double ch(double v) => v <= 0.03928
+            ? v / 12.92
+            : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+        return 0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b);
+      }
+
+      // The full-share tint (lime at 33%) over a raised card.
+      final bg = Color.alphaBlend(
+        kSignal.withValues(alpha: 0.33),
+        kCardBgRaised,
+      );
+      final a = lum(kTextPrimary), b = lum(bg);
+      expect(
+        (math.max(a, b) + 0.05) / (math.min(a, b) + 0.05),
+        greaterThan(4.5),
+      );
     });
   });
 }

@@ -174,7 +174,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
         final va = last(a.$3) ?? -1, vb = last(b.$3) ?? -1;
         return g.metric.higherIsBetter ? vb.compareTo(va) : va.compareTo(vb);
       });
-    final multi = lines.where((l) => l.$3.whereType<double>().length > 1);
+    final multi = lines
+        .where((l) => l.$3.whereType<double>().length > 1)
+        .toList();
+    final single = lines.length - multi.length;
+    final labels = runAxisLabels(g.runs);
+    final narrow = MediaQuery.sizeOf(context).width < kNarrow;
     return SectionCard(
       eyebrow: legacy
           ? 'v1 method · not comparable'
@@ -185,46 +190,252 @@ class _HistoryScreenState extends State<HistoryScreen> {
       subtitle: [
         '${g.runs.length} run${g.runs.length == 1 ? '' : 's'}',
         '${g.metric.labelWithUnit} · ${scenarioLabel(g.scenario)}',
-        if (multi.isEmpty && lines.isNotEmpty)
-          'every framework has one run here, so there are no lines yet',
       ].join(' · '),
       child: lines.isEmpty
           ? Text(
               'No results for this scenario.',
               style: body(13, color: kTextMuted),
             )
+          : multi.isEmpty
+          ? _Snapshot(group: g, lines: legend, last: last)
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Text('WHAT CHANGED', style: caps(11)),
+                const SizedBox(height: 6),
+                for (final l in multi)
+                  _Change(
+                    color: BackendColors.of(l.$1),
+                    name: l.$2,
+                    values: l.$3,
+                    labels: labels,
+                    metric: g.metric,
+                  ),
+                if (single > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '$single of ${lines.length} frameworks have one run '
+                      'here so far; they show as single dots.',
+                      style: body(12, color: kTextMuted),
+                    ),
+                  ),
+                const SizedBox(height: 14),
                 HistoryChart(
-                  labels: runAxisLabels(g.runs),
+                  labels: narrow
+                      ? [for (final r in g.runs) _commitOrDate(r)]
+                      : labels,
                   lines: lines,
                   highlight: _focus,
                   format: (v) => formatMetricShort(g.metric, v),
                 ),
                 const SizedBox(height: 12),
-                Text('LATEST VALUE · TAP TO HIGHLIGHT', style: caps(10)),
+                Text('LATEST VALUE · TAP TO HIGHLIGHT', style: caps(10.5)),
                 const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final l in legend)
-                      _LegendChip(
-                        color: BackendColors.of(l.$1),
-                        name: l.$2,
-                        value: formatMetricShort(g.metric, last(l.$3)),
-                        runs: l.$3.whereType<double>().length,
-                        selected: _focus == l.$1,
-                        dim: _focus != null && _focus != l.$1,
-                        onTap: () => setState(
-                          () => _focus = _focus == l.$1 ? null : l.$1,
-                        ),
-                      ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, c) {
+                    final two = c.maxWidth < 560;
+                    final w = (c.maxWidth - 6) / 2;
+                    return Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final l in legend)
+                          SizedBox(
+                            width: two ? w : null,
+                            child: _LegendChip(
+                              color: BackendColors.of(l.$1),
+                              name: l.$2,
+                              value: formatMetricShort(g.metric, last(l.$3)),
+                              selected: _focus == l.$1,
+                              dim: _focus != null && _focus != l.$1,
+                              onTap: () => setState(
+                                () => _focus = _focus == l.$1 ? null : l.$1,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
+    );
+  }
+
+  /// The commit for runs made from one ("3ae75a8"), else the date.
+  static String _commitOrDate(RunIndexEntry r) {
+    final parts = r.id.split('_');
+    return parts.length >= 3 ? parts[2] : (r.date ?? '?');
+  }
+}
+
+/// One framework's first and latest value in a group, with the change.
+class _Change extends StatelessWidget {
+  final Color color;
+  final String name;
+  final List<double?> values;
+  final List<String> labels;
+  final Metric metric;
+
+  const _Change({
+    required this.color,
+    required this.name,
+    required this.values,
+    required this.labels,
+    required this.metric,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final i0 = values.indexWhere((v) => v != null);
+    final i1 = values.lastIndexWhere((v) => v != null);
+    final a = values[i0]!, b = values[i1]!;
+    final pct = a == 0 ? null : (b - a) / a * 100;
+    final better = metric.higherIsBetter ? b > a : b < a;
+    final same = formatMetricShort(metric, a) == formatMetricShort(metric, b);
+    final tone = same ? kTextMuted : (better ? kSignal : kRedline);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 2,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ColorDot(color: color, size: 9),
+              const SizedBox(width: 7),
+              Text(
+                name,
+                style: body(13.5, color: kTextPrimary, weight: FontWeight.w600),
+              ),
+            ],
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                formatMetricShort(metric, a),
+                style: mono(13, color: kTextSecondary),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 5),
+                child: Icon(Icons.arrow_forward, size: 13, color: kTextMuted),
+              ),
+              Text(
+                formatMetricShort(metric, b),
+                style: mono(13, weight: FontWeight.w700),
+              ),
+            ],
+          ),
+          if (pct != null && !same)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  b > a ? Icons.arrow_upward : Icons.arrow_downward,
+                  size: 13,
+                  color: tone,
+                  semanticLabel: better ? 'better' : 'worse',
+                ),
+                Text(
+                  '${pct >= 0 ? '+' : '−'}${pct.abs().round()}%',
+                  style: mono(12.5, color: tone, weight: FontWeight.w700),
+                ),
+              ],
+            ),
+          Text(
+            '${labels[i0]} to ${labels[i1]}',
+            style: mono(11, color: kTextMuted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A group where every framework has one run: no time to plot yet, so a
+/// ranked snapshot (longer bar is better).
+class _Snapshot extends StatelessWidget {
+  final HistoryGroup group;
+  final List<(String, String, List<double?>)> lines;
+  final double? Function(List<double?>) last;
+
+  const _Snapshot({
+    required this.group,
+    required this.lines,
+    required this.last,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final m = group.metric;
+    final best = last(lines.first.$3);
+    // Equal values share a position (1, 2, 2, 4).
+    final positions = <int>[];
+    for (var i = 0; i < lines.length; i++) {
+      final same = i > 0 && last(lines[i].$3) == last(lines[i - 1].$3);
+      positions.add(same ? positions[i - 1] : i + 1);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Each framework has one run here so far '
+          '(${runAxisLabels(group.runs).join('; ')}), so there is nothing to '
+          'draw over time yet. Ranked, longer is better:',
+          style: body(12.5, color: kTextMuted),
+        ),
+        const SizedBox(height: 8),
+        for (var i = 0; i < lines.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 30,
+                  child: Text(
+                    'P${positions[i]}',
+                    style: mono(
+                      11.5,
+                      color: kTextMuted,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                ColorDot(color: BackendColors.of(lines[i].$1), size: 9),
+                const SizedBox(width: 7),
+                SizedBox(
+                  width: 130,
+                  child: Text(
+                    lines[i].$2,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: body(12.5, color: kTextSecondary),
+                  ),
+                ),
+                Expanded(
+                  child: LaneBar(
+                    fraction: barShare(m, last(lines[i].$3), best),
+                    color: BackendColors.of(lines[i].$1),
+                    height: 6,
+                    stagger: i * 0.03,
+                  ),
+                ),
+                SizedBox(
+                  width: 70,
+                  child: Text(
+                    formatMetricShort(m, last(lines[i].$3)),
+                    textAlign: TextAlign.right,
+                    style: mono(12.5, weight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
@@ -233,7 +444,6 @@ class _LegendChip extends StatelessWidget {
   final Color color;
   final String name;
   final String value;
-  final int runs;
   final bool selected;
   final bool dim;
   final VoidCallback onTap;
@@ -242,7 +452,6 @@ class _LegendChip extends StatelessWidget {
     required this.color,
     required this.name,
     required this.value,
-    required this.runs,
     required this.selected,
     required this.dim,
     required this.onTap,
@@ -258,7 +467,7 @@ class _LegendChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: AnimatedOpacity(
           duration: motion(context, 150),
-          opacity: dim ? 0.45 : 1,
+          opacity: dim ? 0.6 : 1,
           child: Container(
             padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
             decoration: BoxDecoration(
@@ -271,13 +480,16 @@ class _LegendChip extends StatelessWidget {
               children: [
                 ColorDot(color: color, size: 9),
                 const SizedBox(width: 7),
-                Text(name, style: body(12.5, color: kTextPrimary)),
+                Flexible(
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: body(12.5, color: kTextPrimary),
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Text(value, style: mono(12, weight: FontWeight.w700)),
-                if (runs == 1) ...[
-                  const SizedBox(width: 6),
-                  Text('1 run', style: mono(10.5, color: kTextDim)),
-                ],
               ],
             ),
           ),

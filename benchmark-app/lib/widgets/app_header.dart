@@ -95,11 +95,13 @@ class AppHeader extends StatelessWidget {
           final data = entry == null
               ? null
               : _DataPill(state: state, entry: entry, compact: narrow);
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(pad, 8, pad, 0),
+          // Same frame as the page body: padding outside, width inside,
+          // so the wordmark lines up with the headline.
+          return Padding(
+            padding: EdgeInsets.fromLTRB(pad, 8, pad, 0),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
                 child: narrow
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

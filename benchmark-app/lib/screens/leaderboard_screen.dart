@@ -69,6 +69,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       children: [
         if (run.isLegacy) _LegacyBanner(state: state),
         _Headline(state: state, run: run),
+        if (narrow)
+          ScenarioTabs(
+            label: 'Rank by',
+            scenarios: run.scenarios,
+            selected: state.sortScenario,
+            onSelected: state.setSortScenario,
+          ),
         PodiumStrip(state: state, onPick: (s) => _pick(state, s)),
         Container(
           key: _sheetKey,
@@ -169,8 +176,9 @@ class _LegacyBanner extends StatelessWidget {
   );
 }
 
-/// The question the page answers, built from the shown metric, and where
-/// the numbers come from.
+/// The answer first: who leads where and by how much, built from the
+/// podium of every scenario; the question it answers sits above it, and
+/// where the numbers come from below.
 class _Headline extends StatelessWidget {
   final DashboardState state;
   final RunSummary run;
@@ -181,13 +189,14 @@ class _Headline extends StatelessWidget {
   Widget build(BuildContext context) {
     final m = state.metric;
     final label = m.label[0].toLowerCase() + m.label.substring(1);
-    final title = run.isLegacy
-        ? 'v1 results: who averaged the most requests?'
+    final summary = RaceSummary.of(state);
+    final question = run.isLegacy
+        ? 'v1 results · who averaged the most requests?'
+        : !m.isRace
+        ? '$label · context, not a race'
         : m == Metrics.sustainable
         ? 'Who holds the most load on ${run.appCores} cores?'
-        : m.higherIsBetter
-        ? 'Who leads on $label?'
-        : 'Who has the lowest $label?';
+        : 'Who leads on $label?';
     final sources = state.entry?.runs.length ?? 0;
     final facts = [
       run.machine.cpu,
@@ -198,22 +207,75 @@ class _Headline extends StatelessWidget {
       if (!run.isLegacy) '${run.appCores} pinned cores per app',
       if (sources > 1) 'combined from $sources runs',
     ];
+    final s = state.sortScenario;
+    final notes = <String>[
+      if (!m.isRace)
+        'A framework that serves less load can show a lower $label, so '
+            'read this as context. Compare puts frameworks side by side at '
+            'a load they all held.',
+      ?summary.marginLine,
+      ...summary.tieNotes,
+    ];
+    final ranking = s == null
+        ? null
+        : s == 'db_mixed'
+        ? 'The table is ranked by DB mixed (80% reads, 20% inserts), the '
+              'closest to a real API.'
+        : 'The table is ranked by ${scenarioLabel(s)}: '
+              '${_lowerFirst(scenarioHelp(s))}';
     final narrow = MediaQuery.sizeOf(context).width < kNarrow;
+    final leader = summary.leader;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'HTTP BACKEND LEADERBOARD',
-          style: caps(11.5, color: kSignal, letterSpacing: 2),
+        Row(
+          children: [
+            const StartLights(),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                question.toUpperCase(),
+                style: caps(11.5, color: kSignal, letterSpacing: 1.6),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 6),
-        Text(title, style: display(narrow ? 28 : 40, height: 1.05)),
         const SizedBox(height: 8),
-        Text(facts.join('  ·  '), style: mono(12, color: kTextMuted)),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (leader != null && !narrow) ...[
+              Monogram(backend: leader, size: 40),
+              const SizedBox(width: 14),
+            ],
+            Flexible(
+              child: Text(
+                summary.headline,
+                style: display(narrow ? 27 : 40, height: 1.05),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        for (final n in notes)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: Text(
+              n,
+              style: body(narrow ? 13.5 : 15, color: kTextSecondary),
+            ),
+          ),
+        if (ranking != null)
+          Text(ranking, style: body(narrow ? 12.5 : 13, color: kTextMuted)),
+        const SizedBox(height: 10),
+        Text(facts.join('  ·  '), style: mono(11.5, color: kTextMuted)),
       ],
     );
   }
 }
+
+String _lowerFirst(String s) =>
+    s.isEmpty ? s : s[0].toLowerCase() + s.substring(1);
 
 class _SheetHeader extends StatelessWidget {
   final DashboardState state;
@@ -240,8 +302,8 @@ class _SheetHeader extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           narrow
-              ? 'Tap a framework for every number. Pick a scenario below, or '
-                    'tap one in a card, to re-rank.'
+              ? 'Tap a framework for every number, or the arrow for its '
+                    'charts. Re-rank with the scenario tabs above.'
               : 'Tap a framework for every number. Tap a scenario column to '
                     're-rank.',
           style: body(12.5, color: kTextMuted),
@@ -308,42 +370,43 @@ class _ControlsState extends State<_Controls> {
           state: state,
           narrow: narrow,
         );
-        final tabs = _MetricTabs(state: state);
         final hint = _BetterHint(metric: state.metric);
+        // Only the markers this run has; the footnote lists all of them.
+        final present = {
+          for (final b in state.run!.backends)
+            for (final r in b.scenarios.values) ...Marker.of(r),
+        };
+        final legend = MarkerLegend(
+          compact: true,
+          markers: Marker.values.where(present.contains),
+        );
         if (narrow) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              tabs,
+              _MetricMenu(state: state),
               const SizedBox(height: 10),
               search,
               const SizedBox(height: 10),
-              ScenarioTabs(
-                label: 'Rank by',
-                scenarios: state.run!.scenarios,
-                selected: state.sortScenario,
-                onSelected: state.setSortScenario,
+              Wrap(
+                spacing: 14,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [hint, legend],
               ),
-              const SizedBox(height: 10),
-              hint,
-              const SizedBox(height: 8),
-              const MarkerLegend(compact: true),
             ],
           );
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            tabs,
+            _MetricTabs(state: state),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                search,
-                const SizedBox(width: 16),
-                hint,
-                const Spacer(),
-                const Flexible(child: MarkerLegend(compact: true)),
-              ],
+            Wrap(
+              spacing: 16,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [search, hint, legend],
             ),
           ],
         );
@@ -482,6 +545,82 @@ IconData metricIcon(Metric m) => switch (m.id) {
   'rps_per_100mb' => Icons.inventory_2_outlined,
   _ => Icons.timer_outlined,
 };
+
+/// Phones: "Showing" as one menu button, so every metric is reachable
+/// without a sideways scroll.
+class _MetricMenu extends StatelessWidget {
+  final DashboardState state;
+
+  const _MetricMenu({required this.state});
+
+  static String _label(Metric m) =>
+      m == Metrics.sustainable ? 'Sustainable load' : m.label;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = state.metric;
+    return PopupMenuButton<Metric>(
+      tooltip: 'Choose the number shown',
+      initialValue: current,
+      color: kCardBgRaised,
+      onSelected: state.setMetric,
+      itemBuilder: (context) => [
+        for (final m in state.availableMetrics)
+          PopupMenuItem(
+            value: m,
+            child: Row(
+              children: [
+                Icon(
+                  metricIcon(m),
+                  size: 16,
+                  color: m == current ? kSignal : kTextSecondary,
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    _label(m),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: body(
+                      13.5,
+                      color: m == current ? kSignal : kTextPrimary,
+                      weight: m == current ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: kSignal.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: kSignal.withValues(alpha: 0.6)),
+        ),
+        child: Row(
+          children: [
+            Text('SHOWING', style: caps(10.5, color: kTextSecondary)),
+            const SizedBox(width: 8),
+            Icon(metricIcon(current), size: 15, color: kSignal),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Text(
+                _label(current),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: body(13, color: kSignal, weight: FontWeight.w700),
+              ),
+            ),
+            const Icon(Icons.expand_more, size: 18, color: kSignal),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 /// "Showing": the number in every cell, as a row of gauge tabs.
 class _MetricTabs extends StatelessWidget {
@@ -630,8 +769,8 @@ List<int> _positions(DashboardState state, List<BackendResult> sorted) {
   return [for (final b in sorted) byKey[b.key] ?? 0];
 }
 
-/// Best value of the shown metric per scenario, and the range bars are
-/// scaled to, over every framework of the run (search does not rescale).
+/// Best value of the shown metric per scenario, over every framework of the
+/// run (search does not rescale), and how many share it.
 class _Columns {
   final Map<String, double> best = {};
   final Map<String, int> leaders = {};
@@ -656,15 +795,13 @@ class _Columns {
     }
   }
 
-  /// Bar share: value / best when more is better, best / value otherwise.
-  double share(String s, double? v) {
-    final b = best[s];
-    if (v == null || b == null) return 0;
-    if (metric.higherIsBetter) return b <= 0 ? 0 : (v / b).clamp(0, 1);
-    return v <= 0 ? 1 : (b / v).clamp(0, 1);
-  }
+  /// Bar share, longer is better.
+  double share(String s, double? v) => barShare(metric, v, best[s]);
 }
 
+/// Desktop timing sheet: the ranked scenario is the race lane (thick bar,
+/// gap to the leader, finish line); the other scenarios are heat cells, so
+/// a framework's pattern across scenarios reads at a glance.
 class _Table extends StatelessWidget {
   final DashboardState state;
   final List<BackendResult> rows;
@@ -676,19 +813,26 @@ class _Table extends StatelessWidget {
     final scenarios = state.run!.scenarios;
     final positions = _positions(state, rows);
     final cols = _Columns(state);
+    final sortS = state.sortScenario;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _layout(
           header: true,
-          rank: Text('POS', style: caps(10)),
-          name: Text('FRAMEWORK', style: caps(10)),
+          sortS: sortS,
+          scenarios: scenarios,
+          rank: Text('POS', style: caps(10.5)),
+          name: Text('FRAMEWORK', style: caps(10.5)),
           cells: [
             for (final s in scenarios) _ScenarioHeader(state: state, s: s),
           ],
           action: SizedBox(
             width: 84,
-            child: Text('COMPARE', textAlign: TextAlign.right, style: caps(10)),
+            child: Text(
+              'COMPARE',
+              textAlign: TextAlign.right,
+              style: caps(10.5),
+            ),
           ),
         ),
         RepaintBoundary(
@@ -700,22 +844,30 @@ class _Table extends StatelessWidget {
                   key: ValueKey('row-${rows[i].key}'),
                   child: _RowShell(
                     backend: rows[i],
-                    position: positions[i],
+                    leader: positions[i] == 1 && state.metric.isRace,
                     expanded: state.expandedKey == rows[i].key,
                     onTap: () => state.toggleExpanded(rows[i].key),
                     child: _layout(
-                      rank: _Position(positions[i]),
+                      sortS: sortS,
+                      scenarios: scenarios,
+                      rank: _Position(positions[i], race: state.metric.isRace),
                       name: _NameCell(backend: rows[i]),
                       cells: [
                         for (final s in scenarios)
-                          _ValueCell(
-                            state: state,
-                            backend: rows[i],
-                            scenario: s,
-                            cols: cols,
-                            sorted: s == state.sortScenario,
-                            stagger: i / (rows.length + 2) * 0.5,
-                          ),
+                          s == sortS
+                              ? _LaneCell(
+                                  state: state,
+                                  backend: rows[i],
+                                  scenario: s,
+                                  cols: cols,
+                                  stagger: i / (rows.length + 2) * 0.5,
+                                )
+                              : _HeatCell(
+                                  state: state,
+                                  backend: rows[i],
+                                  scenario: s,
+                                  cols: cols,
+                                ),
                       ],
                       action: SizedBox(
                         width: 84,
@@ -756,10 +908,12 @@ class _Table extends StatelessWidget {
     required Widget name,
     required List<Widget> cells,
     required Widget action,
+    required String? sortS,
+    required List<String> scenarios,
     bool header = false,
   }) {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, header ? 6 : 10, 12, header ? 8 : 10),
+      padding: EdgeInsets.fromLTRB(16, header ? 6 : 8, 12, header ? 8 : 8),
       decoration: header
           ? const BoxDecoration(
               border: Border(bottom: BorderSide(color: kBorder)),
@@ -768,10 +922,10 @@ class _Table extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(width: 44, child: rank),
-          Expanded(flex: 26, child: name),
-          for (final c in cells) ...[
-            const SizedBox(width: 14),
-            Expanded(flex: 15, child: c),
+          Expanded(flex: 24, child: name),
+          for (var i = 0; i < cells.length; i++) ...[
+            const SizedBox(width: 10),
+            Expanded(flex: scenarios[i] == sortS ? 22 : 12, child: cells[i]),
           ],
           const SizedBox(width: 10),
           action,
@@ -816,7 +970,9 @@ class _ScenarioHeader extends StatelessWidget {
               children: [
                 Flexible(
                   child: Text(
-                    scenarioLabel(s).toUpperCase(),
+                    active
+                        ? 'RANKED BY ${scenarioLabel(s).toUpperCase()}'
+                        : scenarioLabel(s).toUpperCase(),
                     overflow: TextOverflow.ellipsis,
                     style: caps(11, color: active ? kSignal : kTextSecondary),
                   ),
@@ -843,7 +999,10 @@ class _ScenarioHeader extends StatelessWidget {
 class _Position extends StatelessWidget {
   final int position;
 
-  const _Position(this.position);
+  /// Lime for P1 only when the metric is a race (see [Metric.isRace]).
+  final bool race;
+
+  const _Position(this.position, {this.race = true});
 
   @override
   Widget build(BuildContext context) => Text(
@@ -851,7 +1010,7 @@ class _Position extends StatelessWidget {
     style: mono(
       14,
       weight: FontWeight.w700,
-      color: position == 1
+      color: position == 1 && race
           ? kSignal
           : position <= 3
           ? kTextPrimary
@@ -860,17 +1019,18 @@ class _Position extends StatelessWidget {
   );
 }
 
-/// Focusable, tappable lane: Enter or Space expands it, like a click.
+/// Focusable, tappable lane: Enter or Space expands it, like a click. The
+/// leader's lane carries a chequered edge.
 class _RowShell extends StatefulWidget {
   final BackendResult backend;
-  final int position;
+  final bool leader;
   final bool expanded;
   final VoidCallback onTap;
   final Widget child;
 
   const _RowShell({
     required this.backend,
-    required this.position,
+    required this.leader,
     required this.expanded,
     required this.onTap,
     required this.child,
@@ -920,7 +1080,19 @@ class _RowShellState extends State<_RowShell> {
                     borderRadius: BorderRadius.circular(4),
                   )
                 : null,
-            child: widget.child,
+            child: widget.leader
+                ? Stack(
+                    children: [
+                      widget.child,
+                      const Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: ChequerBand(thickness: 6),
+                      ),
+                    ],
+                  )
+                : widget.child,
           ),
         ),
       ),
@@ -930,15 +1102,16 @@ class _RowShellState extends State<_RowShell> {
 
 class _NameCell extends StatelessWidget {
   final BackendResult backend;
+  final double monogram;
 
-  const _NameCell({required this.backend});
+  const _NameCell({required this.backend, this.monogram = 28});
 
   @override
   Widget build(BuildContext context) {
     final b = backend;
     return Row(
       children: [
-        Monogram(backend: b, size: 28),
+        Monogram(backend: b, size: monogram),
         const SizedBox(width: 10),
         Flexible(
           child: Column(
@@ -947,6 +1120,7 @@ class _NameCell extends StatelessWidget {
             children: [
               Text(
                 b.name,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: body(14.5, color: kTextPrimary, weight: FontWeight.w600),
               ),
@@ -955,8 +1129,9 @@ class _NameCell extends StatelessWidget {
                   languageLabel(b.language),
                   ...b.subtitle.split(' · '),
                 ].where((s) => s.isNotEmpty).join(' · '),
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: body(11.5, color: kTextDim),
+                style: body(11.5, color: kTextMuted),
               ),
             ],
           ),
@@ -966,27 +1141,35 @@ class _NameCell extends StatelessWidget {
   }
 }
 
-/// Number + lane bar for one framework in one scenario; the ranked column
-/// gets the thick bar, the bold number and the gap to the leader. "—" when
-/// it was not measured there; amber icons mark capped, noisy or restarted
-/// results (legend above, spelled out in the expanded row).
-class _ValueCell extends StatelessWidget {
+/// "LEADER" / "−25%" / "LOWEST" for a value in the ranked column.
+(String, bool) _gapText(_Columns cols, String scenario, double? v) {
+  final best = cols.best[scenario];
+  final m = cols.metric;
+  if (v == null || best == null) return ('', false);
+  if (v == best) {
+    final tied = (cols.leaders[scenario] ?? 1) > 1;
+    if (!m.isRace) return (tied ? 'TIED LOWEST' : 'LOWEST', true);
+    return (tied ? 'TIED LEAD' : 'LEADER', true);
+  }
+  return (gapToLeader(m, v, best), false);
+}
+
+/// The race lane of a row: value and gap on one line, a thick bar under
+/// them that ends at a lime finish line. "—" when not measured; amber
+/// icons mark capped, noisy or restarted results.
+class _LaneCell extends StatelessWidget {
   final DashboardState state;
   final BackendResult backend;
   final String scenario;
   final _Columns cols;
-  final bool sorted;
   final double stagger;
-  final bool compact;
 
-  const _ValueCell({
+  const _LaneCell({
     required this.state,
     required this.backend,
     required this.scenario,
     required this.cols,
-    required this.sorted,
     required this.stagger,
-    this.compact = false,
   });
 
   @override
@@ -994,61 +1177,143 @@ class _ValueCell extends StatelessWidget {
     final r = backend.scenarios[scenario];
     final m = state.metric;
     final v = r == null ? null : m.value(r);
-    final best = cols.best[scenario];
-    final color = BackendColors.of(backend.key);
-    final isLeader = v != null && v == best;
-    final gap = v == null || best == null
-        ? ''
-        : isLeader
-        ? ((cols.leaders[scenario] ?? 1) > 1 ? 'TIED LEAD' : 'LEADER')
-        : gapToLeader(m, v, best);
-    final valueStyle = sorted
-        ? mono(compact ? 15 : 15.5, weight: FontWeight.w700)
-        : mono(
-            compact ? 12.5 : 13,
-            color: v == null ? kTextDim : kTextSecondary,
-          );
+    final (gap, top) = _gapText(cols, scenario, v);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(formatMetricShort(m, v), style: valueStyle),
-              MarkerIcons(r, size: sorted ? 13 : 12),
-            ],
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              formatMetricShort(m, v),
+              style: mono(
+                15.5,
+                weight: FontWeight.w700,
+                color: v == null ? kTextDim : kTextPrimary,
+              ),
+            ),
+            MarkerIcons(r, size: 13),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                gap,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: top
+                    ? caps(10.5, color: m.isRace ? kSignal : kTextSecondary)
+                    : mono(11.5, color: kTextMuted),
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: sorted ? 6 : 5),
+        const SizedBox(height: 5),
         LaneBar(
           fraction: cols.share(scenario, v),
-          color: sorted ? color : color.withValues(alpha: 0.45),
-          height: sorted ? 8 : 4,
+          color: BackendColors.of(backend.key),
+          height: 7,
           stagger: stagger,
+          finish: m.isRace,
         ),
-        if (sorted) ...[
-          const SizedBox(height: 4),
-          Text(
-            gap,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: isLeader
-                ? caps(9.5, color: kSignal)
-                : mono(11, color: kTextMuted),
-          ),
-        ],
       ],
     );
   }
 }
 
-/// Phone layout: one lane card per framework. The ranked scenario gets a
-/// full-width lane; the other three sit below as small tiles that re-rank
-/// the list when tapped.
+/// A scenario the table is not ranked by: the value on a tint whose
+/// strength is its share of the best (lime for race metrics, neutral for
+/// context ones). Tapping it ranks the table by that scenario.
+class _HeatCell extends StatelessWidget {
+  final DashboardState state;
+  final BackendResult backend;
+  final String scenario;
+  final _Columns cols;
+  final bool showLabel;
+
+  const _HeatCell({
+    required this.state,
+    required this.backend,
+    required this.scenario,
+    required this.cols,
+    this.showLabel = false,
+  });
+
+  /// Tint for a share of the best, 0..1.
+  static Color tint(Metric m, double share) => m.isRace
+      ? kSignal.withValues(alpha: 0.03 + 0.3 * share)
+      : kTextPrimary.withValues(alpha: 0.03 + 0.12 * share);
+
+  @override
+  Widget build(BuildContext context) {
+    final r = backend.scenarios[scenario];
+    final m = state.metric;
+    final v = r == null ? null : m.value(r);
+    final share = cols.share(scenario, v);
+    final best = v != null && v == cols.best[scenario];
+    return Semantics(
+      button: true,
+      label:
+          '${scenarioLabel(scenario)}: ${formatMetric(m, v)}. '
+          'Rank by ${scenarioLabel(scenario)}',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: () => state.setSortScenario(scenario),
+        borderRadius: BorderRadius.circular(6),
+        child: AnimatedContainer(
+          duration: motion(context, 300),
+          padding: EdgeInsets.fromLTRB(8, showLabel ? 5 : 0, 6, 0),
+          height: showLabel ? 46 : 34,
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            color: v == null ? Colors.transparent : tint(m, share),
+            borderRadius: BorderRadius.circular(6),
+            border: showLabel && scenario == state.sortScenario
+                ? Border.all(color: kSignal, width: 1.5)
+                : best && m.isRace
+                ? Border.all(color: kSignal.withValues(alpha: 0.6))
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (showLabel)
+                Text(
+                  scenarioLabel(scenario).toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: caps(10, color: kTextSecondary, letterSpacing: 0.8),
+                ),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      formatMetricShort(m, v),
+                      style: mono(
+                        13,
+                        weight: best ? FontWeight.w700 : FontWeight.w500,
+                        color: v == null ? kTextDim : kTextPrimary,
+                      ),
+                    ),
+                    MarkerIcons(r, size: 12),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Phone layout: one compact lane per framework (position, name, the
+/// ranked value with its gap, a full-width bar, compare and details). The
+/// other scenarios are in the expanded panel.
 class _Cards extends StatelessWidget {
   final DashboardState state;
   final List<BackendResult> rows;
@@ -1057,10 +1322,10 @@ class _Cards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scenarios = state.run!.scenarios;
     final sortS = state.sortScenario;
     final positions = _positions(state, rows);
     final cols = _Columns(state);
+    final m = state.metric;
     return RepaintBoundary(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1070,68 +1335,59 @@ class _Cards extends StatelessWidget {
               key: ValueKey('row-${rows[i].key}'),
               child: _RowShell(
                 backend: rows[i],
-                position: positions[i],
+                leader: positions[i] == 1 && m.isRace,
                 expanded: state.expandedKey == rows[i].key,
                 onTap: () => state.toggleExpanded(rows[i].key),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 8, 12),
+                  padding: const EdgeInsets.fromLTRB(12, 8, 0, 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Row(
                         children: [
-                          SizedBox(width: 38, child: _Position(positions[i])),
-                          Expanded(child: _NameCell(backend: rows[i])),
+                          SizedBox(
+                            width: 36,
+                            child: _Position(positions[i], race: m.isRace),
+                          ),
+                          Expanded(
+                            child: _NameCell(backend: rows[i], monogram: 26),
+                          ),
+                          const SizedBox(width: 6),
+                          if (sortS != null)
+                            _CompactValue(
+                              backend: rows[i],
+                              scenario: sortS,
+                              cols: cols,
+                            ),
+                          const SizedBox(width: 6),
                           CompareToggle(state: state, backend: rows[i]),
+                          IconButton(
+                            tooltip: 'Open ${rows[i].name} details',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => state.openDetails(rows[i].key),
+                            icon: const Icon(
+                              Icons.chevron_right,
+                              color: kTextMuted,
+                            ),
+                          ),
                         ],
                       ),
                       if (sortS != null) ...[
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         Padding(
-                          padding: const EdgeInsets.only(left: 38, right: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: 72,
-                                child: Text(
-                                  scenarioLabel(sortS).toUpperCase(),
-                                  style: caps(10, color: kSignal),
-                                ),
-                              ),
-                              Expanded(
-                                child: _ValueCell(
-                                  state: state,
-                                  backend: rows[i],
-                                  scenario: sortS,
-                                  cols: cols,
-                                  sorted: true,
-                                  stagger: i / (rows.length + 2) * 0.5,
-                                  compact: true,
-                                ),
-                              ),
-                            ],
+                          padding: const EdgeInsets.only(left: 36, right: 14),
+                          child: LaneBar(
+                            fraction: cols.share(
+                              sortS,
+                              state.valueOf(rows[i], m, sortS),
+                            ),
+                            color: BackendColors.of(rows[i].key),
+                            height: 6,
+                            stagger: i / (rows.length + 2) * 0.5,
+                            finish: m.isRace,
                           ),
                         ),
                       ],
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 30),
-                        child: Row(
-                          children: [
-                            for (final s in scenarios)
-                              if (s != sortS)
-                                Expanded(
-                                  child: _MiniScenario(
-                                    state: state,
-                                    backend: rows[i],
-                                    scenario: s,
-                                    cols: cols,
-                                  ),
-                                ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -1150,14 +1406,13 @@ class _Cards extends StatelessWidget {
   }
 }
 
-class _MiniScenario extends StatelessWidget {
-  final DashboardState state;
+/// Phone: the ranked value with its markers, and the gap under it.
+class _CompactValue extends StatelessWidget {
   final BackendResult backend;
   final String scenario;
   final _Columns cols;
 
-  const _MiniScenario({
-    required this.state,
+  const _CompactValue({
     required this.backend,
     required this.scenario,
     required this.cols,
@@ -1165,58 +1420,106 @@ class _MiniScenario extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Rank by ${scenarioLabel(scenario)}',
-      child: InkWell(
-        onTap: () => state.setSortScenario(scenario),
-        borderRadius: BorderRadius.circular(6),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                scenarioLabel(scenario).toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: caps(9.5),
+    final r = backend.scenarios[scenario];
+    final m = cols.metric;
+    final v = r == null ? null : m.value(r);
+    final (gap, top) = _gapText(cols, scenario, v);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              formatMetricShort(m, v),
+              style: mono(
+                15,
+                weight: FontWeight.w700,
+                color: v == null ? kTextDim : kTextPrimary,
               ),
-              const SizedBox(height: 3),
-              _ValueCell(
-                state: state,
-                backend: backend,
-                scenario: scenario,
-                cols: cols,
-                sorted: false,
-                stagger: 0,
-                compact: true,
-              ),
-            ],
-          ),
+            ),
+            MarkerIcons(r, size: 12),
+          ],
         ),
-      ),
+        if (gap.isNotEmpty)
+          Text(
+            gap,
+            style: top
+                ? caps(10, color: m.isRace ? kSignal : kTextSecondary)
+                : mono(10.5, color: kTextMuted),
+          ),
+      ],
     );
   }
 }
 
 /// What opens under a tapped row: actions, every metric for every scenario,
 /// rank, markers in words, and how the backend is implemented.
-class _ExpandedPanel extends StatelessWidget {
+class _ExpandedPanel extends StatefulWidget {
   final DashboardState state;
   final BackendResult backend;
 
   const _ExpandedPanel({super.key, required this.state, required this.backend});
 
   @override
+  State<_ExpandedPanel> createState() => _ExpandedPanelState();
+}
+
+class _ExpandedPanelState extends State<_ExpandedPanel> {
+  @override
+  void initState() {
+    super.initState();
+    // A row opened low on the screen (or with the keyboard) scrolls its
+    // panel into view; one already in view stays put.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final box = context.findRenderObject() as RenderBox?;
+      final scrollable = Scrollable.maybeOf(context);
+      final viewport = scrollable?.context.findRenderObject() as RenderBox?;
+      if (box == null || viewport == null || !box.attached) return;
+      final top = box.localToGlobal(Offset.zero, ancestor: viewport).dy;
+      if (top > viewport.size.height * 0.7 || top < 0) {
+        Scrollable.ensureVisible(
+          context,
+          alignment: 0.15,
+          duration: motion(context, 250),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+  }
+
+  DashboardState get state => widget.state;
+
+  void _compareWithLeaders(BuildContext context, String key) {
+    if (state.compareWithLeaders(key)) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(
+          'The comparison is full (${DashboardState.maxCompare} of '
+          '${DashboardState.maxCompare}): remove one to add the leaders.',
+          style: body(13, color: kTextPrimary),
+        ),
+        backgroundColor: kCardBgRaised,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final b = backend;
+    final b = widget.backend;
     final scenarios = state.run!.scenarios;
     final present = scenarios.where(b.scenarios.containsKey).toList();
     final results = b.scenarios.values;
     final metrics = Metrics.available(results, Metrics.table);
     final others = state.allRanked.length - 1;
     final sortS = state.sortScenario;
+    final rank = sortS == null ? null : state.rankOf(b, state.metric, sortS);
+    final first = rank != null && rank.position == 1 && rank.tied == 1;
+    final narrow = MediaQuery.sizeOf(context).width < kNarrow;
+    final cols = _Columns(state);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
       decoration: BoxDecoration(
@@ -1235,11 +1538,13 @@ class _ExpandedPanel extends StatelessWidget {
             children: [
               FilledButton.icon(
                 onPressed: others >= 1
-                    ? () => state.compareWithLeaders(b.key)
+                    ? () => _compareWithLeaders(context, b.key)
                     : null,
                 icon: const Icon(Icons.compare_arrows, size: 16),
                 label: Text(
-                  sortS == null
+                  first
+                      ? 'Compare with the runners-up'
+                      : sortS == null
                       ? 'Compare with the leaders'
                       : 'Compare with the ${scenarioLabel(sortS)} leaders',
                 ),
@@ -1265,6 +1570,27 @@ class _ExpandedPanel extends StatelessWidget {
                 SourceLink(url: b.sourceUrl!, label: 'Source on GitHub'),
             ],
           ),
+          if (narrow && present.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text('EVERY SCENARIO · TAP TO RANK BY IT', style: caps(10.5)),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                for (var i = 0; i < scenarios.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 6),
+                  Expanded(
+                    child: _HeatCell(
+                      state: state,
+                      backend: b,
+                      scenario: scenarios[i],
+                      cols: cols,
+                      showLabel: true,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
           const SizedBox(height: 14),
           if (present.isEmpty)
             Text(

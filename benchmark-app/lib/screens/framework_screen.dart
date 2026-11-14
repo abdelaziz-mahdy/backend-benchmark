@@ -75,7 +75,7 @@ class _FrameworkScreenState extends State<FrameworkScreen> {
           _NoResult(state: state, backend: backend)
         else ...[
           _DriverCard(state: state, backend: backend, result: result),
-          _tiles(result),
+          _tiles(state, backend, result),
           if (result.steps.isNotEmpty) _stepCharts(state, backend, result),
           _percentiles(backend, result),
           if (!result.timeseries.isEmpty) _resources(run, backend, result),
@@ -91,8 +91,9 @@ class _FrameworkScreenState extends State<FrameworkScreen> {
     );
   }
 
-  Widget _tiles(ScenarioResult r) {
+  Widget _tiles(DashboardState state, BackendResult b, ScenarioResult r) {
     final headline = Metrics.headlineFor([r]);
+    final lead = _leadTile(state, b, headline);
     final primary = [
       Metrics.peak,
       Metrics.p50,
@@ -108,9 +109,43 @@ class _FrameworkScreenState extends State<FrameworkScreen> {
       Metrics.rpsPerCore,
       Metrics.rpsPer100Mb,
     ];
-    final shown = Metrics.available(
-      [r],
-      [headline, ...primary, if (_more) ...extra],
+    // The headline is in the card above; the tiles add what it does not.
+    final shown = Metrics.available([r], [...primary, if (_more) ...extra]);
+    final narrow = MediaQuery.sizeOf(context).width < kNarrow;
+    final from = r.fromRun;
+    final caption = r.reps <= 0
+        ? null
+        : Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text:
+                      '${r.reps} repetition${r.reps == 1 ? '' : 's'}; small '
+                      'text under a value is the min–max across them.',
+                ),
+                if (from != null) ...[
+                  const TextSpan(text: '  Measured in '),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.baseline,
+                    baseline: TextBaseline.alphabetic,
+                    child: Tooltip(
+                      message: from,
+                      child: Text(
+                        'run ${shortRunId(from)}',
+                        style: mono(11, color: kTextMuted),
+                      ),
+                    ),
+                  ),
+                  const TextSpan(text: '.'),
+                ],
+              ],
+            ),
+            style: body(11.5, color: kTextMuted),
+          );
+    final toggle = TextButton.icon(
+      onPressed: () => setState(() => _more = !_more),
+      icon: Icon(_more ? Icons.expand_less : Icons.expand_more, size: 18),
+      label: Text(_more ? 'Fewer metrics' : 'More metrics'),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -118,39 +153,61 @@ class _FrameworkScreenState extends State<FrameworkScreen> {
         TileGrid(
           minTileWidth: 160,
           children: [
+            ?lead,
             for (final m in shown)
               StatTile(
                 label: m.label,
                 value: formatMetric(m, m.value(r)),
                 detail: _range(m, r),
                 help: m.help,
-                accent: m == headline ? kSignal : null,
               ),
           ],
         ),
-        Row(
-          children: [
-            TextButton.icon(
-              onPressed: () => setState(() => _more = !_more),
-              icon: Icon(
-                _more ? Icons.expand_less : Icons.expand_more,
-                size: 18,
-              ),
-              label: Text(_more ? 'Fewer metrics' : 'More metrics'),
-            ),
-            const SizedBox(width: 8),
-            if (r.reps > 0)
-              Expanded(
-                child: Text(
-                  '${r.reps} repetition${r.reps == 1 ? '' : 's'}; small text '
-                  'under a value is the min–max across them.'
-                  '${r.fromRun != null ? '  Measured in run ${r.fromRun}.' : ''}',
-                  style: body(11.5, color: kTextDim),
-                ),
-              ),
-          ],
-        ),
+        if (narrow || caption == null) ...[
+          Align(alignment: Alignment.centerLeft, child: toggle),
+          ?caption,
+        ] else
+          Row(
+            children: [
+              toggle,
+              const SizedBox(width: 8),
+              Expanded(child: caption),
+            ],
+          ),
       ],
+    );
+  }
+
+  /// "Lead over P2 1.33×" for the leader, "Gap to P1 2.5×" for the rest,
+  /// from the same ranking the card above uses.
+  Widget? _leadTile(DashboardState state, BackendResult b, Metric m) {
+    final n = _Neighbours.of(state, b, m, state.scenario!);
+    if (n == null) return null;
+    final me = n.value;
+    if (n.position == 1 && n.tied > 1) {
+      return StatTile(
+        label: 'Tied for P1',
+        value: '${n.tied}-way',
+        detail: 'equal ${formatMetricShort(m, me)}',
+        help: 'Shares first place with ${n.tied - 1} others.',
+      );
+    }
+    if (n.position == 1) {
+      final next = n.below;
+      if (next == null) return null;
+      return StatTile(
+        label: 'Lead over P${n.belowPosition}',
+        value: leadRatio(m, me, next.$2),
+        detail: 'vs ${next.$1.name} ${formatMetricShort(m, next.$2)}',
+        accent: kSignal,
+        help: 'This framework\'s value over the next one\'s.',
+      );
+    }
+    return StatTile(
+      label: 'Gap to P1',
+      value: leadRatio(m, n.leader.$2, me),
+      detail: '${n.leader.$1.name} ${formatMetricShort(m, n.leader.$2)}',
+      help: 'The leader\'s value over this framework\'s.',
     );
   }
 
@@ -183,7 +240,9 @@ class _FrameworkScreenState extends State<FrameworkScreen> {
           title: 'p99 per load step',
           subtitle:
               'Red zone = above the 100 ms SLO. Hollow red points failed a '
-              'limit; the run stops there.',
+              'limit; after the first failure the run probes between the '
+              'last pass and the first fail. Amber points failed because the '
+              'load generator itself was the limit.',
           child: StepLoadChart(
             series: series,
             mode: StepChartMode.p99,
@@ -343,8 +402,57 @@ class _FrameworkScreenState extends State<FrameworkScreen> {
   }
 }
 
-/// The result at a glance: position badge, rank sentence, markers, and
-/// where this framework sits in the field.
+/// Where a framework sits in one scenario: its position, the leader, and
+/// the nearest frameworks ahead of and behind it (ties skipped).
+class _Neighbours {
+  final int position;
+  final int tied;
+  final double value;
+  final (BackendResult, double) leader;
+  final (BackendResult, double)? above;
+  final (BackendResult, double)? below;
+  final int belowPosition;
+
+  const _Neighbours({
+    required this.position,
+    required this.tied,
+    required this.value,
+    required this.leader,
+    required this.above,
+    required this.below,
+    required this.belowPosition,
+  });
+
+  static _Neighbours? of(
+    DashboardState state,
+    BackendResult b,
+    Metric m,
+    String s,
+  ) {
+    final ranked = [
+      for (final x in state.rank(state.backendsIn(s), m, s))
+        if (state.valueOf(x, m, s) case final v?) (x, v),
+    ];
+    final i = ranked.indexWhere((e) => e.$1.key == b.key);
+    if (i < 0) return null;
+    final me = ranked[i].$2;
+    final first = ranked.indexWhere((e) => e.$2 == me);
+    final last = ranked.lastIndexWhere((e) => e.$2 == me);
+    return _Neighbours(
+      position: first + 1,
+      tied: last - first + 1,
+      value: me,
+      leader: ranked.first,
+      above: first > 0 ? ranked[first - 1] : null,
+      below: last + 1 < ranked.length ? ranked[last + 1] : null,
+      belowPosition: last + 2,
+    );
+  }
+}
+
+/// The result at a glance: the headline number, who is just ahead and
+/// behind (with a one-tap comparison), markers, the position badge and the
+/// whole field on one labelled line. An identity stripe, no wash of colour.
 class _DriverCard extends StatelessWidget {
   final DashboardState state;
   final BackendResult backend;
@@ -364,6 +472,8 @@ class _DriverCard extends StatelessWidget {
     final value = metric.value(result);
     final flags = resultFlags(backend, result);
     final narrow = MediaQuery.sizeOf(context).width < kNarrow;
+    final identity = BackendColors.of(backend.key);
+    final n = _Neighbours.of(state, backend, metric, scenario);
     final badge = rank == null
         ? const SizedBox.shrink()
         : _PositionBadge(rank: rank, scenario: scenario);
@@ -371,7 +481,7 @@ class _DriverCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          metric.label.toUpperCase(),
+          '${metric.label.toUpperCase()} · ${scenarioLabel(scenario).toUpperCase()}',
           style: caps(11, color: kTextSecondary),
         ),
         const SizedBox(height: 4),
@@ -389,7 +499,7 @@ class _DriverCard extends StatelessWidget {
                     style: mono(
                       narrow ? 36 : 46,
                       weight: FontWeight.w700,
-                      color: kSignal,
+                      color: rank?.position == 1 ? kSignal : kTextPrimary,
                     ),
                   ),
                 ),
@@ -404,9 +514,10 @@ class _DriverCard extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 4),
-        if (_rankLine(rank, metric, scenario) case final line?)
-          Text(line, style: body(13.5, color: kTextPrimary)),
+        if (n != null) ...[
+          const SizedBox(height: 6),
+          _RivalLine(state: state, backend: backend, metric: metric, n: n),
+        ],
         if (flags.isNotEmpty) ...[
           const SizedBox(height: 10),
           Wrap(spacing: 6, runSpacing: 6, children: flags),
@@ -414,60 +525,143 @@ class _DriverCard extends StatelessWidget {
       ],
     );
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: kCardBg,
         borderRadius: BorderRadius.circular(kRadius),
         border: Border.all(color: kBorder),
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            BackendColors.of(backend.key).withValues(alpha: 0.08),
-            kCardBg,
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(color: identity, width: 4),
+            top: BorderSide(color: identity.withValues(alpha: 0.35)),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            narrow
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [badge, const SizedBox(height: 12), summary],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: summary),
+                      const SizedBox(width: 20),
+                      badge,
+                    ],
+                  ),
+            const SizedBox(height: 18),
+            _FieldStrip(
+              state: state,
+              backend: backend,
+              metric: metric,
+              scenario: scenario,
+            ),
           ],
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          narrow
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [badge, const SizedBox(height: 12), summary],
-                )
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: summary),
-                    const SizedBox(width: 20),
-                    badge,
-                  ],
-                ),
-          const SizedBox(height: 18),
-          _FieldStrip(
-            state: state,
-            backend: backend,
-            metric: metric,
-            scenario: scenario,
-          ),
-        ],
-      ),
     );
   }
+}
 
-  /// "#2 of 6 by sustainable load in No DB · 83% of the best".
-  String? _rankLine(Rank? rank, Metric metric, String scenario) {
-    if (rank == null) return null;
-    final share = rank.shareOfLeader;
-    return [
-      '${rank.tied > 1 ? 'tied ' : ''}#${rank.position} of ${rank.total} by '
-          '${metric.label.toLowerCase()} in ${scenarioLabel(scenario)}',
-      if (rank.position == 1)
-        rank.tied > 1 ? 'tied with ${rank.tied - 1} others' : 'the best'
-      else if (share != null)
-        '${(share * 100).round()}% of the best',
-    ].join(' · ');
+/// "Ahead of express (bun) by 1.33×", or "Behind X by 2.5× · ahead of Y by
+/// 1.03×": names open their details, and one tap compares with the rival.
+class _RivalLine extends StatelessWidget {
+  final DashboardState state;
+  final BackendResult backend;
+  final Metric metric;
+  final _Neighbours n;
+
+  const _RivalLine({
+    required this.state,
+    required this.backend,
+    required this.metric,
+    required this.n,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final style = body(14, color: kTextPrimary);
+    Widget link(BackendResult b) => InkWell(
+      onTap: () => state.openDetails(b.key),
+      borderRadius: BorderRadius.circular(4),
+      child: Text(
+        b.name,
+        style: body(
+          14,
+          color: BackendColors.of(b.key),
+          weight: FontWeight.w700,
+        ).copyWith(decoration: TextDecoration.underline),
+      ),
+    );
+    final parts = <Widget>[];
+    final rival = n.position == 1 ? n.below?.$1 : n.above?.$1;
+    if (n.position == 1 && n.tied > 1) {
+      parts.add(
+        Text(
+          'Tied for P1 with '
+          '${n.tied == 2 ? 'one other' : '${n.tied - 1} others'}',
+          style: style,
+        ),
+      );
+    } else if (n.position == 1 && n.below != null) {
+      parts.addAll([
+        Text('Ahead of ', style: style),
+        link(n.below!.$1),
+        Text(' by ${leadRatio(metric, n.value, n.below!.$2)}', style: style),
+      ]);
+    } else if (n.above != null) {
+      parts.addAll([
+        Text('Behind ', style: style),
+        link(n.above!.$1),
+        Text(' by ${leadRatio(metric, n.above!.$2, n.value)}', style: style),
+      ]);
+      if (n.below != null) {
+        parts.addAll([
+          Text('  ·  ahead of ', style: style),
+          link(n.below!.$1),
+          Text(' by ${leadRatio(metric, n.value, n.below!.$2)}', style: style),
+        ]);
+      }
+    }
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      runSpacing: 6,
+      children: [
+        ...parts,
+        if (rival != null) ...[
+          const SizedBox(width: 12),
+          OutlinedButton.icon(
+            onPressed: () {
+              if (state.comparePair(backend.key, rival.key)) return;
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'The comparison is full: remove one to add these two.',
+                    style: body(13, color: kTextPrimary),
+                  ),
+                  backgroundColor: kCardBgRaised,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            icon: const Icon(Icons.compare_arrows, size: 15),
+            label: Text('Compare with ${rival.name}'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: kTextPrimary,
+              side: const BorderSide(color: kBorderStrong),
+              visualDensity: VisualDensity.compact,
+              textStyle: labelStyle(context, 12.5, weight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }
 
@@ -508,11 +702,11 @@ class _PositionBadge extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(rank.tied > 1 ? 'TIED' : 'POSITION', style: caps(10.5)),
+            Text(rank.tied > 1 ? 'TIED' : 'POSITION', style: caps(11)),
             Text('of ${rank.total}', style: mono(16, weight: FontWeight.w700)),
             Text(
               scenarioLabel(scenario).toUpperCase(),
-              style: caps(10.5, color: kTextSecondary),
+              style: caps(11, color: kTextSecondary),
             ),
           ],
         ),
@@ -521,8 +715,9 @@ class _PositionBadge extends StatelessWidget {
   }
 }
 
-/// The field on one line: a tick per framework in this scenario, this one
-/// drawn in its colour and labelled, so its place is spatial.
+/// The field on one line: every framework of the scenario as a monogram at
+/// its value (tap to open it), frameworks at the same spot stacked, this
+/// one raised and labelled with its value.
 class _FieldStrip extends StatelessWidget {
   final DashboardState state;
   final BackendResult backend;
@@ -539,24 +734,23 @@ class _FieldStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final field = [
-      for (final b in state.backendsIn(scenario))
+      for (final b in state.rank(state.backendsIn(scenario), metric, scenario))
         if (state.valueOf(b, metric, scenario) case final v?) (b, v),
     ];
     if (field.length < 2) return const SizedBox.shrink();
-    final values = field.map((e) => e.$2);
-    final hi = values.reduce((a, b) => a > b ? a : b);
+    final hi = field.map((e) => e.$2).reduce((a, b) => a > b ? a : b);
     final me = state.valueOf(backend, metric, scenario);
-    final color = BackendColors.of(backend.key);
+    const dot = 20.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            Text('THE FIELD', style: caps(10)),
+            Text('THE FIELD · TAP ONE TO OPEN IT', style: caps(11)),
             const Spacer(),
             Text(
               metric.higherIsBetter ? 'right is better' : 'left is better',
-              style: mono(10.5, color: kTextDim),
+              style: mono(11, color: kTextMuted),
             ),
           ],
         ),
@@ -564,70 +758,83 @@ class _FieldStrip extends StatelessWidget {
         LayoutBuilder(
           builder: (context, c) {
             final w = c.maxWidth;
-            double x(double v) => hi <= 0 ? 0 : (v / hi) * (w - 2);
+            double x(double v) =>
+                hi <= 0 ? 0 : (v / hi * (w - dot)).clamp(0, w - dot);
+            // Stack frameworks whose dots would overlap.
+            final placed = <(BackendResult, double, double, int)>[];
+            for (final (b, v) in field.reversed) {
+              final px = x(v);
+              var level = 0;
+              while (placed.any(
+                (p) => p.$4 == level && (p.$3 - px).abs() < dot + 2,
+              )) {
+                level++;
+              }
+              placed.add((b, v, px, level));
+            }
+            final levels = placed
+                .map((p) => p.$4)
+                .fold(0, (a, b) => a > b ? a : b);
+            final myLevel = placed
+                .where((p) => p.$1.key == backend.key)
+                .map((p) => p.$4)
+                .fold(0, (a, b) => a > b ? a : b);
+            final height = 22 + (levels + 1) * (dot + 4) + 16;
+            final mine = me == null ? null : x(me);
             return SizedBox(
-              height: 46,
+              height: height,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
                   Positioned(
                     left: 0,
                     right: 0,
-                    top: 14,
-                    child: Container(height: 2, color: kGridLine),
+                    bottom: 16 + dot / 2,
+                    child: Container(height: 2, color: kBorder),
                   ),
-                  for (final (b, v) in field)
-                    if (b.key != backend.key)
-                      Positioned(
-                        left: x(v),
-                        top: 8,
-                        child: Tooltip(
-                          message: '${b.name}: ${formatMetric(metric, v)}',
-                          child: Container(
-                            width: 2,
-                            height: 14,
-                            color: kTextDim,
-                          ),
-                        ),
+                  for (final (b, v, px, level) in placed)
+                    Positioned(
+                      left: px,
+                      bottom: 16 + level * (dot + 4),
+                      child: _FieldDot(
+                        backend: b,
+                        label: '${b.name}: ${formatMetric(metric, v)}',
+                        me: b.key == backend.key,
+                        size: dot,
+                        onTap: () => state.openDetails(b.key),
                       ),
-                  if (me != null)
-                    GrowFraction(
-                      fraction: hi <= 0 ? 0 : me / hi,
-                      builder: (context, f) => Positioned(
-                        left: (f * (w - 2) - 6).clamp(0, w - 12),
-                        top: 0,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 12,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                color: color,
-                                borderRadius: BorderRadius.circular(3),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: color.withValues(alpha: 0.5),
-                                    blurRadius: 8,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                    ),
+                  if (mine != null)
+                    Positioned(
+                      left: (mine + dot / 2 - 60).clamp(0, w - 120),
+                      bottom: 16 + (myLevel + 1) * (dot + 4) + 2,
+                      width: 120,
+                      child: Text(
+                        formatMetricShort(metric, me!),
+                        // Over the marker; flush with an edge near one.
+                        textAlign: mine + dot / 2 - 60 > w - 120
+                            ? TextAlign.right
+                            : mine + dot / 2 - 60 < 0
+                            ? TextAlign.left
+                            : TextAlign.center,
+                        style: mono(
+                          14,
+                          weight: FontWeight.w700,
+                          color: BackendColors.of(backend.key),
                         ),
                       ),
                     ),
                   Positioned(
                     left: 0,
                     bottom: 0,
-                    child: Text('0', style: mono(10, color: kTextDim)),
+                    child: Text('0', style: mono(11, color: kTextMuted)),
                   ),
                   Positioned(
                     right: 0,
                     bottom: 0,
                     child: Text(
                       formatMetricShort(metric, hi),
-                      style: mono(10, color: kTextDim),
+                      style: mono(11, color: kTextMuted),
                     ),
                   ),
                 ],
@@ -636,6 +843,60 @@ class _FieldStrip extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+class _FieldDot extends StatelessWidget {
+  final BackendResult backend;
+  final String label;
+  final bool me;
+  final double size;
+  final VoidCallback onTap;
+
+  const _FieldDot({
+    required this.backend,
+    required this.label,
+    required this.me,
+    required this.size,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = BackendColors.of(backend.key);
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: true,
+        label: me ? '$label (this framework)' : 'Open $label',
+        excludeSemantics: true,
+        child: InkWell(
+          onTap: me ? null : onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            decoration: me
+                ? BoxDecoration(
+                    borderRadius: BorderRadius.circular(7),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.6),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  )
+                : null,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: kCardBg,
+                borderRadius: BorderRadius.circular(6),
+                border: me ? Border.all(color: color, width: 2) : null,
+              ),
+              child: Monogram(backend: backend, size: size),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

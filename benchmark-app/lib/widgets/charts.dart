@@ -155,7 +155,10 @@ class StepLoadChart extends StatelessWidget {
               return FlDotCirclePainter(
                 radius: step.pass ? 2.8 : 4,
                 color: step.pass ? bar.color ?? kTextPrimary : kCardBg,
-                strokeColor: step.pass ? kCardBg : kRedline,
+                // Amber: the load generator, not the app, was the limit.
+                strokeColor: step.pass
+                    ? kCardBg
+                    : (step.k6Bound ? kAmber : kRedline),
                 strokeWidth: step.pass ? 1 : 2,
               );
             },
@@ -274,7 +277,11 @@ class StepLoadChart extends StatelessWidget {
             return '$name @ ${formatNumber(st.targetRps)} req/s\n'
                 'served ${formatNumber(st.achievedRps)} · p99 ${formatMs(st.p99)}'
                 '${st.errorRate > 0 ? ' · ${(st.errorRate * 100).toStringAsFixed(2)}% err' : ''}'
-                '${st.pass ? '' : ' · failed'}';
+                '${st.pass
+                    ? ''
+                    : st.k6Bound
+                    ? ' · failed at the load generator\'s limit'
+                    : ' · failed'}';
           }),
         ),
       ),
@@ -519,7 +526,9 @@ class HistoryChart extends StatelessWidget {
         ),
       );
     }
-    final interval = _niceInterval(maxY);
+    // Headroom above the highest point, so it sits under a labelled line.
+    final interval = _niceInterval(maxY * 1.1);
+    final top = ((maxY * 1.1) / interval).ceil() * interval;
     final single = labels.length == 1;
     return SizedBox(
       height: 260,
@@ -529,7 +538,7 @@ class HistoryChart extends StatelessWidget {
           minX: single ? -0.5 : -0.15,
           maxX: single ? 0.5 : labels.length - 1 + 0.15,
           minY: 0,
-          maxY: (maxY / interval).ceil() * interval,
+          maxY: top,
           gridData: _grid(),
           borderData: _border(),
           lineBarsData: bars,
@@ -548,6 +557,7 @@ class HistoryChart extends StatelessWidget {
                   }
                   return SideTitleWidget(
                     meta: meta,
+                    fitInside: SideTitleFitInsideData.fromTitleMeta(meta),
                     child: Text(labels[i], style: _axisStyle),
                   );
                 },
@@ -558,12 +568,10 @@ class HistoryChart extends StatelessWidget {
                 showTitles: true,
                 reservedSize: 52,
                 interval: interval,
-                getTitlesWidget: (v, meta) => v == meta.max
-                    ? const SizedBox.shrink()
-                    : SideTitleWidget(
-                        meta: meta,
-                        child: Text(format(v), style: _axisStyle),
-                      ),
+                getTitlesWidget: (v, meta) => SideTitleWidget(
+                  meta: meta,
+                  child: Text(format(v), style: _axisStyle),
+                ),
               ),
             ),
           ),

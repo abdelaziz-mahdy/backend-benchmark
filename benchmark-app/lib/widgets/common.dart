@@ -92,6 +92,9 @@ class PageTitle extends StatelessWidget {
   final Widget? trailing;
   final Widget? leading;
 
+  /// Keep [trailing] beside the title on phones too (a small icon button).
+  final bool inlineTrailing;
+
   const PageTitle({
     super.key,
     required this.title,
@@ -100,6 +103,7 @@ class PageTitle extends StatelessWidget {
     required this.onBack,
     this.trailing,
     this.leading,
+    this.inlineTrailing = false,
   });
 
   @override
@@ -147,14 +151,14 @@ class PageTitle extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null && !narrow) ...[
+            if (trailing != null && (!narrow || inlineTrailing)) ...[
               const SizedBox(width: 12),
               trailing!,
             ],
           ],
         ),
         // Phones: actions under the title, so long names do not break.
-        if (trailing != null && narrow) ...[
+        if (trailing != null && narrow && !inlineTrailing) ...[
           const SizedBox(height: 10),
           trailing!,
         ],
@@ -643,7 +647,14 @@ class MarkerIcons extends StatelessWidget {
 class MarkerLegend extends StatelessWidget {
   final bool compact;
 
-  const MarkerLegend({super.key, this.compact = false});
+  /// Markers to list; all of them by default.
+  final Iterable<Marker> markers;
+
+  const MarkerLegend({
+    super.key,
+    this.compact = false,
+    this.markers = Marker.values,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -667,15 +678,12 @@ class MarkerLegend extends StatelessWidget {
       runSpacing: 6,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        for (final m in Marker.values)
+        for (final m in markers)
           item(
             Icon(m.icon, size: 13, color: kAmber),
             compact ? m.short : m.label,
           ),
-        item(
-          Text('—', style: mono(12, color: kTextDim)),
-          compact ? 'Not run' : 'Not measured',
-        ),
+        item(Text('—', style: mono(12, color: kTextDim)), 'Not measured'),
       ],
     );
   }
@@ -758,6 +766,9 @@ class LaneBar extends StatelessWidget {
   final double? high;
   final Color track;
 
+  /// A lime finish line at the end of the track (the ranked column).
+  final bool finish;
+
   const LaneBar({
     super.key,
     required this.fraction,
@@ -767,6 +778,7 @@ class LaneBar extends StatelessWidget {
     this.low,
     this.high,
     this.track = kGridLine,
+    this.finish = false,
   });
 
   @override
@@ -784,6 +796,7 @@ class LaneBar extends StatelessWidget {
             track: track,
             low: low,
             high: high,
+            finish: finish,
           ),
         ),
       ),
@@ -797,6 +810,7 @@ class _LanePainter extends CustomPainter {
   final Color track;
   final double? low;
   final double? high;
+  final bool finish;
 
   _LanePainter({
     required this.fraction,
@@ -804,6 +818,7 @@ class _LanePainter extends CustomPainter {
     required this.track,
     this.low,
     this.high,
+    this.finish = false,
   });
 
   @override
@@ -818,6 +833,12 @@ class _LanePainter extends CustomPainter {
       canvas.drawRRect(
         RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, w, size.height), r),
         Paint()..color = color,
+      );
+    }
+    if (finish) {
+      canvas.drawRect(
+        Rect.fromLTWH(size.width - 1.5, -3, 1.5, size.height + 6),
+        Paint()..color = kSignal,
       );
     }
     final lo = low, hi = high;
@@ -841,7 +862,8 @@ class _LanePainter extends CustomPainter {
       old.color != color ||
       old.track != track ||
       old.low != low ||
-      old.high != high;
+      old.high != high ||
+      old.finish != finish;
 }
 
 class InfoIcon extends StatelessWidget {
@@ -934,4 +956,60 @@ class _FlagPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_FlagPainter oldDelegate) => false;
+}
+
+/// A strip of chequered-flag squares: the mark of a leader (the winner's
+/// card, the P1 row). Vertical by default; [horizontal] runs it across.
+class ChequerBand extends StatelessWidget {
+  final double thickness;
+  final bool horizontal;
+  final Color color;
+
+  const ChequerBand({
+    super.key,
+    this.thickness = 6,
+    this.horizontal = false,
+    this.color = kSignal,
+  });
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: SizedBox(
+      width: horizontal ? double.infinity : thickness,
+      height: horizontal ? thickness : double.infinity,
+      child: CustomPaint(
+        painter: _ChequerPainter(color: color, horizontal: horizontal),
+      ),
+    ),
+  );
+}
+
+class _ChequerPainter extends CustomPainter {
+  final Color color;
+  final bool horizontal;
+
+  _ChequerPainter({required this.color, required this.horizontal});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Two squares across the band, as many as fit along it.
+    final cell = (horizontal ? size.height : size.width) / 2;
+    if (cell <= 0) return;
+    final on = Paint()..color = color.withValues(alpha: 0.85);
+    final off = Paint()..color = color.withValues(alpha: 0.12);
+    final along = horizontal ? size.width : size.height;
+    for (var i = 0; i * cell < along; i++) {
+      for (var j = 0; j < 2; j++) {
+        final a = i * cell, b = j * cell;
+        final rect = horizontal
+            ? Rect.fromLTWH(a, b, cell, cell)
+            : Rect.fromLTWH(b, a, cell, cell);
+        canvas.drawRect(rect, (i + j).isEven ? on : off);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ChequerPainter old) =>
+      old.color != color || old.horizontal != horizontal;
 }

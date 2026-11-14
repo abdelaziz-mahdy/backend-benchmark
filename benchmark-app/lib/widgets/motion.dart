@@ -144,3 +144,52 @@ class GrowFraction extends StatelessWidget {
     );
   }
 }
+
+/// Five start lights over the headline: they light one by one when the
+/// page first opens, then go out together, like a race start. Nothing
+/// moves with reduced motion (the lights stay out).
+class StartLights extends StatelessWidget {
+  final double size;
+
+  const StartLights({super.key, this.size = 7});
+
+  static const _lights = 5;
+
+  @override
+  Widget build(BuildContext context) {
+    final still = reducedMotion(context);
+    return ExcludeSemantics(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: still ? Duration.zero : const Duration(milliseconds: 1100),
+        builder: (context, t, _) {
+          // 0..0.6: lights come on one by one; after 0.75: all out.
+          final lit = t >= 0.75 ? 0 : (t / 0.6 * _lights).floor() + 1;
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < _lights; i++)
+                Container(
+                  width: size,
+                  height: size,
+                  margin: EdgeInsets.only(right: size * 0.6),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: i < lit ? kRedline : kRedline.withValues(alpha: 0.2),
+                    boxShadow: i < lit
+                        ? [
+                            BoxShadow(
+                              color: kRedline.withValues(alpha: 0.6),
+                              blurRadius: 6,
+                            ),
+                          ]
+                        : null,
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
