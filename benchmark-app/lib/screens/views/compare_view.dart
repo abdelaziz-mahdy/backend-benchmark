@@ -162,7 +162,7 @@ class CompareView extends StatelessWidget {
           ),
           Fold(
             key: ValueKey('charts-${run.id}'),
-            title: 'Charts and every number',
+            title: 'Charts and all numbers',
             subtitle:
                 'The load steps, processor and memory over time, every '
                 'measured number side by side, and how each is built.',
@@ -187,7 +187,7 @@ class CompareView extends StatelessWidget {
                 ),
               ),
             CalmButton(
-              label: 'See every number',
+              label: 'See all results',
               onTap: () => nav.go(HomeView.all),
             ),
           ],
@@ -451,7 +451,7 @@ class _Shared extends StatelessWidget {
     if (shared == null) {
       return Text(
         'There is no rate that all of them handled in recorded steps in '
-        'this kind of work.',
+        'this test.',
         style: t.body,
       );
     }
@@ -592,7 +592,7 @@ class _ChartsState extends State<_Charts> {
         ],
         _overTime(here, s),
         ChartBlock(
-          title: 'Every number side by side',
+          title: 'All numbers side by side',
           subtitle:
               'Each one at its own result, so only the first rows are a '
               'race. Hover a name for what it means.',

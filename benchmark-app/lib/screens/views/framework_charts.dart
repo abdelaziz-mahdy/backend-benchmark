@@ -101,13 +101,13 @@ class FrameworkCharts extends StatelessWidget {
             padding: const EdgeInsets.only(top: 16),
             child: Text(
               '${capFirst(b.name)} was not measured in '
-              '${test == null ? 'this kind of work' : testInfo(test).inSentence}.',
+              '${test == null ? 'this test' : testInfo(test).inSentence}.',
               style: t.body,
             ),
           )
         else ...[
           ChartBlock(
-            title: 'Every number from this test',
+            title: 'All numbers from this test',
             subtitle: r.reps > 1
                 ? 'The middle of ${numberWord(r.reps)} runs, with the lowest '
                       'and highest run after it.'
@@ -139,8 +139,8 @@ class FrameworkCharts extends StatelessWidget {
               title: 'Slow reply time at each step',
               subtitle:
                   '99 of every 100 replies were faster than this. Above the '
-                  'red line is too slow. Amber points stopped because the '
-                  'test tool reached its own limit.',
+                  "red line is too slow. Amber points stopped at our "
+                  "testing tool's limit, not the framework's.",
               child: StepLoadChart(
                 series: [StepSeries(b, r.steps)],
                 mode: StepChartMode.p99,

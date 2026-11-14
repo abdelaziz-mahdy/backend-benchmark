@@ -178,8 +178,7 @@ String longDate(String? iso) {
 // -------------------------------------------------------------- sentences
 
 const kLimitSentence =
-    'This reached the most our test tool could send, so the real figure may '
-    'be higher.';
+    "It hit our testing tool's limit, so it may be faster than this.";
 
 /// "All three runs gave the same result." / "The three runs ranged from
 /// 38,000 to 40,000." / "We ran this test once."
@@ -187,13 +186,13 @@ String runsSentence(Result r) {
   if (r.reps <= 1) return 'We ran this test once.';
   final n = numberWord(r.reps);
   if (whole(r.low) == whole(r.high)) return 'All $n runs gave the same result.';
-  return 'The $n runs ranged from ${whole(r.low)} to ${whole(r.high)}.';
+  return 'Across $n runs it ranged from ${whole(r.low)} to ${whole(r.high)}.';
 }
 
 /// "Too close to call with A and B." or "".
 String closeSentence(List<Result> all, Result r) {
   final c = closeTo(all, r);
-  return c.isEmpty ? '' : 'Too close to call with ${_names(c)}.';
+  return c.isEmpty ? '' : 'About the same as ${_names(c)}.';
 }
 
 /// "It stopped responding when overloaded and was restarted twice." or "".
@@ -220,12 +219,12 @@ String placeSentence(List<Result> all, Result r) {
   }
   if (n <= 1) return 'The only framework measured here.';
   if (more == 0) {
-    if (same == 0) return 'The highest of the $n.';
-    return 'Joint highest of the $n, level with $same '
+    if (same == 0) return 'The fastest of the $n.';
+    return 'Tied for fastest of the $n, with $same '
         '${same == 1 ? 'other' : 'others'}.';
   }
-  if (more == n - 1) return 'The lowest of the $n.';
-  return '$more of the other ${n - 1} handled more.';
+  if (more == n - 1) return 'The slowest of the $n.';
+  return '$more of the other ${n - 1} were faster.';
 }
 
 /// What the inline reveal and the profile rows say after the number: the
@@ -268,11 +267,10 @@ class Band {
     final c = capped;
     if (c.isEmpty) return '';
     if (c.length == 1) {
-      return '${capFirst(c.first.name)} reached the most our test tool could '
-          'send, so its real figure may be higher.';
+      return "${capFirst(c.first.name)} hit our testing tool's limit, so it may be faster.";
     }
-    return '${capFirst(_names(c))} all reached the most our test tool could '
-        'send, so we cannot tell them apart.';
+    return "${capFirst(_names(c))} all hit our testing tool's limit, so we can't "
+        'tell which is fastest.';
   }
 }
 
@@ -312,48 +310,37 @@ List<Band> bandsFor(List<Result> results) {
 
 // ---------------------------------------------------------------- answers
 
-/// The answer paragraph of the short answer: who handled the most, who
-/// came next, and who stayed in the lowest band.
+/// The answer under the main test: who is fastest and who is next, in two
+/// short sentences. The groups below it show everyone else, and the note
+/// under the top group says when the test tool was the limit.
 String answerFor(List<Result> results) {
   if (results.isEmpty) return 'No framework has a result in this test.';
   final sorted = sortResults(results);
   final leader = sorted.first;
   final top = sortResults([leader, ...closeTo(sorted, leader)]);
-  final out = <String>[];
-  final atLeast = top.any((r) => r.capped) ? 'at least ' : '';
-  if (top.length == 1) {
-    out.add(
-      '${capFirst(leader.name)} handled the most: $atLeast'
-      '${whole(leader.value)} requests a second.',
-    );
-  } else {
-    final lo = top.map((r) => r.value).reduce(math.min);
-    final hi = top.map((r) => r.value).reduce(math.max);
-    out.add(
-      '${capFirst(_names(top))} handled the most, too close to call: '
-      '$atLeast${spanText(lo, hi)} requests a second.',
-    );
-  }
+  String span(List<Result> g) => spanText(
+    g.map((r) => r.value).reduce(math.min),
+    g.map((r) => r.value).reduce(math.max),
+  );
+  String who(List<Result> g) => g.length > 3
+      ? '${capFirst(numberWord(g.length))} frameworks'
+      : capFirst(_names(g));
+  final out = <String>[
+    top.length == 1
+        ? '${capFirst(leader.name)} is the fastest, with '
+              '${whole(leader.value)} requests a second.'
+        : '${who(top)} tie for fastest, with ${span(top)} requests a second.',
+  ];
   final shown = {for (final r in top) r.key};
   final rest = sorted.where((r) => !shown.contains(r.key)).toList();
   if (rest.isNotEmpty) {
     final next = rest.first;
-    final group = sortResults([
-      next,
-      ...closeTo(rest, next).where((r) => !shown.contains(r.key)),
-    ]);
-    shown.addAll(group.map((r) => r.key));
-    final lo = group.map((r) => r.value).reduce(math.min);
-    final hi = group.map((r) => r.value).reduce(math.max);
-    out.add('${capFirst(_names(group))} came next, at ${spanText(lo, hi)}.');
-  }
-  final bands = bandsFor(sorted);
-  if (bands.length > 1) {
-    final bottom = bands.last;
-    final low = bottom.members.where((r) => !shown.contains(r.key)).toList();
-    if (low.isNotEmpty && bottom.to != null) {
-      out.add('${capFirst(_names(low))} stayed under ${whole(bottom.to!)}.');
-    }
+    final group = sortResults([next, ...closeTo(rest, next)]);
+    out.add(
+      group.length == 1
+          ? 'Next is ${next.name}, with ${whole(next.value)}.'
+          : 'Next are ${_names(group)}, with ${span(group)}.',
+    );
   }
   return out.join(' ');
 }
@@ -390,36 +377,18 @@ String otherSummary(
   final capped = sorted.where((r) => r.capped).toList();
   if (capped.length >= 2 && sorted.first.capped) {
     final n = numberWord(capped.length);
-    return '${capFirst(n)} frameworks reached the most our test tool can '
-        'send, so we cannot tell those $n apart.';
+    return "${capFirst(n)} frameworks tie at our testing tool's limit, so we can't "
+        'tell which is fastest.';
   }
   final leader = sorted.first;
-  final lead =
-      '${capFirst(leader.name)} handled the most, '
-      '${leader.capped ? 'at least ' : ''}${whole(leader.value)} requests a '
-      'second.';
-  final rho = orderAgreement(sorted, main);
-  if (rho == null || main.isEmpty) return lead;
-  final order = rho >= 0.8
-      ? 'Nearly the same order as ${mainTitle.inSentence}'
-      : rho >= 0.5
-      ? 'A similar order to ${mainTitle.inSentence}, with some changes'
-      : 'A different order from ${mainTitle.inSentence}';
-  final topHere = leader.value;
-  final topMain = sortResults(main).first.value;
-  final numbers = topHere > topMain * 1.1
-      ? ', with higher numbers at the top'
-      : topHere < topMain * 0.9
-      ? ', with lower numbers at the top'
-      : '';
-  return '$order$numbers. $lead';
+  return '${capFirst(leader.name)} is the fastest, with '
+      '${whole(leader.value)} requests a second.';
 }
 
 // ---------------------------------------------------------------- compare
 
 /// "one kind of work", "three kinds of work".
-String kindsOfWork(int n) =>
-    '${numberWord(n)} ${n == 1 ? 'kind' : 'kinds'} of work';
+String kindsOfWork(int n) => '${numberWord(n)} ${n == 1 ? 'test' : 'tests'}';
 
 /// The comparison's answer in one plain sentence (or two): who handled the
 /// most in how many kinds of work, and where it was too close to call.
@@ -440,31 +409,31 @@ String compareVerdict(Map<String, List<Result>> byTest) {
     names[rs[0].key] = rs[0].name;
   }
   if (contested == 0) {
-    return 'Pick frameworks that were measured in the same kind of work.';
+    return 'Pick frameworks that were measured in the same tests.';
   }
   if (wins.isEmpty) {
     return contested == 1
-        ? 'They were too close to call.'
-        : 'They were too close to call in every kind of work.';
+        ? 'They were about the same.'
+        : 'They were about the same in every test.';
   }
   final most = wins.values.map((w) => w.length).reduce(math.max);
   final leaders = wins.keys.where((k) => wins[k]!.length == most).toList();
   final closeNote = close == 0
       ? ''
       : close == 1
-      ? ' In one, the top two were too close to call.'
-      : ' In ${numberWord(close)}, the top two were too close to call.';
+      ? ' In one test, the top two were about the same.'
+      : ' In ${numberWord(close)} tests, the top two were about the same.';
   if (leaders.length > 1) {
     return '${capFirst(joinAnd([for (final k in leaders) names[k]!]))} each '
-        'handled the most in ${kindsOfWork(most)}.$closeNote';
+        'were fastest in ${kindsOfWork(most)}.$closeNote';
   }
   final top = leaders.single;
   final head = most == contested
       ? (contested == 1
-            ? '${capFirst(names[top]!)} handled the most.'
-            : '${capFirst(names[top]!)} handled the most in all '
+            ? '${capFirst(names[top]!)} was fastest.'
+            : '${capFirst(names[top]!)} was fastest in all '
                   '${kindsOfWork(contested)}.')
-      : '${capFirst(names[top]!)} handled the most in ${numberWord(most)} of '
+      : '${capFirst(names[top]!)} was fastest in ${numberWord(most)} of '
             'the ${kindsOfWork(contested)}.';
   final others = [
     for (final e in wins.entries)
@@ -489,29 +458,29 @@ String compareTestSentence(List<Result> results) {
   final out = <String>[];
   if (tied.length > 1) {
     out.add(
-      '${capFirst(_names(tied))} were too close to call, at '
+      '${capFirst(_names(tied))} were about the same, at '
       '${spanText(tied.last.value, tied.first.value)}'
       '${tied.any((r) => r.capped) ? ' or more' : ''}.',
     );
   } else {
-    out.add('${capFirst(lead.name)} handled the most, ${numberText(lead)}.');
+    out.add('${capFirst(lead.name)} was fastest, with ${numberText(lead)}.');
   }
   final rest = rs.skip(tied.length).toList();
   if (rest.isNotEmpty) {
     out.add(
-      '${capFirst(rest.first.name)} came next, at ${whole(rest.first.value)}.',
+      '${capFirst(rest.first.name)} was next, with ${whole(rest.first.value)}.',
     );
   }
   if (rest.length > 1) {
     out.add(
-      '${capFirst(rest.last.name)} handled the least, ${whole(rest.last.value)}.',
+      '${capFirst(rest.last.name)} was slowest, with ${whole(rest.last.value)}.',
     );
   }
   if (rs.any((r) => r.capped)) {
     final c = rs.where((r) => r.capped).toList();
     out.add(
-      '${capFirst(_names(c))} reached the most our test tool could send, so '
-      'the real ${c.length == 1 ? 'figure' : 'figures'} may be higher.',
+      "${capFirst(_names(c))} hit our testing tool's limit, so "
+      "${c.length == 1 ? 'it' : 'they'} may be faster.",
     );
   }
   return out.join(' ');
@@ -573,9 +542,9 @@ String ledeFor(RunSummary run) {
         'result is the average number of requests a second it handled. These '
         'numbers cannot be compared with newer runs.';
   }
-  return 'The same small API, built in $n frameworks. We sent each one more '
-      'and more requests until its replies got slow. Its result is the most '
-      'requests a second it handled while still replying quickly.';
+  return 'We built the same small app in $n frameworks and sent each one '
+      'more and more traffic until it slowed down. Each number is the most '
+      'requests a second it handled before that.';
 }
 
 /// The points of "How we tested", from the run's own settings.
@@ -631,7 +600,7 @@ List<String> howWeTested(RunSummary run) {
       'We ran every test ${numberWord(reps)} times. The number we show is the '
           'middle run. The lowest and highest runs are shown next to it '
           'wherever you see a range.',
-    'When two frameworks\' ranges overlap, we call them too close to call.',
+    "When two frameworks' runs overlap, we call them about the same.",
     if (limit != null)
       'The load tool itself has a limit (about '
           '${whole(limit < 1000 ? limit : (limit / 1000).round() * 1000)} '

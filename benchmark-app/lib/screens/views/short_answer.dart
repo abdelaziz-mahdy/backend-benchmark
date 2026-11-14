@@ -50,18 +50,15 @@ class ShortAnswerView extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          'Highest first. Select a name to see its number.'
-          '${state.selectedKey != null && mainResults.any((r) => r.key == state.selectedKey) ? ' The outlined name is the framework you looked up.' : ''}',
+          'Tap a name to see its number.'
+          '${state.selectedKey != null && mainResults.any((r) => r.key == state.selectedKey) ? ' The outlined name is the one you looked up.' : ''}',
           style: t.small,
         ),
         if (tests.length > 1) ...[
           const SizedBox(height: 34),
           Semantics(
             header: true,
-            child: Text(
-              'Other kinds of work',
-              style: t.h2.copyWith(fontSize: 18),
-            ),
+            child: Text('Other tests', style: t.h2.copyWith(fontSize: 18)),
           ),
           const SizedBox(height: 10),
           for (final (i, id) in tests.skip(1).indexed)
@@ -100,11 +97,11 @@ class ShortAnswerView extends StatelessWidget {
           runSpacing: 10,
           children: [
             CalmButton(
-              label: 'Look up one framework',
+              label: 'Find a framework',
               onTap: () => nav.go(HomeView.one),
             ),
             CalmButton(
-              label: 'See every number',
+              label: 'See all results',
               onTap: () => nav.go(HomeView.all),
             ),
             CalmButton(

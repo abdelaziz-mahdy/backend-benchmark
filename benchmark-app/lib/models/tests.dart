@@ -35,28 +35,26 @@ TestInfo testInfo(String id) => switch (id) {
     'db_mixed',
     'A typical app',
     'Typical app',
-    '8 in 10 requests read from the database and 2 in 10 save a new row. '
-        'This is the closest to a real app.',
+    '8 in 10 requests read data and 2 in 10 save new data.',
   ),
   'db_read' => const TestInfo(
     'db_read',
     'Only reading',
     'Only reading',
-    'Every request reads from the database: a page of 20 rows, or one row '
-        'out of 10,000.',
+    'Every request reads data from the database.',
   ),
   'db_write' => const TestInfo(
     'db_write',
     'Only saving',
     'Only saving',
-    'Every request saves one new row to the database.',
+    'Every request saves new data to the database.',
   ),
   'no_db' => const TestInfo(
     'no_db',
     'No database',
     'No database',
-    'The server sends back a small fixed reply. This shows the speed of the '
-        'framework alone, with no database involved.',
+    "Every request gets a tiny fixed reply, with no database. This shows "
+        "the framework's own speed.",
   ),
   'db_test' => const TestInfo(
     'db_test',

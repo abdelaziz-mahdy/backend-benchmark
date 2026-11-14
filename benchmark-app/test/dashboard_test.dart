@@ -364,13 +364,16 @@ void main() {
         res('a', 48000, capped: true),
         res('b', 48000, capped: true),
       ]).single;
-      expect(band.cappedNote, contains('could send'));
-      expect(band.cappedNote, contains('cannot tell them apart'));
+      expect(band.cappedNote, contains("our testing tool's limit"));
+      expect(band.cappedNote, contains("can't tell which is fastest"));
     });
 
     test('the answer names the leader from the data, not fixed text', () {
       final answer = answerFor([res('zeta', 9000), res('alpha', 3000)]);
-      expect(answer, startsWith('Zeta handled the most'));
+      expect(
+        answer,
+        'Zeta is the fastest, with 9,000 requests a second. Next is alpha, with 3,000.',
+      );
       expect(answer, contains('9,000'));
       expect(answerFor([]), contains('No framework'));
     });
@@ -384,7 +387,6 @@ void main() {
         find.text('How much traffic can each backend framework handle?'),
         findsOneWidget,
       );
-      expect(find.text('Show me'), findsOneWidget);
       expect(find.text('30,000 or more'), findsWidgets);
       expect(find.text('Under 10,000'), findsWidgets);
       // No internal test names anywhere on the page.

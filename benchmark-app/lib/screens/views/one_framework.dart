@@ -248,11 +248,11 @@ class _Profile extends StatelessWidget {
           runSpacing: 10,
           children: [
             CalmButton(
-              label: 'Back to the short answer',
+              label: "See who's fastest",
               onTap: () => nav.go(HomeView.short),
             ),
             CalmButton(
-              label: 'Compare with every framework',
+              label: 'See all results',
               onTap: () => nav.go(HomeView.all),
             ),
           ],

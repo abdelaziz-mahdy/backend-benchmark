@@ -115,10 +115,9 @@ class _HomePageState extends State<HomePage> {
                 ),
                 if (run.isLegacy) _LegacyNote(state: state),
                 const SizedBox(height: 26),
-                Text('Show me', key: _switchKey, style: t.small),
-                const SizedBox(height: 6),
+                SizedBox(key: _switchKey),
                 SegmentSwitch<HomeView>(
-                  label: 'Show me',
+                  label: 'Choose a view',
                   focusNodes: _switchFocus,
                   options: [for (final v in HomeView.values) (v, v.label)],
                   selected: state.view,
@@ -197,7 +196,7 @@ class _SiteLine extends StatelessWidget {
         Pressable(
           onTap: state.goHome,
           radius: 4,
-          semanticLabel: 'Backend speed test, back to the short answer',
+          semanticLabel: "Backend speed test, back to who's fastest",
           builder: (context, hovered) => Align(
             widthFactor: 1,
             child: Text(

@@ -62,7 +62,7 @@ class EveryNumberView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Semantics(header: true, child: Text('Every number', style: t.h2)),
+        Semantics(header: true, child: Text('All results', style: t.h2)),
         const SizedBox(height: 4),
         Text(
           'All ${run.backends.length} frameworks across the '
@@ -127,7 +127,7 @@ class EveryNumberView extends StatelessWidget {
             if (m == Measure.typical || m == Measure.slow)
               '"ms" means milliseconds. 1,000 ms is one second.',
           ],
-          'A dash means the framework was not measured in that kind of work.',
+          'A dash means the framework was not measured in that test.',
           'Select a framework name to see everything about it. The last '
               'column adds it to Compare (up to ${DashboardState.maxCompare}).',
         ]),

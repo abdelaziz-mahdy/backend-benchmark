@@ -8,11 +8,11 @@ import '../services/results_service.dart';
 /// The home page, and the two pages opened from its footer.
 enum DashboardPage { home, history, method }
 
-/// The "Show me" choices on the home page.
+/// The view switch on the home page; each label names what the view shows.
 enum HomeView {
-  short('The short answer'),
-  one('One framework'),
-  all('Every number'),
+  short("Who's fastest"),
+  one('Find a framework'),
+  all('All results'),
   compare('Compare');
 
   final String label;

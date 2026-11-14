@@ -281,7 +281,7 @@ class StepLoadChart extends StatelessWidget {
                 '${st.pass
                     ? ''
                     : st.k6Bound
-                    ? ' · stopped by the test tool\'s limit'
+                    ? " · stopped at our testing tool's limit"
                     : ' · missed the limits'}';
           }),
         ),
