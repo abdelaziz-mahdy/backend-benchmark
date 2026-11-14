@@ -8,44 +8,43 @@ import '../utils/colors.dart';
 import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
 
-// Instrument-trace styling shared by every chart: no frame, faint
-// horizontal rules, monospaced tick labels.
-final _axisStyle = mono(10.5, color: kTextDim, weight: FontWeight.w400);
-final _axisNameStyle = body(11, color: kTextMuted);
+// Styling shared by every chart: no frame, faint horizontal rules, quiet
+// tick labels in the page colours.
+TextStyle _axisStyle(Palette p) =>
+    mono(11, color: p.muted, weight: FontWeight.w400);
+TextStyle _axisNameStyle(Palette p) => body(12, color: p.muted);
 const _sloMs = 100.0;
 
 double _log2(double v) => math.log(v) / math.ln2;
 double _log10(double v) => math.log(v) / math.ln10;
 
-FlGridData _grid() => FlGridData(
+FlGridData _grid(Palette p) => FlGridData(
   show: true,
   drawVerticalLine: false,
   getDrawingHorizontalLine: (_) =>
-      const FlLine(color: kGridLine, strokeWidth: 1),
+      FlLine(color: p.line.withValues(alpha: 0.6), strokeWidth: 1),
 );
 
-FlBorderData _border() => FlBorderData(
+FlBorderData _border(Palette p) => FlBorderData(
   show: true,
-  border: const Border(bottom: BorderSide(color: kBorder)),
+  border: Border(bottom: BorderSide(color: p.line)),
 );
 
-LineTouchData _touch(String Function(LineBarSpot s) label) => LineTouchData(
-  touchTooltipData: LineTouchTooltipData(
-    getTooltipColor: (_) => kCardBgRaised.withValues(alpha: 0.97),
-    tooltipBorder: const BorderSide(color: kBorderStrong),
-    fitInsideHorizontally: true,
-    fitInsideVertically: true,
-    getTooltipItems: (spots) => [
-      for (final s in spots)
-        s.bar.color == null || label(s).isEmpty
-            ? null
-            : LineTooltipItem(
-                label(s),
-                mono(11.5, color: s.bar.color ?? kTextPrimary),
-              ),
-    ],
-  ),
-);
+LineTouchData _touch(Palette p, String Function(LineBarSpot s) label) =>
+    LineTouchData(
+      touchTooltipData: LineTouchTooltipData(
+        getTooltipColor: (_) => p.surface.withValues(alpha: 0.97),
+        tooltipBorder: BorderSide(color: p.line),
+        fitInsideHorizontally: true,
+        fitInsideVertically: true,
+        getTooltipItems: (spots) => [
+          for (final s in spots)
+            s.bar.color == null || label(s).isEmpty
+                ? null
+                : LineTooltipItem(label(s), mono(12, color: p.text)),
+        ],
+      ),
+    );
 
 /// One backend's steps, for the step-load charts.
 class StepSeries {
@@ -80,12 +79,13 @@ class StepLoadChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final all = [for (final s in series) ...s.steps];
     if (all.isEmpty) {
       return SizedBox(
         height: height,
         child: Center(
-          child: Text('No step data', style: body(13, color: kTextMuted)),
+          child: Text('No step data', style: body(13, color: p.muted)),
         ),
       );
     }
@@ -125,7 +125,7 @@ class StepLoadChart extends StatelessWidget {
       if (throughput)
         LineChartBarData(
           spots: [const FlSpot(0, 0), FlSpot(maxX, maxX)],
-          color: kTextDim,
+          color: p.muted,
           barWidth: 1,
           dashArray: [4, 4],
           dotData: const FlDotData(show: false),
@@ -133,7 +133,7 @@ class StepLoadChart extends StatelessWidget {
       for (final s in series)
         LineChartBarData(
           spots: [for (final st in s.steps) FlSpot(lx(st.targetRps), y(st))],
-          color: BackendColors.of(s.backend.key),
+          color: identityColor(p, s.backend.key),
           barWidth: 2.2,
           belowBarData: single
               ? BarAreaData(
@@ -142,8 +142,8 @@ class StepLoadChart extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      BackendColors.of(s.backend.key).withValues(alpha: 0.28),
-                      BackendColors.of(s.backend.key).withValues(alpha: 0),
+                      identityColor(p, s.backend.key).withValues(alpha: 0.28),
+                      identityColor(p, s.backend.key).withValues(alpha: 0),
                     ],
                   ),
                 )
@@ -154,11 +154,11 @@ class StepLoadChart extends StatelessWidget {
               final step = s.steps[index];
               return FlDotCirclePainter(
                 radius: step.pass ? 2.8 : 4,
-                color: step.pass ? bar.color ?? kTextPrimary : kCardBg,
+                color: step.pass ? bar.color ?? p.text : p.surface,
                 // Amber: the load generator, not the app, was the limit.
                 strokeColor: step.pass
-                    ? kCardBg
-                    : (step.k6Bound ? kAmber : kRedline),
+                    ? p.surface
+                    : (step.k6Bound ? p.warn : p.danger),
                 strokeWidth: step.pass ? 1 : 2,
               );
             },
@@ -179,8 +179,8 @@ class StepLoadChart extends StatelessWidget {
           maxX: maxX,
           minY: minY,
           maxY: maxY,
-          gridData: _grid(),
-          borderData: _border(),
+          gridData: _grid(p),
+          borderData: _border(p),
           lineBarsData: bars,
           rangeAnnotations: RangeAnnotations(
             horizontalRangeAnnotations: [
@@ -188,7 +188,7 @@ class StepLoadChart extends StatelessWidget {
                 HorizontalRangeAnnotation(
                   y1: _log10(_sloMs),
                   y2: maxY,
-                  color: kRedline.withValues(alpha: 0.08),
+                  color: p.danger.withValues(alpha: 0.08),
                 ),
             ],
           ),
@@ -197,15 +197,15 @@ class StepLoadChart extends StatelessWidget {
               if (!throughput)
                 HorizontalLine(
                   y: _log10(_sloMs),
-                  color: kRedline.withValues(alpha: 0.8),
+                  color: p.danger.withValues(alpha: 0.8),
                   strokeWidth: 1,
                   dashArray: [6, 4],
                   label: HorizontalLineLabel(
                     show: true,
                     alignment: Alignment.topLeft,
                     padding: const EdgeInsets.only(left: 4, bottom: 2),
-                    style: mono(10.5, color: kRedline, weight: FontWeight.w700),
-                    labelResolver: (_) => 'SLO 100 ms',
+                    style: mono(10.5, color: p.danger, weight: FontWeight.w700),
+                    labelResolver: (_) => 'limit 100 ms',
                   ),
                 ),
             ],
@@ -213,7 +213,7 @@ class StepLoadChart extends StatelessWidget {
               if (pin != null)
                 VerticalLine(
                   x: pin,
-                  color: kSignal.withValues(alpha: 0.85),
+                  color: p.accent.withValues(alpha: 0.85),
                   strokeWidth: 1.5,
                   dashArray: [3, 3],
                   label: VerticalLineLabel(
@@ -222,9 +222,9 @@ class StepLoadChart extends StatelessWidget {
                         ? Alignment.topLeft
                         : Alignment.bottomLeft,
                     padding: const EdgeInsets.only(right: 4, top: 2),
-                    style: mono(10.5, color: kSignal, weight: FontWeight.w700),
+                    style: mono(10.5, color: p.accent, weight: FontWeight.w700),
                     labelResolver: (_) =>
-                        'sustainable ${formatNumber(sustainable!)}',
+                        'result ${formatNumber(sustainable!)}',
                   ),
                 ),
             ],
@@ -235,8 +235,8 @@ class StepLoadChart extends StatelessWidget {
             bottomTitles: AxisTitles(
               axisNameSize: 18,
               axisNameWidget: Text(
-                'requested req/s (log scale)',
-                style: _axisNameStyle,
+                'requests a second asked for',
+                style: _axisNameStyle(p),
               ),
               sideTitles: SideTitles(
                 showTitles: true,
@@ -246,15 +246,15 @@ class StepLoadChart extends StatelessWidget {
                     ? const SizedBox.shrink()
                     : SideTitleWidget(
                         meta: meta,
-                        child: Text(fmtX(v), style: _axisStyle),
+                        child: Text(fmtX(v), style: _axisStyle(p)),
                       ),
               ),
             ),
             leftTitles: AxisTitles(
               axisNameSize: 18,
               axisNameWidget: Text(
-                throughput ? 'served req/s (log)' : 'p99 (log)',
-                style: _axisNameStyle,
+                throughput ? 'handled a second' : 'slow reply',
+                style: _axisNameStyle(p),
               ),
               sideTitles: SideTitles(
                 showTitles: true,
@@ -265,23 +265,24 @@ class StepLoadChart extends StatelessWidget {
                     ? const SizedBox.shrink()
                     : SideTitleWidget(
                         meta: meta,
-                        child: Text(fmtY(v), style: _axisStyle),
+                        child: Text(fmtY(v), style: _axisStyle(p)),
                       ),
               ),
             ),
           ),
-          lineTouchData: _touch((s) {
+          lineTouchData: _touch(p, (s) {
             if (s.barIndex - offset < 0) return '';
             final st = series[s.barIndex - offset].steps[s.spotIndex];
             final name = series[s.barIndex - offset].backend.name;
-            return '$name @ ${formatNumber(st.targetRps)} req/s\n'
-                'served ${formatNumber(st.achievedRps)} · p99 ${formatMs(st.p99)}'
-                '${st.errorRate > 0 ? ' · ${(st.errorRate * 100).toStringAsFixed(2)}% err' : ''}'
+            return '$name, asked for ${formatNumber(st.targetRps)} a second\n'
+                'handled ${formatNumber(st.achievedRps)} · slow reply '
+                '${formatMs(st.p99)}'
+                '${st.errorRate > 0 ? ' · ${(st.errorRate * 100).toStringAsFixed(2)}% failed' : ''}'
                 '${st.pass
                     ? ''
                     : st.k6Bound
-                    ? ' · failed at the load generator\'s limit'
-                    : ' · failed'}';
+                    ? " · stopped at our testing tool's limit"
+                    : ' · missed the limits'}';
           }),
         ),
       ),
@@ -319,6 +320,7 @@ class TimeSeriesChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final bars = <LineChartBarData>[];
     final names = <String>[];
     var maxT = 0.0;
@@ -337,7 +339,7 @@ class TimeSeriesChart extends StatelessWidget {
       }
       if (spots.isEmpty) continue;
       names.add(b.name);
-      final color = BackendColors.of(b.key);
+      final color = identityColor(p, b.key);
       bars.add(
         LineChartBarData(
           spots: spots,
@@ -365,7 +367,7 @@ class TimeSeriesChart extends StatelessWidget {
       return SizedBox(
         height: height,
         child: Center(
-          child: Text('No data', style: body(13, color: kTextMuted)),
+          child: Text('No data', style: body(13, color: p.muted)),
         ),
       );
     }
@@ -381,21 +383,21 @@ class TimeSeriesChart extends StatelessWidget {
           maxX: maxT,
           minY: 0,
           maxY: (top / yInterval).ceil() * yInterval,
-          gridData: _grid(),
-          borderData: _border(),
+          gridData: _grid(p),
+          borderData: _border(p),
           lineBarsData: bars,
           extraLinesData: ExtraLinesData(
             horizontalLines: [
               if (ceiling != null)
                 HorizontalLine(
                   y: ceiling!,
-                  color: kTextMuted.withValues(alpha: 0.7),
+                  color: p.muted.withValues(alpha: 0.7),
                   strokeWidth: 1,
                   dashArray: [5, 4],
                   label: HorizontalLineLabel(
                     show: ceilingLabel != null,
                     alignment: Alignment.topRight,
-                    style: mono(10.5, color: kTextMuted),
+                    style: mono(10.5, color: p.muted),
                     labelResolver: (_) => ceilingLabel ?? '',
                   ),
                 ),
@@ -413,7 +415,7 @@ class TimeSeriesChart extends StatelessWidget {
                     ? const SizedBox.shrink()
                     : SideTitleWidget(
                         meta: meta,
-                        child: Text('${v.toInt()}s', style: _axisStyle),
+                        child: Text('${v.toInt()}s', style: _axisStyle(p)),
                       ),
               ),
             ),
@@ -426,12 +428,13 @@ class TimeSeriesChart extends StatelessWidget {
                     ? const SizedBox.shrink()
                     : SideTitleWidget(
                         meta: meta,
-                        child: Text(format(v), style: _axisStyle),
+                        child: Text(format(v), style: _axisStyle(p)),
                       ),
               ),
             ),
           ),
           lineTouchData: _touch(
+            p,
             (s) => '${names[s.barIndex]}: ${format(s.y)} @ ${s.x.toInt()}s',
           ),
         ),
@@ -486,6 +489,7 @@ class HistoryChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     var maxY = 0.0;
     final bars = <LineChartBarData>[];
     final names = <String>[];
@@ -500,7 +504,7 @@ class HistoryChart extends StatelessWidget {
       }
       names.add(name);
       final dim = highlight != null && highlight != key;
-      final color = BackendColors.of(key).withValues(alpha: dim ? 0.18 : 1);
+      final color = identityColor(p, key).withValues(alpha: dim ? 0.18 : 1);
       bars.add(
         LineChartBarData(
           spots: spots,
@@ -511,7 +515,7 @@ class HistoryChart extends StatelessWidget {
             getDotPainter: (spot, _, bar, _) => FlDotCirclePainter(
               radius: highlight == key ? 5 : 4,
               color: color,
-              strokeColor: kCardBg,
+              strokeColor: p.surface,
               strokeWidth: 1.5,
             ),
           ),
@@ -522,7 +526,7 @@ class HistoryChart extends StatelessWidget {
       return SizedBox(
         height: 120,
         child: Center(
-          child: Text('No values', style: body(13, color: kTextMuted)),
+          child: Text('No values', style: body(13, color: p.muted)),
         ),
       );
     }
@@ -539,8 +543,8 @@ class HistoryChart extends StatelessWidget {
           maxX: single ? 0.5 : labels.length - 1 + 0.15,
           minY: 0,
           maxY: top,
-          gridData: _grid(),
-          borderData: _border(),
+          gridData: _grid(p),
+          borderData: _border(p),
           lineBarsData: bars,
           titlesData: FlTitlesData(
             topTitles: const AxisTitles(),
@@ -558,7 +562,7 @@ class HistoryChart extends StatelessWidget {
                   return SideTitleWidget(
                     meta: meta,
                     fitInside: SideTitleFitInsideData.fromTitleMeta(meta),
-                    child: Text(labels[i], style: _axisStyle),
+                    child: Text(labels[i], style: _axisStyle(p)),
                   );
                 },
               ),
@@ -570,12 +574,15 @@ class HistoryChart extends StatelessWidget {
                 interval: interval,
                 getTitlesWidget: (v, meta) => SideTitleWidget(
                   meta: meta,
-                  child: Text(format(v), style: _axisStyle),
+                  child: Text(format(v), style: _axisStyle(p)),
                 ),
               ),
             ),
           ),
-          lineTouchData: _touch((s) => '${names[s.barIndex]}: ${format(s.y)}'),
+          lineTouchData: _touch(
+            p,
+            (s) => '${names[s.barIndex]}: ${format(s.y)}',
+          ),
         ),
       ),
     );
@@ -589,26 +596,29 @@ class ChartLegend extends StatelessWidget {
   const ChartLegend({super.key, required this.backends});
 
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 16,
-    runSpacing: 6,
-    children: [
-      for (final b in backends)
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 16,
-              height: 3,
-              decoration: BoxDecoration(
-                color: BackendColors.of(b.key),
-                borderRadius: BorderRadius.circular(2),
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Wrap(
+      spacing: 16,
+      runSpacing: 6,
+      children: [
+        for (final b in backends)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 16,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: identityColor(p, b.key),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(width: 6),
-            Text(b.name, style: body(12, color: kTextSecondary)),
-          ],
-        ),
-    ],
-  );
+              const SizedBox(width: 6),
+              Text(b.name, style: body(13, color: p.text)),
+            ],
+          ),
+      ],
+    );
+  }
 }

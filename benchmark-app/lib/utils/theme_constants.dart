@@ -1,45 +1,111 @@
 import 'package:material_ui/material_ui.dart';
 
-// "Race telemetry" tokens. One signal colour (lime) means leader / best /
-// selected and nothing else; amber is reserved for result markers, red for
-// the latency SLO and failed steps. Framework identity colours (colors.dart)
-// never reuse these three.
+/// The colour tokens of the approved design (its `:root` blocks), one set
+/// for light and one for dark. Read them with `context.palette`; the app
+/// follows the system setting.
+///
+/// [warn] and [danger] are not in the design: they only mark failed load
+/// steps and the latency limit inside the charts.
+@immutable
+class Palette extends ThemeExtension<Palette> {
+  final Color bg;
+  final Color surface;
+  final Color text;
+  final Color muted;
+  final Color line;
+  final Color accent;
+  final Color accentInk;
+  final Color accentSoft;
+  final Color dot;
+  final Color focus;
+  final Color warn;
+  final Color danger;
+  final Brightness brightness;
 
-// Track and surfaces
-const kBackground = Color(0xFF0A0C10); // the track
-const kCardBg = Color(0xFF12161D); // asphalt
-const kCardBgRaised = Color(0xFF1A1F28); // kerb
-const kBorder = Color(0x1AFFFFFF); // hairline, 10% white
-const kBorderStrong = Color(0x33FFFFFF); // inputs and outlined controls
-const kGridLine = Color(0x0FFFFFFF); // chart and row rules
+  const Palette({
+    required this.bg,
+    required this.surface,
+    required this.text,
+    required this.muted,
+    required this.line,
+    required this.accent,
+    required this.accentInk,
+    required this.accentSoft,
+    required this.dot,
+    required this.focus,
+    required this.warn,
+    required this.danger,
+    required this.brightness,
+  });
 
-// Text. Every colour below is at least 4.5:1 on kCardBg (WCAG AA).
-const kTextPrimary = Color(0xFFECEFF4);
-const kTextSecondary = Color(0xFFB4BCC8);
-const kTextMuted = Color(0xFF8F98A8);
-const kTextDim = Color(0xFF7F8899);
+  static const light = Palette(
+    bg: Color(0xFFF6F4EF),
+    surface: Color(0xFFFFFDF9),
+    text: Color(0xFF1D1F1C),
+    muted: Color(0xFF5A6058),
+    line: Color(0xFFDAD6CB),
+    accent: Color(0xFF0F5E57),
+    accentInk: Color(0xFFFFFFFF),
+    accentSoft: Color(0xFFDFECE8),
+    dot: Color(0xFFB9B6AB),
+    focus: Color(0xFFB4530A),
+    warn: Color(0xFF8A5A00),
+    danger: Color(0xFFB42318),
+    brightness: Brightness.light,
+  );
 
-// Semantic accents
-const kSignal = Color(0xFFC8F560); // phosphor lime: leader, best, selected
-const kSignalInk = Color(0xFF0A0C10); // text on lime
-const kAmber = Color(0xFFFFB020); // markers: capped, noisy, restarted
-const kRedline = Color(0xFFFF4D4D); // SLO and failed steps
+  static const dark = Palette(
+    bg: Color(0xFF141614),
+    surface: Color(0xFF1C1F1C),
+    text: Color(0xFFE9EBE6),
+    muted: Color(0xFFA4AAA0),
+    line: Color(0xFF343832),
+    accent: Color(0xFF74CDBF),
+    accentInk: Color(0xFF0C1A18),
+    accentSoft: Color(0xFF1F3531),
+    dot: Color(0xFF565C54),
+    focus: Color(0xFFFFB561),
+    warn: Color(0xFFE8B04A),
+    danger: Color(0xFFFF7B72),
+    brightness: Brightness.dark,
+  );
+
+  bool get isDark => brightness == Brightness.dark;
+
+  @override
+  Palette copyWith() => this;
+
+  @override
+  Palette lerp(Palette? other, double t) =>
+      other == null || t < 0.5 ? this : other;
+}
+
+extension PaletteOf on BuildContext {
+  /// The colour tokens of the current theme.
+  Palette get palette => Theme.of(this).extension<Palette>() ?? Palette.light;
+}
 
 // Layout
 const kMaxContentWidth = 1280.0;
+
+/// Width of the home page column (the design's `.page`).
+const kHomeWidth = 720.0;
 const kNarrow = 760.0;
 const kRadius = 12.0;
 
 // Type. Bundled fonts (pubspec.yaml), so nothing loads at runtime.
+// TODO(font): the design uses Public Sans; it is not bundled and
+// downloading fonts is not approved, so the bundled Roboto stands in.
 const kFontSans = 'Roboto';
-const kFontDisplay = 'RobotoCondensed';
-const kFontMono = 'RobotoMono';
+const kFontDisplay = kFontSans;
+const kFontMono = kFontSans;
 
-/// Numbers: monospaced with tabular figures, so columns line up.
+/// Numbers: tabular figures, so columns line up. A null [color] takes the
+/// surrounding text colour.
 TextStyle mono(
   double size, {
   FontWeight weight = FontWeight.w500,
-  Color color = kTextPrimary,
+  Color? color,
   double? height,
   double? letterSpacing,
 }) => TextStyle(
@@ -52,12 +118,12 @@ TextStyle mono(
   fontFeatures: const [FontFeature.tabularFigures()],
 );
 
-/// Headlines: condensed bold, like a timing board.
+/// Headings.
 TextStyle display(
   double size, {
   FontWeight weight = FontWeight.w700,
-  Color color = kTextPrimary,
-  double? height = 1.1,
+  Color? color,
+  double? height = 1.2,
   double letterSpacing = 0,
 }) => TextStyle(
   fontFamily: kFontDisplay,
@@ -68,14 +134,14 @@ TextStyle display(
   letterSpacing: letterSpacing,
 );
 
-/// Small caps labels ("NO DB", "SHOWING"). Pass the text already upper-cased.
+/// Small labels ("SCENARIO"). Pass the text already upper-cased.
 TextStyle caps(
   double size, {
-  Color color = kTextMuted,
+  Color? color,
   FontWeight weight = FontWeight.w700,
-  double letterSpacing = 1.2,
+  double letterSpacing = 0.8,
 }) => TextStyle(
-  fontFamily: kFontDisplay,
+  fontFamily: kFontSans,
   fontSize: size,
   fontWeight: weight,
   color: color,
@@ -85,7 +151,7 @@ TextStyle caps(
 /// Body text in the sans family.
 TextStyle body(
   double size, {
-  Color color = kTextSecondary,
+  Color? color,
   FontWeight weight = FontWeight.w400,
   double? height,
 }) => TextStyle(
@@ -96,18 +162,17 @@ TextStyle body(
   height: height,
 );
 
-/// Segmented buttons: kerb fill and lime text when selected.
-final kSegmentedStyle = ButtonStyle(
+/// Segmented buttons in the design's switch style: the selected segment is
+/// filled with the text colour.
+ButtonStyle segmentedStyle(Palette p) => ButtonStyle(
   visualDensity: VisualDensity.compact,
   backgroundColor: WidgetStateProperty.resolveWith(
-    (s) => s.contains(WidgetState.selected)
-        ? kSignal.withValues(alpha: 0.14)
-        : Colors.transparent,
+    (s) => s.contains(WidgetState.selected) ? p.text : p.surface,
   ),
   foregroundColor: WidgetStateProperty.resolveWith(
-    (s) => s.contains(WidgetState.selected) ? kSignal : kTextMuted,
+    (s) => s.contains(WidgetState.selected) ? p.bg : p.text,
   ),
-  side: const WidgetStatePropertyAll(BorderSide(color: kBorderStrong)),
+  side: WidgetStatePropertyAll(BorderSide(color: p.line)),
 );
 
 /// Text style for button labels and dropdowns: the theme's label style (which
@@ -133,3 +198,64 @@ Duration motion(BuildContext context, int ms) =>
 /// Whether the platform asks for reduced motion.
 bool reducedMotion(BuildContext context) =>
     MediaQuery.maybeDisableAnimationsOf(context) == true;
+
+/// The light and dark themes built from [Palette].
+ThemeData buildTheme(Palette p) {
+  // TODO(font): Public Sans in the design; bundled Roboto here.
+  final base = ThemeData(brightness: p.brightness, fontFamily: kFontSans);
+  final scheme = p.isDark
+      ? ColorScheme.dark(
+          surface: p.surface,
+          primary: p.accent,
+          onPrimary: p.accentInk,
+          secondary: p.accent,
+          onSecondary: p.accentInk,
+          onSurface: p.text,
+          outline: p.line,
+        )
+      : ColorScheme.light(
+          surface: p.surface,
+          primary: p.accent,
+          onPrimary: p.accentInk,
+          secondary: p.accent,
+          onSecondary: p.accentInk,
+          onSurface: p.text,
+          outline: p.line,
+        );
+  return base.copyWith(
+    scaffoldBackgroundColor: p.bg,
+    colorScheme: scheme,
+    extensions: [p],
+    textTheme: base.textTheme.apply(
+      fontFamily: kFontSans,
+      bodyColor: p.text,
+      displayColor: p.text,
+    ),
+    dividerColor: p.line,
+    focusColor: p.focus.withValues(alpha: 0.16),
+    hoverColor: p.text.withValues(alpha: 0.04),
+    textSelectionTheme: TextSelectionThemeData(
+      cursorColor: p.accent,
+      selectionColor: p.accent.withValues(alpha: 0.3),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: p.accent),
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: p.surface,
+      surfaceTintColor: Colors.transparent,
+    ),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: p.text,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      textStyle: TextStyle(color: p.bg, fontSize: 13, fontFamily: kFontSans),
+      constraints: const BoxConstraints(maxWidth: 320),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: p.text,
+      contentTextStyle: TextStyle(color: p.bg, fontFamily: kFontSans),
+    ),
+  );
+}

@@ -1,6 +1,6 @@
-// Screenshot tour of every page at three widths. Not part of the normal test
+// Screenshot tour of every view at three widths. Not part of the normal test
 // run (tagged "tour"); generate with:
-//   flutter test test/tour --tags tour --update-goldens
+//   flutter test test/tour --tags tour --run-skipped --update-goldens
 // Uses the data in assets/results/ (run bench/report/report.py first).
 @Tags(['tour'])
 library;
@@ -8,8 +8,8 @@ library;
 import 'package:benchmark_app/main.dart';
 import 'package:benchmark_app/services/results_service.dart';
 import 'package:benchmark_app/state/dashboard_state.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../support.dart';
@@ -18,81 +18,99 @@ void main() {
   setUpAll(loadRealFonts);
 
   for (final size in const [
-    Size(1440, 1700),
-    Size(1024, 1500),
-    Size(400, 2200),
+    Size(1440, 2300),
+    Size(1024, 2500),
+    Size(400, 3800),
   ]) {
     final w = size.width.toInt();
-    testWidgets('tour at $w', (t) async {
-      t.view.physicalSize = size;
-      t.view.devicePixelRatio = 1;
-      addTearDown(t.view.reset);
-      final bundle = DirectoryBundle('.');
-      await t.runAsync(() async {
-        await t.pumpWidget(BenchmarkApp(service: ResultsService(bundle)));
-        for (var i = 0; i < 20; i++) {
-          await Future<void>.delayed(const Duration(milliseconds: 50));
-          await t.pump();
-        }
-      });
-      final state = Provider.of<DashboardState>(
-        t.element(find.byType(Scaffold).first),
-        listen: false,
-      );
-      Future<void> shot(String name) async {
-        // Two frames: the first schedules implicit animations (hint fade,
-        // chip colours), the second lets them finish.
-        await t.pump(const Duration(milliseconds: 600));
-        await t.pump(const Duration(milliseconds: 600));
-        await t.pump(const Duration(milliseconds: 600));
-        await expectLater(
-          find.byType(MaterialApp),
-          matchesGoldenFile('../../screenshots/$w-$name.png'),
+    for (final dark in [false, true]) {
+      testWidgets('tour at $w${dark ? ' dark' : ''}', (t) async {
+        t.view.physicalSize = size;
+        t.view.devicePixelRatio = 1;
+        t.platformDispatcher.platformBrightnessTestValue = dark
+            ? Brightness.dark
+            : Brightness.light;
+        addTearDown(t.view.reset);
+        addTearDown(t.platformDispatcher.clearPlatformBrightnessTestValue);
+        final bundle = DirectoryBundle('.');
+        await t.runAsync(() async {
+          await t.pumpWidget(BenchmarkApp(service: ResultsService(bundle)));
+          for (var i = 0; i < 20; i++) {
+            await Future<void>.delayed(const Duration(milliseconds: 50));
+            await t.pump();
+          }
+        });
+        final state = Provider.of<DashboardState>(
+          t.element(find.byType(Scaffold).first),
+          listen: false,
         );
-      }
+        Future<void> shot(String name) async {
+          await t.pump(const Duration(milliseconds: 600));
+          await t.pump(const Duration(milliseconds: 600));
+          await t.pump(const Duration(milliseconds: 600));
+          await expectLater(
+            find.byType(MaterialApp),
+            matchesGoldenFile('../../screenshots/$w-$name.png'),
+          );
+        }
 
-      String keyOf(String name) =>
-          state.run!.backends.firstWhere((b) => b.name == name).key;
-      final foam = keyOf('foam3 (postgres)');
-      final fast = keyOf('rust actix-web');
-      final slow = keyOf('django (sync)');
+        Future<void> scrollTo(Finder f) async {
+          await t.ensureVisible(f);
+          await t.pump(const Duration(milliseconds: 400));
+        }
 
-      // T1: the home table, nothing expanded.
-      await shot('1-home');
+        if (dark) {
+          await shot('1-short-answer-dark');
+          return;
+        }
 
-      // T2: a slow framework's row expanded (foam3).
-      state.toggleExpanded(foam);
-      await shot('2-home-foam3-expanded');
+        await shot('1-short-answer');
 
-      // T2 again with a fast one, and the search narrowing the list.
-      state.toggleExpanded(fast);
-      state.setQuery('rust');
-      await shot('3-home-search-rust-expanded');
-      state.setQuery('');
-      state.toggleExpanded(fast);
+        // A chip opened: serverpod in the typical app.
+        await t.tap(find.text('serverpod').first);
+        await shot('2-chip-open');
 
-      // T3: tray with two picked, then a 3-way comparison including foam3.
-      state.toggleCompare(foam);
-      state.toggleCompare(slow);
-      await shot('4-home-tray');
-      state.toggleCompare(fast);
-      state.openCompare();
-      await shot('5-compare-3way');
+        // One framework, serverpod.
+        state.selectFramework('dart-server-pod');
+        await t.pump();
+        await shot('3-one-serverpod');
 
-      // Details of the fast one, DB mixed.
-      state.setScenario('db_mixed');
-      state.openDetails(fast);
-      await shot('6-details-actix-db-mixed');
+        // Its charts section open.
+        await scrollTo(find.text('Charts from the test'));
+        await t.tap(find.text('Charts from the test'));
+        await t.pump();
+        await scrollTo(find.text('Charts from the test'));
+        await shot('4-one-serverpod-charts');
 
-      state.setPage(DashboardPage.history);
-      await shot('7-history');
-      state.setPage(DashboardPage.method);
-      await shot('8-method');
+        // Every number.
+        state.setView(HomeView.all);
+        await t.pump();
+        await t.drag(find.byType(Scrollable).first, const Offset(0, 6000));
+        await t.pump();
+        await shot('5-every-number');
 
-      final legacy = state.index.firstWhere((e) => e.isLegacy);
-      await t.runAsync(() => state.selectRun(legacy));
-      state.goHome();
-      await shot('9-legacy-home');
-    });
+        // Compare with three.
+        for (final k in ['rust-actix-web', 'go-mux', 'dart-server-pod']) {
+          if (!state.compareKeys.contains(k)) state.toggleCompare(k);
+        }
+        state.setView(HomeView.compare);
+        await t.pump();
+        await shot('6-compare-3');
+
+        state.setPage(DashboardPage.history);
+        await shot('7-history');
+        state.setPage(DashboardPage.method);
+        await shot('8-method');
+
+        // The legacy run.
+        final legacy = state.index.firstWhere((e) => e.isLegacy);
+        await t.runAsync(() => state.selectRun(legacy));
+        state.goHome();
+        await t.pump();
+        await t.drag(find.byType(Scrollable).first, const Offset(0, 6000));
+        await t.pump();
+        await shot('9-legacy-run');
+      });
+    }
   }
 }

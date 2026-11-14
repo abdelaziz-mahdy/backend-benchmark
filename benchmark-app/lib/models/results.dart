@@ -1,6 +1,8 @@
 // Data model for the files written by bench/report/report.py:
 // assets/results/index.json and assets/results/runs/<id>.json.
 
+import 'tests.dart';
+
 double? _num(Object? v) => v is num ? v.toDouble() : null;
 
 /// Median with the spread across repetitions.
@@ -507,14 +509,7 @@ class RunSummary {
 
   List<String> get scenarios {
     final all = {for (final b in backends) ...b.scenarios.keys};
-    const order = [
-      'no_db',
-      'db_read',
-      'db_write',
-      'db_mixed',
-      'no_db_test',
-      'db_test',
-    ];
+    const order = kTestOrder;
     return [
       ...order.where(all.contains),
       ...all.where((s) => !order.contains(s)).toList()..sort(),
