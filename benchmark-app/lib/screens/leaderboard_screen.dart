@@ -1239,9 +1239,12 @@ class _HeatCell extends StatelessWidget {
     this.showLabel = false,
   });
 
-  /// Tint for a share of the best, 0..1.
+  /// Tint for a share of the best, 0..1. Neutral on purpose: lime is kept
+  /// for the leader, so the best cell gets a lime border instead. The top
+  /// race tint (21%) still keeps secondary text and amber markers above
+  /// 5:1.
   static Color tint(Metric m, double share) => m.isRace
-      ? kSignal.withValues(alpha: 0.03 + 0.3 * share)
+      ? kTextPrimary.withValues(alpha: 0.03 + 0.18 * share)
       : kTextPrimary.withValues(alpha: 0.03 + 0.12 * share);
 
   @override
