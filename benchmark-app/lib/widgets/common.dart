@@ -451,7 +451,9 @@ class Monogram extends StatelessWidget {
           style: mono(
             size * (text.length > 2 ? 0.34 : 0.42),
             weight: FontWeight.w700,
-            color: color,
+            // Lifted 35% toward white: the darkest identity colours sit
+            // near 3:1 on their own tint; this keeps every letter over 5:1.
+            color: Color.lerp(color, Colors.white, 0.35)!,
             height: 1,
           ),
         ),

@@ -275,8 +275,8 @@ class _RaceReplayState extends State<RaceReplay>
               runSpacing: 4,
               children: [
                 _key(kSignal, 'flag: highest step held so far'),
-                _key(kRedline, 'broke a limit'),
-                _key(kAmber, 'the load generator was the limit'),
+                _key(kRedline, 'broke a limit', hatched: true),
+                _key(kAmber, 'the load generator was the limit', hatched: true),
               ],
             ),
           ),
@@ -285,10 +285,14 @@ class _RaceReplayState extends State<RaceReplay>
     );
   }
 
-  Widget _key(Color c, String text) => Row(
+  Widget _key(Color c, String text, {bool hatched = false}) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Container(width: 10, height: 10, color: c),
+      SizedBox(
+        width: 10,
+        height: 10,
+        child: hatched ? HatchFill(color: c) : ColoredBox(color: c),
+      ),
       const SizedBox(width: 5),
       Text(text, style: body(11.5, color: kTextMuted)),
     ],
@@ -387,13 +391,20 @@ class _ReplayLane extends StatelessWidget {
                         top: 3,
                         bottom: 3,
                         width: w * served,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: barColor.withValues(
-                              alpha: done ? 0.45 : 0.9,
-                            ),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
+                        // A failed step is hatched, not just red, so it
+                        // never depends on telling red from orange.
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: failed
+                              ? Opacity(
+                                  opacity: done ? 0.55 : 1,
+                                  child: HatchFill(color: barColor),
+                                )
+                              : ColoredBox(
+                                  color: barColor.withValues(
+                                    alpha: done ? 0.45 : 0.9,
+                                  ),
+                                ),
                         ),
                       ),
                       if (flag != null)
@@ -447,4 +458,47 @@ class _ReplayLane extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Diagonal stripes in [color] over a faint wash of it: the "failed" fill.
+class HatchFill extends StatelessWidget {
+  final Color color;
+
+  const HatchFill({super.key, required this.color});
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    painter: _HatchPainter(color),
+    child: const SizedBox.expand(),
+  );
+}
+
+class _HatchPainter extends CustomPainter {
+  final Color color;
+
+  _HatchPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = color.withValues(alpha: 0.22),
+    );
+    final stripe = Paint()
+      ..color = color
+      ..strokeWidth = 2;
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+    for (var x = -size.height; x < size.width; x += 5) {
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        stripe,
+      );
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_HatchPainter old) => old.color != color;
 }
