@@ -2,14 +2,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/plain.dart';
-import '../../models/results.dart';
 import '../../state/dashboard_state.dart';
+import '../../utils/colors.dart';
 import '../../utils/theme_constants.dart';
 import '../../widgets/calm.dart';
 import 'home_nav.dart';
 
-/// The short answer: the main test with its answer and number bands, the
-/// other kinds of work folded underneath, and where to go next.
+/// Who's fastest: the main test with its answer in words and a bar per
+/// framework, the other tests folded underneath, and where to go next.
 class ShortAnswerView extends StatelessWidget {
   const ShortAnswerView({super.key});
 
@@ -29,7 +29,16 @@ class ShortAnswerView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Semantics(header: true, child: Text(main.title, style: t.h2)),
+        Semantics(
+          header: true,
+          child: Row(
+            children: [
+              Icon(testIcon(main.id), size: 24, color: context.palette.accent),
+              const SizedBox(width: 8),
+              Flexible(child: Text(main.title, style: t.h2)),
+            ],
+          ),
+        ),
         const SizedBox(height: 4),
         Text(main.what, style: t.muted),
         const SizedBox(height: 14),
@@ -38,21 +47,13 @@ class ShortAnswerView extends StatelessWidget {
           child: Text(answerFor(mainResults), style: t.answer),
         ),
         const SizedBox(height: 18),
-        BandList(
-          key: ValueKey('bands-${run.id}-${main.id}'),
-          run: run,
+        SpeedBars(
+          key: ValueKey('bars-${run.id}-${main.id}'),
           test: main.id,
           results: mainResults,
           unit: unit,
           mine: state.selectedKey,
           onOpen: nav.open,
-          topLine: true,
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Tap a name to see its number.'
-          '${state.selectedKey != null && mainResults.any((r) => r.key == state.selectedKey) ? ' The outlined name is the one you looked up.' : ''}',
-          style: t.small,
         ),
         if (tests.length > 1) ...[
           const SizedBox(height: 34),
@@ -65,6 +66,7 @@ class ShortAnswerView extends StatelessWidget {
             Fold(
               key: ValueKey('other-${run.id}-$id'),
               title: testInfo(id).title,
+              icon: testIcon(id),
               subtitle: otherSummary(resultsFor(run, id), mainResults, main),
               topLine: i == 0,
               child: Column(
@@ -77,15 +79,13 @@ class ShortAnswerView extends StatelessWidget {
                       style: t.small.copyWith(fontSize: 15.5),
                     ),
                   ),
-                  BandList(
-                    key: ValueKey('bands-${run.id}-$id'),
-                    run: run,
+                  SpeedBars(
+                    key: ValueKey('bars-${run.id}-$id'),
                     test: id,
                     results: resultsFor(run, id),
                     unit: unit,
                     mine: state.selectedKey,
                     onOpen: nav.open,
-                    lastLine: false,
                   ),
                 ],
               ),
@@ -98,14 +98,17 @@ class ShortAnswerView extends StatelessWidget {
           children: [
             CalmButton(
               label: 'Find a framework',
+              icon: Icons.search,
               onTap: () => nav.go(HomeView.one),
             ),
             CalmButton(
               label: 'See all results',
+              icon: Icons.table_rows_outlined,
               onTap: () => nav.go(HomeView.all),
             ),
             CalmButton(
               label: 'Compare frameworks',
+              icon: Icons.compare_arrows,
               onTap: () => nav.go(HomeView.compare),
             ),
           ],
@@ -115,63 +118,216 @@ class ShortAnswerView extends StatelessWidget {
   }
 }
 
-/// The number bands of one test: each band's range, its frameworks as
-/// chips, a note when the load tool was the limit, and an inline reveal
-/// for the chip that is open (one per band).
-class BandList extends StatefulWidget {
-  final RunSummary run;
+/// One bar per framework, longest first: its language badge and name, and
+/// a bar whose length is its share of the fastest. No numbers until a bar
+/// is tapped; then its number, run range and notes open under the list.
+class SpeedBars extends StatefulWidget {
   final String test;
   final List<Result> results;
   final String unit;
   final String? mine;
   final void Function(String key) onOpen;
-  final bool topLine;
-  final bool lastLine;
 
-  const BandList({
+  const SpeedBars({
     super.key,
-    required this.run,
     required this.test,
     required this.results,
     required this.unit,
     required this.mine,
     required this.onOpen,
-    this.topLine = false,
-    this.lastLine = true,
   });
 
   @override
-  State<BandList> createState() => _BandListState();
+  State<SpeedBars> createState() => _SpeedBarsState();
 }
 
-class _BandListState extends State<BandList> {
-  /// Open chip per band, by the band's lower bound.
-  final Map<double, String> _open = {};
+class _SpeedBarsState extends State<SpeedBars> {
+  String? _open;
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = Txt(p);
-    final bands = bandsFor(widget.results);
+    final rs = sortResults(widget.results);
+    if (rs.isEmpty) return const SizedBox.shrink();
+    final max = rs.first.value;
+    final open = rs.where((r) => r.key == _open).firstOrNull;
+    final anyCapped = rs.any((r) => r.capped);
     return LayoutBuilder(
       builder: (context, c) {
-        final wide = c.maxWidth >= 600;
-        return Container(
-          decoration: BoxDecoration(
-            border: Border(
-              top: widget.topLine ? BorderSide(color: p.line) : BorderSide.none,
+        // Phones put the name above its bar, so names are never cut off.
+        final double? nameWidth = c.maxWidth >= 600 ? 200.0 : null;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final r in rs)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: _row(r, max, nameWidth, t, p),
+              ),
+            Semantics(
+              liveRegion: true,
+              child: open == null
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Reveal(
+                        result: open,
+                        all: widget.results,
+                        test: widget.test,
+                        unit: widget.unit,
+                        onOpen: widget.onOpen,
+                      ),
+                    ),
             ),
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: Icon(Icons.straighten, size: 18, color: p.muted),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Longer bar = more traffic handled. Tap a bar for its '
+                    'number.'
+                    "${anyCapped ? " Striped end = hit our testing tool's limit, so it may be faster." : ''}"
+                    '${widget.mine != null && rs.any((r) => r.key == widget.mine) ? ' The outlined row is the one you looked up.' : ''}',
+                    style: t.small,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _row(Result r, double max, double? nameWidth, Txt t, Palette p) {
+    final color = BackendColors.of(r.key);
+    final share = max <= 0 ? 0.0 : (r.value / max).clamp(0.0, 1.0);
+    final isOpen = r.key == _open;
+    final mine = r.key == widget.mine;
+    return Pressable(
+      key: ValueKey('bar-${widget.test}-${r.key}'),
+      onTap: () => setState(() => _open = isOpen ? null : r.key),
+      expanded: isOpen,
+      radius: 10,
+      semanticLabel:
+          '${r.name}, ${asFast(share)} as the fastest. '
+          'Show its number.',
+      builder: (context, hovered) => Container(
+        constraints: const BoxConstraints(minHeight: 44),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        decoration: BoxDecoration(
+          color: isOpen
+              ? p.accentSoft
+              : hovered
+              ? p.surface
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: mine ? p.accent : Colors.transparent,
+            width: 1.5,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        ),
+        child: Builder(
+          builder: (context) {
+            final label = Row(
+              children: [
+                LangBadge(color: color, tag: monogramOf(r.backend.language)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    r.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.body.copyWith(fontSize: 15.5, height: 1.2),
+                  ),
+                ),
+              ],
+            );
+            final bar = _Bar(share: share, color: color, capped: r.capped);
+            if (nameWidth == null) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [label, const SizedBox(height: 6), bar],
+              );
+            }
+            return Row(
+              children: [
+                SizedBox(width: nameWidth, child: label),
+                const SizedBox(width: 12),
+                Expanded(child: bar),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// A rounded bar on a faint track; a capped result gets a striped end that
+/// says "possibly longer".
+class _Bar extends StatelessWidget {
+  final double share;
+  final Color color;
+  final bool capped;
+
+  const _Bar({required this.share, required this.color, required this.capped});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    const stripe = 18.0;
+    return LayoutBuilder(
+      builder: (context, c) {
+        final track = c.maxWidth - stripe - 2;
+        final w = (track * share).clamp(4.0, track);
+        final edge = Color.lerp(color, const Color(0xFF000000), 0.22)!;
+        return SizedBox(
+          height: 16,
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              for (final (i, band) in bands.indexed)
-                _band(
-                  band,
-                  wide,
-                  t,
-                  p,
-                  last: i == bands.length - 1 && !widget.lastLine,
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: track,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: p.line.withValues(alpha: p.isDark ? 0.9 : 0.6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              AnimatedPositioned(
+                duration: motion(context, 400),
+                curve: Curves.easeOutCubic,
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: w,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(8),
+                    border: p.isDark ? null : Border.all(color: edge, width: 1),
+                  ),
+                ),
+              ),
+              if (capped)
+                Positioned(
+                  left: w + 2,
+                  top: 3,
+                  bottom: 3,
+                  width: stripe - 2,
+                  child: CustomPaint(painter: _Stripes(color)),
                 ),
             ],
           ),
@@ -179,84 +335,29 @@ class _BandListState extends State<BandList> {
       },
     );
   }
+}
 
-  Widget _band(Band band, bool wide, Txt t, Palette p, {required bool last}) {
-    final openKey = _open[band.from];
-    final open = band.members.where((r) => r.key == openKey).firstOrNull;
-    final label = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(band.label, style: t.num(18)),
-        Text(widget.unit, style: t.small.copyWith(fontSize: 14, height: 1.2)),
-      ],
-    );
-    final right = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final r in band.members)
-              NameChip(
-                key: ValueKey('chip-${widget.test}-${r.key}'),
-                label: r.name,
-                mine: r.key == widget.mine,
-                expanded: r.key == openKey,
-                onTap: () => setState(() {
-                  if (_open[band.from] == r.key) {
-                    _open.remove(band.from);
-                  } else {
-                    _open[band.from] = r.key;
-                  }
-                }),
-              ),
-          ],
+class _Stripes extends CustomPainter {
+  final Color color;
+
+  _Stripes(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color.withValues(alpha: 0.7);
+    for (var x = 0.0; x < size.width; x += 5) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, 0, 2.5, size.height),
+          const Radius.circular(1),
         ),
-        if (band.cappedNote.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Text(band.cappedNote, style: t.small),
-          ),
-        Semantics(
-          liveRegion: true,
-          child: open == null
-              ? const SizedBox.shrink()
-              : Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Reveal(
-                    result: open,
-                    all: widget.results,
-                    test: widget.test,
-                    unit: widget.unit,
-                    onOpen: widget.onOpen,
-                  ),
-                ),
-        ),
-      ],
-    );
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: last ? BorderSide.none : BorderSide(color: p.line),
-        ),
-      ),
-      child: wide
-          ? Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(width: 190, child: label),
-                const SizedBox(width: 20),
-                Expanded(child: right),
-              ],
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [label, const SizedBox(height: 10), right],
-            ),
-    );
+        paint,
+      );
+    }
   }
+
+  @override
+  bool shouldRepaint(_Stripes old) => old.color != color;
 }
 
 /// What a chip opens: the number, the run range, the close call or the

@@ -344,11 +344,15 @@ class Fold extends StatefulWidget {
   final ValueChanged<bool>? onChanged;
   final double titleSize;
 
+  /// Shown before the title, in the accent colour.
+  final IconData? icon;
+
   const Fold({
     super.key,
     required this.title,
     required this.child,
     this.subtitle,
+    this.icon,
     this.initiallyOpen = false,
     this.topLine = false,
     this.onChanged,
@@ -415,14 +419,28 @@ class _FoldState extends State<Fold> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            widget.title,
-                            style: t.h3.copyWith(
-                              fontSize: widget.titleSize,
-                              decoration: hovered
-                                  ? TextDecoration.underline
-                                  : null,
-                            ),
+                          Row(
+                            children: [
+                              if (widget.icon != null) ...[
+                                Icon(
+                                  widget.icon,
+                                  size: widget.titleSize + 2,
+                                  color: p.accent,
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  widget.title,
+                                  style: t.h3.copyWith(
+                                    fontSize: widget.titleSize,
+                                    decoration: hovered
+                                        ? TextDecoration.underline
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           if (widget.subtitle != null)
                             Text(
@@ -469,7 +487,7 @@ class _Triangle extends CustomPainter {
 
 // ----------------------------------------------------------------- switch
 
-/// The "Show me" switch: equal segments, the chosen one filled with the
+/// The view switch: equal segments, the chosen one filled with the
 /// text colour. Arrow keys move between segments.
 class SegmentSwitch<T> extends StatelessWidget {
   final List<(T, String)> options;
@@ -480,6 +498,9 @@ class SegmentSwitch<T> extends StatelessWidget {
   /// Focus node per option, so the page can return focus to the switch.
   final Map<T, FocusNode>? focusNodes;
 
+  /// An icon before each option's label.
+  final Map<T, IconData>? icons;
+
   const SegmentSwitch({
     super.key,
     required this.options,
@@ -487,6 +508,7 @@ class SegmentSwitch<T> extends StatelessWidget {
     required this.onSelected,
     required this.label,
     this.focusNodes,
+    this.icons,
   });
 
   @override
@@ -541,17 +563,32 @@ class SegmentSwitch<T> extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: ExcludeSemantics(
-                            child: Text(
-                              text,
-                              textAlign: TextAlign.center,
-                              style: t.body.copyWith(
-                                fontSize: 15.5,
-                                height: 1.2,
-                                color: on ? p.bg : p.text,
-                                fontWeight: on
-                                    ? FontWeight.w700
-                                    : FontWeight.w400,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (icons?[value] != null) ...[
+                                  Icon(
+                                    icons![value],
+                                    size: 19,
+                                    color: on ? p.bg : p.muted,
+                                  ),
+                                  const SizedBox(width: 7),
+                                ],
+                                Flexible(
+                                  child: Text(
+                                    text,
+                                    textAlign: TextAlign.center,
+                                    style: t.body.copyWith(
+                                      fontSize: 15.5,
+                                      height: 1.2,
+                                      color: on ? p.bg : p.text,
+                                      fontWeight: on
+                                          ? FontWeight.w700
+                                          : FontWeight.w400,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         );
@@ -777,3 +814,54 @@ void copyToClipboard(BuildContext context, String text, String done) {
     ),
   );
 }
+
+// ------------------------------------------------------------------ badge
+
+/// A framework's language badge: its two-letter tag on its identity colour
+/// (utils/colors.dart), with dark or light ink, whichever reads.
+class LangBadge extends StatelessWidget {
+  final Color color;
+  final String tag;
+  final double size;
+
+  const LangBadge({
+    super.key,
+    required this.color,
+    required this.tag,
+    this.size = 22,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = color.computeLuminance() > 0.28
+        ? const Color(0xFF141614)
+        : Colors.white;
+    return ExcludeSemantics(
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        child: Text(
+          tag,
+          style: TextStyle(
+            color: ink,
+            fontSize: size * 0.46,
+            fontWeight: FontWeight.w700,
+            height: 1,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The icon for a test: both ways for the typical app, down for reading,
+/// up for saving, a bolt for no database.
+IconData testIcon(String id) => switch (id) {
+  'db_mixed' => Icons.swap_vert,
+  'db_read' => Icons.download_outlined,
+  'db_write' => Icons.upload_outlined,
+  'no_db' => Icons.bolt_outlined,
+  _ => Icons.science_outlined,
+};

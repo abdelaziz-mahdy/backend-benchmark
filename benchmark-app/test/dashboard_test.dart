@@ -368,35 +368,39 @@ void main() {
       expect(band.cappedNote, contains("can't tell which is fastest"));
     });
 
-    test('the answer names the leader from the data, not fixed text', () {
+    test('the answer names the leader in words, without numbers', () {
       final answer = answerFor([res('zeta', 9000), res('alpha', 3000)]);
       expect(
         answer,
-        'Zeta is the fastest, with 9,000 requests a second. Next is alpha, with 3,000.',
+        'Zeta is the fastest. Next is alpha, about a third as fast.',
       );
-      expect(answer, contains('9,000'));
+      expect(answer, isNot(contains('9,000')));
       expect(answerFor([]), contains('No framework'));
     });
   });
 
   group('home page', () {
-    testWidgets('opens on the short answer with plain bands', (t) async {
+    testWidgets('opens on who is fastest, as bars without numbers', (t) async {
       final state = await pumpApp(t, realisticBundle());
       expect(state.view, HomeView.short);
       expect(
         find.text('How much traffic can each backend framework handle?'),
         findsOneWidget,
       );
-      expect(find.text('30,000 or more'), findsWidgets);
-      expect(find.text('Under 10,000'), findsWidgets);
+      // One bar per framework in the main test, and no numbers until a bar
+      // is tapped.
+      expect(find.byKey(const ValueKey('bar-db_mixed-rust-actix')), findsOne);
+      expect(find.byKey(const ValueKey('bar-db_mixed-db-only')), findsOne);
+      expect(find.textContaining('32,000'), findsNothing);
+      expect(find.textContaining('about half as fast'), findsWidgets);
       // No internal test names anywhere on the page.
       expect(find.textContaining('db_mixed'), findsNothing);
       expect(find.textContaining('DB mixed'), findsNothing);
     });
 
-    testWidgets('a name opens its number in place', (t) async {
+    testWidgets('a bar opens its number in place', (t) async {
       await pumpApp(t, realisticBundle());
-      await t.tap(find.text('go-mux').first);
+      await t.tap(find.byKey(const ValueKey('bar-db_mixed-go-mux')));
       await settle(t);
       expect(find.text('All results for go-mux'), findsOneWidget);
       expect(find.textContaining('16,000'), findsWidgets);

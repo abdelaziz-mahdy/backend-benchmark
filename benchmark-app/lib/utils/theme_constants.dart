@@ -39,15 +39,15 @@ class Palette extends ThemeExtension<Palette> {
   });
 
   static const light = Palette(
-    bg: Color(0xFFF6F4EF),
-    surface: Color(0xFFFFFDF9),
-    text: Color(0xFF1D1F1C),
-    muted: Color(0xFF5A6058),
-    line: Color(0xFFDAD6CB),
-    accent: Color(0xFF0F5E57),
+    bg: Color(0xFFF4F6F8),
+    surface: Color(0xFFFFFFFF),
+    text: Color(0xFF14181F),
+    muted: Color(0xFF586270),
+    line: Color(0xFFE0E4EA),
+    accent: Color(0xFF0E6B5C),
     accentInk: Color(0xFFFFFFFF),
-    accentSoft: Color(0xFFDFECE8),
-    dot: Color(0xFFB9B6AB),
+    accentSoft: Color(0xFFE0F0EC),
+    dot: Color(0xFFB4BBC5),
     focus: Color(0xFFB4530A),
     warn: Color(0xFF8A5A00),
     danger: Color(0xFFB42318),
@@ -55,15 +55,15 @@ class Palette extends ThemeExtension<Palette> {
   );
 
   static const dark = Palette(
-    bg: Color(0xFF141614),
-    surface: Color(0xFF1C1F1C),
-    text: Color(0xFFE9EBE6),
-    muted: Color(0xFFA4AAA0),
-    line: Color(0xFF343832),
-    accent: Color(0xFF74CDBF),
-    accentInk: Color(0xFF0C1A18),
-    accentSoft: Color(0xFF1F3531),
-    dot: Color(0xFF565C54),
+    bg: Color(0xFF0E1116),
+    surface: Color(0xFF161A21),
+    text: Color(0xFFE8EBF0),
+    muted: Color(0xFFA0A8B4),
+    line: Color(0xFF2A303A),
+    accent: Color(0xFF6FD0BE),
+    accentInk: Color(0xFF0B1A17),
+    accentSoft: Color(0xFF16302B),
+    dot: Color(0xFF4E5662),
     focus: Color(0xFFFFB561),
     warn: Color(0xFFE8B04A),
     danger: Color(0xFFFF7B72),
@@ -89,7 +89,7 @@ extension PaletteOf on BuildContext {
 const kMaxContentWidth = 1280.0;
 
 /// Width of the home page column (the design's `.page`).
-const kHomeWidth = 720.0;
+const kHomeWidth = 860.0;
 const kNarrow = 760.0;
 const kRadius = 12.0;
 
