@@ -1,13 +1,19 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
+import 'package:benchmark_app/app_router.dart';
 import 'package:benchmark_app/main.dart';
 import 'package:benchmark_app/models/metrics.dart';
 import 'package:benchmark_app/models/results.dart';
 import 'package:benchmark_app/screens/history_screen.dart';
+import 'package:benchmark_app/screens/leaderboard_screen.dart';
 import 'package:benchmark_app/services/results_service.dart';
 import 'package:benchmark_app/state/dashboard_state.dart';
 import 'package:benchmark_app/utils/formatters.dart';
+import 'package:benchmark_app/utils/theme_constants.dart';
+import 'package:benchmark_app/widgets/common.dart';
 import 'package:benchmark_app/widgets/compare_tray.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -231,6 +237,10 @@ Future<DashboardState> pumpApp(
   );
 }
 
+/// [text] inside the timing sheet (the same name can be on the podium).
+Finder inSheet(String text) =>
+    find.descendant(of: find.byKey(kTimingSheetKey), matching: find.text(text));
+
 Future<void> settle(WidgetTester t) async {
   await t.pump();
   await t.pump(const Duration(milliseconds: 400));
@@ -448,12 +458,12 @@ void main() {
     testWidgets('every framework is on the first screen, no filter', (t) async {
       await pumpApp(t, realisticBundle());
       for (final k in ['rust-actix', 'go-mux', 'foam3', 'django-sync']) {
-        expect(find.text(k), findsOneWidget, reason: k);
+        expect(inSheet(k), findsOneWidget, reason: k);
       }
-      expect(find.text('db-only'), findsOneWidget); // single-scenario too
+      expect(inSheet('db-only'), findsOneWidget); // single-scenario too
       // Sorted by DB mixed, best first; 48.0K no_db ties are not the order.
       final rows = ['rust-actix', 'go-mux', 'foam3', 'django-sync', 'db-only'];
-      final ys = [for (final k in rows) t.getTopLeft(find.text(k)).dy];
+      final ys = [for (final k in rows) t.getTopLeft(inSheet(k)).dy];
       expect(ys, [...ys]..sort());
       expect(t.takeException(), isNull);
     });
@@ -462,19 +472,19 @@ void main() {
       final state = await pumpApp(t, realisticBundle());
       await t.enterText(find.byType(TextField), 'foam');
       await settle(t);
-      expect(find.text('foam3'), findsOneWidget);
-      expect(find.text('go-mux'), findsNothing);
+      expect(inSheet('foam3'), findsOneWidget);
+      expect(inSheet('go-mux'), findsNothing);
       await t.enterText(find.byType(TextField), 'python');
       await settle(t);
-      expect(find.text('django-sync'), findsOneWidget);
-      expect(find.text('foam3'), findsNothing);
+      expect(inSheet('django-sync'), findsOneWidget);
+      expect(inSheet('foam3'), findsNothing);
       await t.enterText(find.byType(TextField), 'zzz');
       await settle(t);
       expect(find.textContaining('No framework matches "zzz"'), findsOneWidget);
       await t.tap(find.byTooltip('Clear search'));
       await settle(t);
       expect(state.query, '');
-      expect(find.text('foam3'), findsOneWidget);
+      expect(inSheet('foam3'), findsOneWidget);
       // The hint comes back once the field is empty again.
       expect(
         t.widget<InputDecorator>(find.byType(InputDecorator)).isEmpty,
@@ -490,7 +500,7 @@ void main() {
         t.widget<InputDecorator>(find.byType(InputDecorator)).isEmpty,
         isTrue,
       );
-      final hint = find.textContaining('Find your framework');
+      final hint = find.textContaining('Search name, language');
       expect(hint, findsOneWidget);
       for (final e
           in find
@@ -520,7 +530,7 @@ void main() {
       t,
     ) async {
       final state = await pumpApp(t, realisticBundle());
-      await t.tap(find.text('go-mux'));
+      await t.tap(inSheet('go-mux'));
       await settle(t);
       expect(state.expandedKey, 'go-mux');
       // The grid has a column per scenario and the metric rows.
@@ -542,7 +552,7 @@ void main() {
       }
       expect(find.text('Source on GitHub'), findsOneWidget);
       // Tapping again collapses.
-      await t.tap(find.text('go-mux'));
+      await t.tap(inSheet('go-mux'));
       await settle(t);
       expect(state.expandedKey, isNull);
       expect(t.takeException(), isNull);
@@ -552,7 +562,7 @@ void main() {
       t,
     ) async {
       final state = await pumpApp(t, realisticBundle());
-      await t.tap(find.text('db-only'));
+      await t.tap(inSheet('db-only'));
       await settle(t);
       expect(state.expandedKey, 'db-only');
       expect(find.text('—'), findsWidgets);
@@ -563,7 +573,7 @@ void main() {
 
     testWidgets('notes are printed in full', (t) async {
       await pumpApp(t, realisticBundle());
-      await t.tap(find.text('foam3'));
+      await t.tap(inSheet('foam3'));
       await settle(t);
       expect(find.text('Note: Uses its own box RPC.'), findsOneWidget);
     });
@@ -583,9 +593,9 @@ void main() {
       t,
     ) async {
       final state = await pumpApp(t, realisticBundle());
-      await t.tap(find.text('foam3'));
+      await t.tap(inSheet('foam3'));
       await settle(t);
-      await t.tap(find.text('Compare with the leaders'));
+      await t.tap(find.text('Compare with the DB mixed leaders'));
       await settle(t);
       expect(state.page, DashboardPage.compare);
       expect(state.compareKeys, [
@@ -603,7 +613,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('Side by side'), findsOneWidget);
-      expect(find.text('Implementation'), findsOneWidget);
+      expect(find.text('IMPLEMENTATION'), findsOneWidget);
       expect(find.text(goImpl['server']!), findsOneWidget);
       expect(t.takeException(), isNull);
     });
@@ -614,11 +624,18 @@ void main() {
       final state = await pumpApp(t, realisticBundle());
       expect(find.byType(CompareTray), findsOneWidget);
       expect(find.text('Comparing'), findsNothing);
-      final buttons = find.widgetWithText(OutlinedButton, 'Compare');
-      await t.tap(buttons.first);
+      await t.tap(find.byTooltip('Add rust-actix to compare'));
       await settle(t);
       expect(find.text('Add one more to compare'), findsOneWidget);
-      await t.tap(find.widgetWithText(OutlinedButton, 'Compare').first);
+      expect(find.text('1 of 4'), findsOneWidget);
+      await t.tap(find.byTooltip('Add go-mux to compare'));
+      await settle(t);
+      expect(state.compareKeys, ['rust-actix', 'go-mux']);
+      // The dock chip removes, the row toggle adds back.
+      await t.tap(find.byTooltip('Remove go-mux'));
+      await settle(t);
+      expect(state.compareKeys, ['rust-actix']);
+      await t.tap(find.byTooltip('Add go-mux to compare'));
       await settle(t);
       expect(state.compareKeys, hasLength(2));
       expect(find.text('Comparing'), findsOneWidget);
@@ -626,7 +643,7 @@ void main() {
       await settle(t);
       expect(state.page, DashboardPage.compare);
       // Back returns home with the tray intact.
-      await t.tap(find.text('All frameworks').first);
+      await t.tap(find.widgetWithText(TextButton, 'Leaderboard'));
       await settle(t);
       expect(state.page, DashboardPage.home);
       expect(state.compareKeys, hasLength(2));
@@ -655,19 +672,19 @@ void main() {
       final tied = find.text('8.0K');
       expect(tied, findsNWidgets(4)); // all-scenario card + table
       for (final e in tied.evaluate()) {
-        expect((e.widget as Text).style!.color, isNot(const Color(0xFF3FB950)));
+        expect((e.widget as Text).style!.color, isNot(kSignal));
       }
       expect(find.text('='), findsAtLeastNWidgets(4)); // other rows tie too
       // p99: alpha wins (10 ms), beta is 2.0× slower.
       final p99 = t.widget<Text>(find.text('10.0 ms'));
-      expect(p99.style!.color, const Color(0xFF3FB950));
+      expect(p99.style!.color, kSignal);
       expect(find.text('2.0× slower'), findsOneWidget);
       // DB CPU exists only for alpha: not green, no delta, after "More rows".
       await t.tap(find.text('More rows'));
       await settle(t);
       expect(find.text('Database CPU'), findsOneWidget);
       final dbCpu = t.widget<Text>(find.text('29%'));
-      expect(dbCpu.style!.color, isNot(const Color(0xFF3FB950)));
+      expect(dbCpu.style!.color, isNot(kSignal));
       expect(t.takeException(), isNull);
     });
   });
@@ -722,7 +739,7 @@ void main() {
       t,
     ) async {
       final state = await pumpApp(t, realisticBundle());
-      await t.tap(find.text('go-mux'));
+      await t.tap(inSheet('go-mux'));
       await settle(t);
       await t.tap(find.text('Full details and charts'));
       await settle(t);
@@ -735,8 +752,13 @@ void main() {
       expect(find.text('How go-mux is implemented'), findsOneWidget);
       expect(find.text('backends/go/mux'), findsOneWidget);
       expect(find.text('at run commit abc1234'), findsOneWidget);
-      // Scenario chips switch the numbers.
-      await t.tap(find.widgetWithText(ChoiceChip, 'DB mixed'));
+      // Scenario tabs switch the numbers.
+      await t.tap(
+        find.descendant(
+          of: find.byType(ScenarioTabs),
+          matching: find.text('DB mixed'),
+        ),
+      );
       await settle(t);
       expect(
         find.textContaining('#2 of 5 by sustainable load in DB mixed'),
@@ -766,34 +788,72 @@ void main() {
       await t.tap(find.text("How it's measured"));
       await settle(t);
       expect(state.page, DashboardPage.method);
-      expect(find.text('Contents'), findsOneWidget);
-      expect(find.text('1. How load is applied'), findsOneWidget);
-      expect(find.text('8. Known limitations'), findsOneWidget);
+      expect(find.text('CONTENTS'), findsOneWidget);
+      // Each section is in the contents rail and has its own card.
+      expect(find.text('How load is applied'), findsNWidgets(2));
+      expect(find.text('Known limitations'), findsNWidgets(2));
+      expect(find.text('08'), findsNWidgets(2));
+      // The definition and the scenarios start open.
+      expect(find.text('fewer than 1% of requests'), findsOneWidget);
       // Key facts are visible without opening anything.
       expect(find.text('median of 3'), findsOneWidget);
       expect(find.text('250 to 1k req/s'), findsOneWidget);
       // Details stay closed until asked for.
       expect(find.textContaining('tests the midpoint'), findsNothing);
       expect(find.byType(DropdownButton<String>), findsNothing);
-      // A contents entry opens its section.
-      await t.tap(find.text('1. How load is applied'));
+      // A contents entry (the rail, last in the tree) opens its section.
+      await t.tap(find.text('How load is applied').last);
       await settle(t);
       expect(find.textContaining('tests the midpoint'), findsOneWidget);
       // So does tapping the section header.
-      await t.tap(find.text('Hardware and this run'));
+      await t.ensureVisible(find.text('Hardware and this run').first);
+      await settle(t);
+      await t.tap(find.text('Hardware and this run').first);
       await settle(t);
       expect(find.text('commit abc1234'), findsOneWidget);
       expect(find.byType(DropdownButton<String>), findsOneWidget); // run picker
-      await t.tap(find.text('8. Known limitations'));
+      await t.tap(find.text('Known limitations').last);
       await settle(t);
       expect(t.takeException(), isNull);
     });
 
-    testWidgets('header "Data" link opens the Method page', (t) async {
+    testWidgets('header "Data" pill lists runs and links to the method', (
+      t,
+    ) async {
       final state = await pumpApp(t, realisticBundle());
+      expect(find.text('Data: 2026-10-04 · CPU m2pro-10c-32g'), findsOneWidget);
       await t.tap(find.textContaining('Data:'));
       await settle(t);
+      expect(find.text('SHOW RESULTS FROM'), findsOneWidget);
+      await t.tap(find.text('About this run and how it was measured'));
+      await settle(t);
       expect(state.page, DashboardPage.method);
+    });
+
+    testWidgets('header "Data" pill switches the run in place', (t) async {
+      final bundle = MapBundle(
+        files(
+          [indexEntry('r1'), indexEntry('r2', date: '2026-10-05')],
+          {
+            'r1': [backend('a', sustainable: 1)],
+            'r2': [backend('a', sustainable: 2)],
+          },
+        ),
+      );
+      final state = await pumpApp(t, bundle);
+      expect(state.entry!.id, 'r1');
+      await t.tap(find.textContaining('Data:'));
+      await settle(t);
+      await t.runAsync(() async {
+        await t.tap(find.textContaining('2026-10-05 ·').last);
+        for (var i = 0; i < 5; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await t.pump();
+        }
+      });
+      await settle(t);
+      expect(state.entry!.id, 'r2');
+      expect(state.page, DashboardPage.home);
     });
   });
 
@@ -804,12 +864,12 @@ void main() {
       final state = await pumpApp(t, realisticBundle());
       expect(
         find.ancestor(
-          of: find.text('foam3'),
+          of: inSheet('foam3'),
           matching: find.byType(SelectionArea),
         ),
         findsOneWidget,
       );
-      await t.tap(find.text('foam3'));
+      await t.tap(inSheet('foam3'));
       await settle(t);
       expect(state.expandedKey, 'foam3');
       expect(
@@ -829,17 +889,140 @@ void main() {
         realisticBundle(),
         size: const Size(400, 1600),
       );
-      expect(find.text('foam3'), findsOneWidget);
-      await t.tap(find.text('foam3'));
+      expect(inSheet('foam3'), findsOneWidget);
+      await t.tap(inSheet('foam3'));
       await settle(t);
       expect(state.expandedKey, 'foam3');
       expect(find.text('Peak throughput (req/s)'), findsOneWidget);
-      await t.tap(find.text('Compare with the leaders'));
+      await t.ensureVisible(find.text('Compare with the DB mixed leaders'));
+      await settle(t);
+      await t.tap(find.text('Compare with the DB mixed leaders'));
       await settle(t);
       expect(state.page, DashboardPage.compare);
       expect(find.textContaining('Side by side'), findsOneWidget);
-      expect(find.text('Implementation'), findsWidgets);
+      expect(find.text('IMPLEMENTATION'), findsWidgets);
       expect(t.takeException(), isNull);
+    });
+
+    testWidgets('400 px: the scenario can be ranked without the table', (
+      t,
+    ) async {
+      final state = await pumpApp(
+        t,
+        realisticBundle(),
+        size: const Size(400, 1600),
+      );
+      expect(state.sortScenario, 'db_mixed');
+      expect(find.text('RANK BY'), findsOneWidget);
+      await t.tap(
+        find.descendant(
+          of: find.byType(ScenarioTabs),
+          matching: find.text('DB read'),
+        ),
+      );
+      await settle(t);
+      expect(state.sortScenario, 'db_read');
+      expect(t.takeException(), isNull);
+    });
+  });
+
+  group('round 1 additions', () {
+    testWidgets('the podium names each scenario winner and ranks on tap', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      // Two frameworks tie at the load generator's limit in No DB: said as
+      // such, not as a single winner.
+      final photo = find.text(
+        "Photo finish: 2 tied at the load generator's limit",
+      );
+      expect(photo, findsOneWidget);
+      // (DB write has a plain two-way tie too.)
+      expect(find.text('2-way tie'), findsNWidgets(2));
+      // DB mixed: rust-actix 32K leads go-mux 16K by 2×.
+      expect(find.text('2.00× ahead of go-mux'), findsOneWidget);
+      await t.tap(photo);
+      await settle(t);
+      expect(state.sortScenario, 'no_db');
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('rows are reachable and expandable with the keyboard', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      Focus.of(t.element(inSheet('go-mux'))).requestFocus();
+      await t.pump();
+      await t.sendKeyEvent(LogicalKeyboardKey.enter);
+      await settle(t);
+      expect(state.expandedKey, 'go-mux');
+      await t.sendKeyEvent(LogicalKeyboardKey.space);
+      await settle(t);
+      expect(state.expandedKey, isNull);
+    });
+
+    testWidgets('"/" focuses the search field', (t) async {
+      await pumpApp(t, realisticBundle());
+      final field = t.widget<TextField>(find.byType(TextField));
+      expect(field.focusNode!.hasFocus, isFalse);
+      await t.sendKeyEvent(LogicalKeyboardKey.slash);
+      await settle(t);
+      expect(field.focusNode!.hasFocus, isTrue);
+      expect(field.controller!.text, ''); // the slash is not typed in
+    });
+
+    testWidgets('lower-is-better metrics keep "longer bar is better"', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      expect(find.text('HIGHER IS BETTER'), findsOneWidget);
+      state.setMetric(Metrics.p99);
+      await settle(t);
+      expect(find.text('LOWER IS BETTER'), findsOneWidget);
+      expect(find.text('Who has the lowest p99 latency?'), findsOneWidget);
+      expect(t.takeException(), isNull);
+    });
+
+    test('links round-trip through the state', () async {
+      final state = DashboardState(ResultsService(realisticBundle()));
+      await state.load();
+      applyLocation(state, Uri.parse('/compare/go-mux,foam3,nope?s=db_read'));
+      expect(state.page, DashboardPage.compare);
+      expect(state.compareKeys, ['go-mux', 'foam3']);
+      expect(state.scenario, 'db_read');
+      expect(locationOf(state).toString(), '/compare/go-mux,foam3?s=db_read');
+      applyLocation(state, Uri.parse('/f/rust-actix?s=db_write'));
+      expect(
+        (state.page, state.detailKey),
+        (DashboardPage.details, 'rust-actix'),
+      );
+      expect(locationOf(state).toString(), '/f/rust-actix?s=db_write');
+      applyLocation(state, Uri.parse('/f/vanished'));
+      expect(state.page, DashboardPage.home);
+      applyLocation(state, Uri.parse('/method'));
+      expect(state.page, DashboardPage.method);
+      applyLocation(state, Uri.parse('/nowhere'));
+      expect(state.page, DashboardPage.home);
+      expect(locationOf(state).toString(), '/');
+    });
+
+    test('text colours meet WCAG AA on cards', () {
+      double lum(Color c) {
+        double ch(double v) => v <= 0.03928
+            ? v / 12.92
+            : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+        return 0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b);
+      }
+
+      double contrast(Color a, Color b) {
+        final x = lum(a), y = lum(b);
+        return (math.max(x, y) + 0.05) / (math.min(x, y) + 0.05);
+      }
+
+      for (final c in [kTextPrimary, kTextSecondary, kTextMuted, kTextDim]) {
+        expect(contrast(c, kCardBg), greaterThanOrEqualTo(4.5));
+        expect(contrast(c, kCardBgRaised), greaterThanOrEqualTo(4.5));
+      }
     });
   });
 }

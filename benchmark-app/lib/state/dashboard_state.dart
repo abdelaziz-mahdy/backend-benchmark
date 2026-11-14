@@ -216,6 +216,42 @@ class DashboardState extends ChangeNotifier {
   /// Opens the Compare page for whatever is in the tray.
   void openCompare() => setPage(DashboardPage.compare);
 
+  /// Shows what a link points at (see app_router.dart). Unknown frameworks
+  /// and scenarios are ignored rather than shown empty; a details link to a
+  /// framework the run lacks lands on the home page.
+  void applyRoute({
+    required DashboardPage page,
+    String? detail,
+    List<String> compare = const [],
+    String? scenario,
+  }) {
+    final r = run;
+    if (r == null) return;
+    final keys = {for (final b in r.backends) b.key};
+    if (scenario != null && r.scenarios.contains(scenario)) {
+      this.scenario = scenario;
+    }
+    var next = page;
+    if (next == DashboardPage.details) {
+      if (detail != null && keys.contains(detail)) {
+        detailKey = detail;
+      } else {
+        next = DashboardPage.home;
+      }
+    }
+    if (next == DashboardPage.compare && compare.isNotEmpty) {
+      final picked = <String>[];
+      for (final k in compare) {
+        if (keys.contains(k) && !picked.contains(k)) picked.add(k);
+      }
+      compareKeys
+        ..clear()
+        ..addAll(picked.take(maxCompare));
+    }
+    this.page = next;
+    notifyListeners();
+  }
+
   // ---------------------------------------------------------------- derived
 
   /// Rows of the home table: every backend of the run that matches the

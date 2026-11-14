@@ -500,4 +500,17 @@ class RunSummary {
   }
 
   bool get isLegacy => methodology == 'v1';
+
+  /// Cores pinned to each app, from the "0-1" cpuset; "2" when unknown.
+  String get appCores {
+    final cpusets = params['cpusets'] as Map? ?? const {};
+    final cpuset = cpusets['app'];
+    if (cpuset is! String) return '2';
+    final m = RegExp(r'^(\d+)-(\d+)$').firstMatch(cpuset);
+    if (m == null) return cpuset;
+    return '${int.parse(m[2]!) - int.parse(m[1]!) + 1}';
+  }
+
+  /// Repetitions per scenario.
+  Object get reps => params['reps'] ?? 3;
 }

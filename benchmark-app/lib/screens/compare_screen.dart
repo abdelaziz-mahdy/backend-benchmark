@@ -9,7 +9,9 @@ import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/charts.dart';
 import '../widgets/common.dart';
+import '../widgets/compare_tray.dart';
 import '../widgets/implementation.dart';
+import 'framework_screen.dart' show CopyLinkButton;
 
 /// Two to four frameworks side by side: the headline in every scenario,
 /// then a grouped metric table, charts and implementation facts for the
@@ -37,13 +39,15 @@ class _CompareScreenState extends State<CompareScreen> {
     return PageBody(
       children: [
         PageTitle(
+          eyebrow: 'Head to head',
           title: picked.length < 2
               ? 'Compare'
               : picked.map((b) => b.name).join(' vs '),
           subtitle: picked.length < 2
               ? null
-              : 'Remove one with ×, add more from the home page.',
+              : 'Remove one with ×, add more from the leaderboard.',
           onBack: state.goHome,
+          trailing: picked.length < 2 ? null : const CopyLinkButton(),
         ),
         _Picked(state: state, picked: picked),
         if (picked.length < 2)
@@ -51,12 +55,13 @@ class _CompareScreenState extends State<CompareScreen> {
             icon: Icons.compare_arrows,
             title: 'Pick at least two frameworks to compare',
             message:
-                'On the home page, tap "Compare" on a row or open a row '
-                'and tap "Compare with the leaders".',
+                'On the leaderboard, tap + on a row, or open a row and '
+                'tap "Compare with the … leaders".',
           )
         else ...[
           _AllScenarios(state: state, picked: picked),
-          ScenarioChips(
+          ScenarioTabs(
+            label: 'Scenario',
             scenarios: run.scenarios,
             selected: state.scenario,
             onSelected: state.setScenario,
@@ -94,7 +99,8 @@ class _CompareScreenState extends State<CompareScreen> {
     return LayoutBuilder(
       builder: (context, c) {
         final a = SectionCard(
-          title: 'Throughput per load step',
+          eyebrow: 'Throughput',
+          title: 'Served vs requested, per load step',
           subtitle:
               'Where each line leaves the dashed diagonal, it stops keeping up.',
           child: Column(
@@ -106,8 +112,10 @@ class _CompareScreenState extends State<CompareScreen> {
           ),
         );
         final b = SectionCard(
-          title: 'p99 latency per load step',
-          subtitle: 'Above the orange line the SLO is missed.',
+          eyebrow: 'Latency',
+          title: 'p99 per load step',
+          subtitle:
+              'Red zone = above the 100 ms SLO; hollow red points failed.',
           child: Column(
             children: [
               StepLoadChart(series: series, mode: StepChartMode.p99),
@@ -171,6 +179,7 @@ class _CompareScreenState extends State<CompareScreen> {
       ),
     };
     return SectionCard(
+      eyebrow: 'Resources',
       title: 'Over time',
       subtitle:
           'Whole run, warmup included. Faster frameworks run more steps, so their lines are longer.',
@@ -213,29 +222,23 @@ class _Picked extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Wrap(
-    spacing: 6,
-    runSpacing: 6,
+    spacing: 8,
+    runSpacing: 8,
     crossAxisAlignment: WrapCrossAlignment.center,
     children: [
       for (final b in picked)
-        InputChip(
-          avatar: ColorDot(color: BackendColors.of(b.key), size: 9),
-          label: Text(b.name),
-          labelStyle: const TextStyle(color: kTextPrimary, fontSize: 12.5),
-          backgroundColor: kCardBg,
-          side: const BorderSide(color: kBorder),
-          deleteIconColor: kTextMuted,
-          deleteButtonTooltipMessage: 'Remove ${b.name}',
-          visualDensity: VisualDensity.compact,
-          onDeleted: () => state.toggleCompare(b.key),
+        DockChip(
+          key: ValueKey(b.key),
+          backend: b,
+          onRemove: () => state.toggleCompare(b.key),
         ),
       if (picked.length < DashboardState.maxCompare)
         ActionChip(
-          avatar: const Icon(Icons.add, size: 14, color: kTextMuted),
+          avatar: const Icon(Icons.add, size: 14, color: kSignal),
           label: const Text('Add from the list'),
-          labelStyle: const TextStyle(color: kTextMuted, fontSize: 12.5),
+          labelStyle: body(12.5, color: kTextSecondary),
           backgroundColor: kBackground,
-          side: const BorderSide(color: kBorder),
+          side: const BorderSide(color: kBorderStrong),
           visualDensity: VisualDensity.compact,
           onPressed: state.goHome,
         ),
@@ -386,9 +389,10 @@ class _Table extends StatelessWidget {
       ('Versions', (b) => b.subtitle.isEmpty ? null : b.subtitle),
     ];
     return SectionCard(
+      eyebrow: 'Every number',
       title: 'Side by side · ${scenarioLabel(state.scenario ?? '')}',
       subtitle:
-          'Best value per row in green; equal values are not ranked. Bars '
+          'Best value per row in lime; equal values are not ranked. Bars '
           'show each value against the largest in its row.',
       trailing: TextButton.icon(
         onPressed: onMore,
@@ -396,7 +400,8 @@ class _Table extends StatelessWidget {
         label: Text(more ? 'Fewer rows' : 'More rows'),
         style: TextButton.styleFrom(
           visualDensity: VisualDensity.compact,
-          textStyle: labelStyle(context, 12),
+          foregroundColor: kSignal,
+          textStyle: labelStyle(context, 12.5, weight: FontWeight.w600),
         ),
       ),
       child: LayoutBuilder(
@@ -407,13 +412,9 @@ class _Table extends StatelessWidget {
     );
   }
 
-  static const _labelStyle = TextStyle(color: kTextSecondary, fontSize: 12.5);
-  static const _groupStyle = TextStyle(
-    color: kTextPrimary,
-    fontSize: 12.5,
-    fontWeight: FontWeight.w600,
-  );
-  static const _helpStyle = TextStyle(color: kTextDim, fontSize: 11);
+  static final _labelStyle = body(12.5, color: kTextSecondary);
+  static final _groupStyle = caps(11, color: kTextPrimary);
+  static final _helpStyle = body(11.5, color: kTextDim);
 
   Widget _table(
     double width,
@@ -442,16 +443,16 @@ class _Table extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    ColorDot(color: BackendColors.of(b.key), size: 8),
-                    const SizedBox(width: 6),
+                    Monogram(backend: b, size: 22),
+                    const SizedBox(width: 7),
                     Flexible(
                       child: Text(
                         b.name,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: body(
+                          13.5,
                           color: kTextPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                          weight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -461,11 +462,11 @@ class _Table extends StatelessWidget {
           ],
         ),
         for (final (title, help, metrics) in groups) ...[
-          _groupRow(title, help),
+          _groupRow(title.toUpperCase(), help),
           for (final m in metrics) _metricRow(m),
         ],
         _groupRow(
-          'Implementation',
+          'IMPLEMENTATION',
           'How each one is run, so you can judge whether the comparison is '
               'fair.',
         ),
@@ -479,9 +480,9 @@ class _Table extends StatelessWidget {
                   child: Text(
                     value(b) ?? '—',
                     textAlign: TextAlign.right,
-                    style: TextStyle(
+                    style: body(
+                      12.5,
                       color: value(b) == null ? kTextDim : kTextSecondary,
-                      fontSize: 12,
                       height: 1.3,
                     ),
                   ),
@@ -497,7 +498,7 @@ class _Table extends StatelessWidget {
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: b.sourceUrl == null
-                      ? const Text('—', style: TextStyle(color: kTextDim))
+                      ? Text('—', style: mono(12, color: kTextDim))
                       : SourceLink(
                           url: b.sourceUrlAt(sha) ?? b.sourceUrl!,
                           label: 'backends/${b.path}',
@@ -557,87 +558,103 @@ class _Table extends StatelessWidget {
     );
   }
 
-  /// Phone: one card per framework with the same groups.
+  /// Phone: one block per metric, one lane per framework inside it, so
+  /// every framework's number fits the width and reads side by side.
   Widget _cards(
     List<(String, String, List<Metric>)> groups,
     List<(String, String? Function(BackendResult))> impl,
     String? sha,
   ) {
+    Widget lane(BackendResult b, Widget value) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Monogram(backend: b, size: 18),
+          ),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 104,
+            child: Text(
+              b.name,
+              maxLines: 2,
+              style: body(12, color: kTextSecondary),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(child: value),
+        ],
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final b in selected)
-          Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-            decoration: BoxDecoration(
-              color: kBackground,
-              borderRadius: BorderRadius.circular(kRadius),
-              border: Border.all(color: kBorder),
+        for (final (title, _, metrics) in groups) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 14, 0, 4),
+            child: Text(title.toUpperCase(), style: _groupStyle),
+          ),
+          for (final m in metrics) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 6, bottom: 2),
+              child: Text(m.labelWithUnit, style: _labelStyle),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                BackendLabel(backend: b),
-                for (final (title, _, metrics) in groups) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
-                    child: Text(title, style: _groupStyle),
+            for (final b in selected)
+              lane(
+                b,
+                _ValueBar(
+                  m: m,
+                  verdict: _RowVerdict.of(
+                    m,
+                    selected,
+                    (x) => m.value(state.resultOf(x)!),
                   ),
-                  for (final m in metrics)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 3),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 120,
-                            child: Text(m.labelWithUnit, style: _labelStyle),
-                          ),
-                          Expanded(
-                            child: _ValueBar(
-                              m: m,
-                              verdict: _RowVerdict.of(
-                                m,
-                                selected,
-                                (x) => m.value(state.resultOf(x)!),
-                              ),
-                              backend: b,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(0, 12, 0, 4),
-                  child: Text('Implementation', style: _groupStyle),
+                  backend: b,
                 ),
-                for (final (label, value) in impl)
-                  if (value(b) != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: 120,
-                            child: Text(label, style: _labelStyle),
-                          ),
-                          Expanded(child: factText(value(b)!)),
-                        ],
-                      ),
-                    ),
-                if (b.sourceUrl != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
+              ),
+          ],
+        ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(0, 16, 0, 4),
+          child: Text('IMPLEMENTATION', style: _groupStyle),
+        ),
+        for (final (label, value) in impl)
+          if (selected.any((b) => value(b) != null)) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 6, bottom: 2),
+              child: Text(label, style: _labelStyle),
+            ),
+            for (final b in selected)
+              lane(
+                b,
+                Text(
+                  value(b) ?? '—',
+                  style: body(
+                    12.5,
+                    color: value(b) == null ? kTextDim : kTextPrimary,
+                  ),
+                ),
+              ),
+          ],
+        Padding(
+          padding: const EdgeInsets.only(top: 6, bottom: 2),
+          child: Text('Source', style: _labelStyle),
+        ),
+        for (final b in selected)
+          lane(
+            b,
+            b.sourceUrl == null
+                ? Text('—', style: mono(12, color: kTextDim))
+                : Align(
+                    alignment: Alignment.centerLeft,
                     child: SourceLink(
                       url: b.sourceUrlAt(sha) ?? b.sourceUrl!,
                       label: 'backends/${b.path}',
                       fontSize: 12,
                     ),
                   ),
-              ],
-            ),
           ),
       ],
     );
@@ -673,22 +690,18 @@ class _ValueBar extends StatelessWidget {
             if (delta.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: Text(
-                  delta,
-                  style: const TextStyle(color: kTextDim, fontSize: 11),
-                ),
+                child: Text(delta, style: mono(11, color: kTextMuted)),
               ),
             Text(
               verdict.shown[key]!,
-              style: TextStyle(
+              style: mono(
+                13,
                 color: value == null
                     ? kTextDim
                     : best
-                    ? kGreen
+                    ? kSignal
                     : kTextPrimary,
-                fontSize: 13,
-                fontWeight: best ? FontWeight.w700 : FontWeight.w500,
-                fontFeatures: const [FontFeature.tabularFigures()],
+                weight: best ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ],
@@ -697,8 +710,8 @@ class _ValueBar extends StatelessWidget {
         InlineBar(
           value: value,
           max: verdict.max,
-          color: BackendColors.of(key).withValues(alpha: 0.7),
-          height: 4,
+          color: BackendColors.of(key).withValues(alpha: best ? 1 : 0.6),
+          height: best ? 6 : 4,
         ),
       ],
     );
@@ -706,7 +719,9 @@ class _ValueBar extends StatelessWidget {
 }
 
 /// The headline number of every picked framework in every scenario, so the
-/// comparison is not limited to the scenario the charts show.
+/// comparison is not limited to the scenario the charts show. One block per
+/// scenario with a lane per framework; tapping a block shows that scenario
+/// below.
 class _AllScenarios extends StatelessWidget {
   final DashboardState state;
   final List<BackendResult> picked;
@@ -720,85 +735,126 @@ class _AllScenarios extends StatelessWidget {
       for (final b in picked) ...b.scenarios.values,
     ]);
     return SectionCard(
+      eyebrow: 'Every scenario',
       title: '${metric.labelWithUnit} in every scenario',
       subtitle:
-          'Best per scenario in green; equal values are not ranked. '
-          'Tap a scenario for the rest of its numbers.',
-      fullBleed: true,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Table(
-            defaultColumnWidth: const FixedColumnWidth(150),
-            columnWidths: const {0: FixedColumnWidth(96)},
-            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          'Best per scenario in lime; equal values are not ranked. Tap a '
+          'scenario for the rest of its numbers.',
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final cols = c.maxWidth >= 1000
+              ? scenarios.length.clamp(1, 4)
+              : c.maxWidth >= 560
+              ? 2
+              : 1;
+          const gap = 12.0;
+          final w = (c.maxWidth - gap * (cols - 1)) / cols;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
             children: [
-              TableRow(
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: kBorder)),
+              for (final s in scenarios)
+                SizedBox(
+                  width: w,
+                  child: _ScenarioBlock(
+                    state: state,
+                    picked: picked,
+                    metric: metric,
+                    scenario: s,
+                  ),
                 ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ScenarioBlock extends StatelessWidget {
+  final DashboardState state;
+  final List<BackendResult> picked;
+  final Metric metric;
+  final String scenario;
+
+  const _ScenarioBlock({
+    required this.state,
+    required this.picked,
+    required this.metric,
+    required this.scenario,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = scenario == state.scenario;
+    final verdict = _RowVerdict.of(
+      metric,
+      picked,
+      (x) => state.valueOf(x, metric, scenario),
+    );
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        onTap: () => state.setScenario(scenario),
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: motion(context, 180),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          decoration: BoxDecoration(
+            color: selected ? kCardBgRaised : kBackground,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? kSignal.withValues(alpha: 0.6) : kBorder,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  const SizedBox(height: 30),
-                  for (final b in picked)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          ColorDot(color: BackendColors.of(b.key), size: 8),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              b.name,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: kTextPrimary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
+                  Expanded(
+                    child: Text(
+                      scenarioLabel(scenario),
+                      style: body(
+                        13,
+                        color: selected ? kSignal : kTextPrimary,
+                        weight: FontWeight.w700,
                       ),
                     ),
+                  ),
+                  if (selected)
+                    Text('SHOWN BELOW', style: caps(9.5, color: kSignal)),
                 ],
               ),
-              for (final s in scenarios)
-                TableRow(
-                  children: [
-                    InkWell(
-                      onTap: () => state.setScenario(s),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Text(
-                          scenarioLabel(s),
-                          style: TextStyle(
-                            color: s == state.scenario
-                                ? kTextPrimary
-                                : kTextSecondary,
-                            fontSize: 12.5,
-                            fontWeight: s == state.scenario
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                    ),
-                    for (final b in picked)
+              const SizedBox(height: 8),
+              for (final b in picked)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 5, 12, 5),
-                        child: _ValueBar(
-                          m: metric,
-                          verdict: _RowVerdict.of(
-                            metric,
-                            picked,
-                            (x) => state.valueOf(x, metric, s),
-                          ),
-                          backend: b,
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Monogram(backend: b, size: 18),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              b.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: body(11.5, color: kTextMuted),
+                            ),
+                            _ValueBar(m: metric, verdict: verdict, backend: b),
+                          ],
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
             ],
           ),

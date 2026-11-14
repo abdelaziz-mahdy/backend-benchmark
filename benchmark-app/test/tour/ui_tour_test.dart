@@ -44,6 +44,7 @@ void main() {
         // chip colours), the second lets them finish.
         await t.pump(const Duration(milliseconds: 600));
         await t.pump(const Duration(milliseconds: 600));
+        await t.pump(const Duration(milliseconds: 600));
         await expectLater(
           find.byType(MaterialApp),
           matchesGoldenFile('../../screenshots/$w-$name.png'),

@@ -75,3 +75,38 @@ String Function(double) memoryAxisFormatter(double maxMb) {
   }
   return (v) => '${formatNumber(v)} MB';
 }
+
+/// Distance of [value] from the [leader] of its column: "−25%" when more is
+/// better, "2.1× slower" / "2.1× more" when less is better, "" when equal or
+/// undefined.
+String gapToLeader(Metric metric, double value, double leader) {
+  if (formatMetricShort(metric, value) == formatMetricShort(metric, leader)) {
+    return '';
+  }
+  if (metric.higherIsBetter) {
+    if (leader <= 0) return '';
+    return '−${((1 - value / leader) * 100).round()}%';
+  }
+  if (leader <= 0) return '';
+  final x = value / leader;
+  final word = metric.unit == Unit.ms ? 'slower' : 'more';
+  return '${x >= 10 ? x.round() : x.toStringAsFixed(1)}× $word';
+}
+
+/// How far ahead [leader] is of [next]: "1.33×" (always ≥ 1).
+String leadRatio(Metric metric, double leader, double next) {
+  final r = metric.higherIsBetter
+      ? (next <= 0 ? null : leader / next)
+      : (leader <= 0 ? null : next / leader);
+  if (r == null) return '';
+  return '${r >= 10 ? r.round() : r.toStringAsFixed(2)}×';
+}
+
+/// Step rates for axis ticks: 250, 500, 1k, 1.5k, 64k.
+String compactRps(num v) {
+  if (v >= 1000) {
+    final k = v / 1000;
+    return '${k == k.roundToDouble() ? k.toInt() : k.toStringAsFixed(1)}k';
+  }
+  return '${v.round()}';
+}
