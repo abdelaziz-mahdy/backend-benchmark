@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../utils/theme_constants.dart';
 
@@ -16,7 +16,7 @@ class LoadingWidget extends StatelessWidget {
             height: 40,
             child: CircularProgressIndicator(
               strokeWidth: 3,
-              color: kBlue,
+              color: kSignal,
               backgroundColor: kGridLine,
             ),
           ),

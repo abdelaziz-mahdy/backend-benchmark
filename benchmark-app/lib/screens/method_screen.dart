@@ -1,12 +1,17 @@
-import 'package:flutter/material.dart';
+import 'dart:math' as math;
+
+import 'package:flutter/rendering.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../models/metrics.dart';
 import '../models/results.dart';
 import '../state/dashboard_state.dart';
+import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/app_header.dart';
 import '../widgets/common.dart';
+import '../widgets/race_replay.dart' show Slo;
 import '../widgets/implementation.dart';
 
 /// How the numbers are made. Four key facts up front; every section shows a
@@ -25,14 +30,65 @@ class _Section {
   final String title;
   final String summary;
   final Widget body;
-  final GlobalKey key = GlobalKey();
 
-  _Section(this.id, this.title, this.summary, this.body);
+  /// One key per section id for the life of the page, so a rebuild keeps
+  /// each section's state and "jump to" finds the section it asked for.
+  static final _keys = Expando<Map<String, GlobalKey>>();
+  final GlobalKey key;
+
+  _Section._(this.id, this.title, this.summary, this.body, this.key);
+
+  static _Section Function(String, String, String, Widget) forPage(
+    Object page,
+  ) {
+    final keys = _keys[page] ??= {};
+    return (id, title, summary, body) => _Section._(
+      id,
+      title,
+      summary,
+      body,
+      keys.putIfAbsent(id, () => GlobalKey(debugLabel: 'method-$id')),
+    );
+  }
 }
 
 class _MethodScreenState extends State<MethodScreen> {
   bool _contentsOpen = false;
-  final Set<String> _open = {};
+
+  /// The definition and the scenarios are what most visitors came for, so
+  /// they start open; the rest opens on demand.
+  final Set<String> _open = {'sustainable', 'scenarios'};
+  final _scroll = ScrollController();
+  String? _active;
+  List<_Section> _current = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_track);
+  }
+
+  @override
+  void dispose() {
+    _scroll.removeListener(_track);
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Highlights the section at the top of the view in the contents rail.
+  void _track() {
+    if (!_scroll.hasClients) return;
+    String? active;
+    for (final s in _current) {
+      final ro = s.key.currentContext?.findRenderObject();
+      if (ro == null || !ro.attached) continue;
+      final viewport = RenderAbstractViewport.maybeOf(ro);
+      if (viewport == null) continue;
+      final top = viewport.getOffsetToReveal(ro, 0).offset;
+      if (top <= _scroll.offset + 120) active = s.id;
+    }
+    if (active != _active) setState(() => _active = active);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,88 +96,93 @@ class _MethodScreenState extends State<MethodScreen> {
     final run = state.run;
     if (run == null) return const SizedBox.shrink();
     final sections = _sections(state, run);
+    _current = sections;
     return LayoutBuilder(
       builder: (context, c) {
         final narrow = c.maxWidth < 900;
-        final pad = c.maxWidth < kNarrow ? 12.0 : 24.0;
+        final pad = c.maxWidth < kNarrow ? 16.0 : 28.0;
         final title = PageTitle(
+          eyebrow: 'Method',
           title: "How it's measured",
           subtitle: run.isLegacy
               ? 'An old run with the previous (v1) method'
-              : 'The short version first; tap a section for details',
+              : 'The short version first; open any section for the details.',
           onBack: state.goHome,
         );
         final content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (!run.isLegacy) _keyFacts(run),
+            title,
+            const SizedBox(height: 18),
+            if (!run.isLegacy) ...[
+              _keyFacts(run),
+              const SizedBox(height: 14),
+              _RunStaircase(state: state),
+            ],
             if (narrow) ...[
               const SizedBox(height: 12),
               _ContentsList(
                 sections: sections,
                 collapsible: true,
                 open: _contentsOpen,
+                active: _active ?? sections.firstOrNull?.id,
                 onToggle: () => setState(() => _contentsOpen = !_contentsOpen),
                 onJump: _jump,
               ),
             ],
-            for (final s in sections) ...[
+            for (var i = 0; i < sections.length; i++) ...[
               const SizedBox(height: 10),
               KeyedSubtree(
-                key: s.key,
+                key: sections[i].key,
                 child: _Collapsible(
-                  title: s.title,
-                  summary: s.summary,
-                  open: _open.contains(s.id),
+                  number: i + 1,
+                  title: sections[i].title,
+                  summary: sections[i].summary,
+                  open: _open.contains(sections[i].id),
                   onToggle: () => setState(() {
-                    if (!_open.remove(s.id)) _open.add(s.id);
+                    if (!_open.remove(sections[i].id)) {
+                      _open.add(sections[i].id);
+                    }
                   }),
-                  child: s.body,
+                  child: sections[i].body,
                 ),
               ),
             ],
           ],
         );
         final scroll = SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: pad, vertical: 16),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
-              child: narrow
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [title, const SizedBox(height: 12), content],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Title spans both columns so the contents box lines
-                        // up with the first card.
-                        title,
-                        const SizedBox(height: 16),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: content),
-                            const SizedBox(width: 24),
-                            SizedBox(
-                              width: 200,
-                              child: _ContentsList(
-                                sections: sections,
-                                collapsible: false,
-                                open: true,
-                                onToggle: () {},
-                                onJump: _jump,
-                              ),
-                            ),
-                          ],
+          controller: _scroll,
+          padding: EdgeInsets.fromLTRB(pad, 20, narrow ? pad : 12, 32),
+          child: content,
+        );
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: kMaxContentWidth + pad * 2),
+            child: narrow
+                ? scroll
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: scroll),
+                      // Outside the scroll view, so it stays put.
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(12, 20, pad, 20),
+                        child: SizedBox(
+                          width: 220,
+                          child: _ContentsList(
+                            sections: sections,
+                            collapsible: false,
+                            open: true,
+                            active: _active ?? sections.firstOrNull?.id,
+                            onToggle: () {},
+                            onJump: _jump,
+                          ),
                         ),
-                      ],
-                    ),
-            ),
+                      ),
+                    ],
+                  ),
           ),
         );
-        return scroll;
       },
     );
   }
@@ -142,69 +203,72 @@ class _MethodScreenState extends State<MethodScreen> {
     );
   }
 
-  List<_Section> _sections(DashboardState state, RunSummary run) => [
-    if (run.isLegacy)
-      _Section(
-        'overview',
-        'Overview',
-        'Old method, kept for history; not comparable with current runs.',
-        _overview(run),
+  List<_Section> _sections(DashboardState state, RunSummary run) {
+    final section = _Section.forPage(this);
+    return [
+      if (run.isLegacy)
+        section(
+          'overview',
+          'Overview',
+          'Old method, kept for history; not comparable with current runs.',
+          _overview(run),
+        ),
+      if (!run.isLegacy)
+        section(
+          'load',
+          'How load is applied',
+          'k6 raises the request rate step by step until the app falls behind.',
+          _load(run),
+        ),
+      section(
+        'sustainable',
+        run.isLegacy
+            ? 'What the v1 numbers are'
+            : 'What "sustainable load" means',
+        run.isLegacy
+            ? 'Average requests per second during a user ramp.'
+            : 'The highest rate held while staying fast and error-free.',
+        _sustainable(run),
       ),
-    if (!run.isLegacy)
-      _Section(
-        'load',
-        'How load is applied',
-        'k6 raises the request rate step by step until the app falls behind.',
-        _load(run),
+      section(
+        'scenarios',
+        'Scenarios',
+        'Static JSON, database reads, inserts, and an 80/20 mix.',
+        _scenarios(run),
       ),
-    _Section(
-      'sustainable',
-      run.isLegacy
-          ? 'What the v1 numbers are'
-          : 'What "sustainable load" means',
-      run.isLegacy
-          ? 'Average requests per second during a user ramp.'
-          : 'The highest rate held while staying fast and error-free.',
-      _sustainable(run),
-    ),
-    _Section(
-      'scenarios',
-      'Scenarios',
-      'Static JSON, database reads, inserts, and an 80/20 mix.',
-      _scenarios(run),
-    ),
-    if (!run.isLegacy)
-      _Section(
-        'fairness',
-        'Fairness rules',
-        'Same cores, memory, seed data and pool size for every framework.',
-        _fairness(run),
+      if (!run.isLegacy)
+        section(
+          'fairness',
+          'Fairness rules',
+          'Same cores, memory, seed data and pool size for every framework.',
+          _fairness(run),
+        ),
+      section(
+        'run',
+        'Hardware and this run',
+        '${run.machine.cpu} · ${run.date ?? 'undated'} · change the run here.',
+        _thisRun(state, run),
       ),
-    _Section(
-      'run',
-      'Hardware and this run',
-      '${run.machine.cpu} · ${run.date ?? 'undated'} · change the run here.',
-      _thisRun(state, run),
-    ),
-    _Section(
-      'flags',
-      'Flags and marks',
-      'What † (load-generator limit), ± (noisy repetitions) and ‡ (restarted) mean.',
-      _flags(),
-    ),
-    _Section(
-      'glossary',
-      'Glossary',
-      'Every metric in one line.',
-      _glossary(run),
-    ),
-    _Section(
-      'limits',
-      'Known limitations',
-      'What these numbers cannot tell you.',
-      _limits(run),
-    ),
-  ];
+      section(
+        'flags',
+        'Flags and marks',
+        'What the capped, noisy and restarted markers mean.',
+        _flags(),
+      ),
+      section(
+        'glossary',
+        'Glossary',
+        'Every metric in one line.',
+        _glossary(run),
+      ),
+      section(
+        'limits',
+        'Known limitations',
+        'What these numbers cannot tell you.',
+        _limits(run),
+      ),
+    ];
+  }
 
   /// Four facts that answer "how was this measured?" at a glance.
   Widget _keyFacts(RunSummary run) {
@@ -219,7 +283,7 @@ class _MethodScreenState extends State<MethodScreen> {
       children: [
         StatTile(
           label: 'Each app gets',
-          value: '${_cores(run)} cores',
+          value: '${run.appCores} cores',
           detail: 'pinned, nothing else on them',
         ),
         StatTile(
@@ -248,7 +312,7 @@ class _MethodScreenState extends State<MethodScreen> {
           'history and are not comparable with the current method.'
     else ...[
       'Every framework serves the same four scenarios from a container '
-          'pinned to ${_cores(run)} CPU cores, with Postgres and the load '
+          'pinned to ${run.appCores} CPU cores, with Postgres and the load '
           'generator on their own cores.',
       'The load generator raises the request rate step by step. The '
           'headline number, sustainable load, is the highest rate a '
@@ -334,7 +398,7 @@ class _MethodScreenState extends State<MethodScreen> {
     return _Facts([
       (
         'CPU',
-        '${_cores(run)} pinned cores per app'
+        '${run.appCores} pinned cores per app'
             '${mem['app'] != null ? ', ${mem['app']} memory limit' : ''}; '
             'Postgres on cores ${cpusets['db'] ?? 'of its own'}, k6 on '
             '${cpusets['k6'] ?? 'its own'}.',
@@ -360,7 +424,7 @@ class _MethodScreenState extends State<MethodScreen> {
       (
         'Repetitions',
         '${run.params['reps'] ?? 3} per scenario; median shown, min–max '
-            'kept and shown as ± when they differ by more than 10%.',
+            'kept and marked noisy when they differ by more than 10%.',
       ),
     ]);
   }
@@ -416,28 +480,32 @@ class _MethodScreenState extends State<MethodScreen> {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       _flagRow(
-        const Text('†', style: TextStyle(color: kBlue, fontSize: 14)),
-        'Load-generator limit: k6 used most of its own CPU at the top '
-        'steps, so the real limit may be higher than measured on this '
+        const MarkerIcon(Marker.capped, size: 16),
+        'Capped by the load generator: k6 used most of its own CPU at the '
+        'top steps, so the real limit may be higher than measured on this '
         'machine. Several frameworks tie at this cap in No DB.',
       ),
       _flagRow(
-        const Text('±', style: TextStyle(color: kBlue, fontSize: 14)),
-        'Repetitions differed by more than 10% on the headline number. '
-        'Treat small differences with care.',
+        const MarkerIcon(Marker.noisy, size: 16),
+        'Noisy repetitions: they differed by more than 10% on the headline '
+        'number. Treat small differences with care.',
       ),
       _flagRow(
-        const Text('‡', style: TextStyle(color: kBlue, fontSize: 14)),
-        'Stopped responding under overload and did not recover by itself; '
-        'the runner restarted it (keeping its data) and kept measuring. '
-        'Says something about resilience, not just speed.',
+        const MarkerIcon(Marker.restarted, size: 16),
+        'Restarted under overload: the app stopped responding and did not '
+        'recover by itself; the runner restarted it (keeping its data) and '
+        'kept measuring. Says something about resilience, not just speed.',
       ),
       _flagRow(
-        const Flag(text: 'load-gen limit', tooltip: '', color: kBlue),
-        'The same load-generator limit, as shown on the Details page.',
+        Text('—', style: mono(14, color: kTextDim)),
+        'Not measured in that scenario.',
       ),
       _flagRow(
-        const Flag(text: '±15%', tooltip: ''),
+        const Flag(text: 'capped', icon: Icons.speed, tooltip: ''),
+        'The same load-generator cap, as a label on the Details page.',
+      ),
+      _flagRow(
+        const Flag(text: '±15%', icon: Icons.waves, tooltip: ''),
         'The same spread warning, with the measured spread.',
       ),
       _flagRow(
@@ -446,7 +514,7 @@ class _MethodScreenState extends State<MethodScreen> {
         'when the row is opened.',
       ),
       _flagRow(
-        const Flag(text: 'modified code', tooltip: ''),
+        const Flag(text: 'modified', tooltip: ''),
         'The run was made from a working copy with uncommitted changes, so '
         'the linked commit is not exactly what ran.',
       ),
@@ -499,7 +567,7 @@ class _MethodScreenState extends State<MethodScreen> {
   Widget _limits(RunSummary run) => _Para([
     if (!run.isLegacy)
       'The load generator caps out around 48k requests per second on this '
-          'machine, so the fastest frameworks tie in No DB (marked †). '
+          'machine, so the fastest frameworks tie in No DB (marked capped). '
           'Their real limit is higher.',
     'One machine, one Docker VM: absolute numbers are specific to it. Only '
         'runs on the same machine with the same method are comparable, which '
@@ -528,15 +596,6 @@ class _MethodScreenState extends State<MethodScreen> {
       ? '${(v / 1000).toStringAsFixed(v % 1000 == 0 ? 0 : 1)}k'
       : '${v.toInt()}';
 
-  static String _cores(RunSummary run) {
-    final cpusets = run.params['cpusets'] as Map? ?? const {};
-    final cpuset = cpusets['app'];
-    if (cpuset is! String) return '2';
-    final m = RegExp(r'^(\d+)-(\d+)$').firstMatch(cpuset);
-    if (m == null) return cpuset;
-    return '${int.parse(m[2]!) - int.parse(m[1]!) + 1}';
-  }
-
   static String _num(Object? v) {
     if (v is! num) return '$v';
     if (v == v.roundToDouble()) {
@@ -550,10 +609,10 @@ class _MethodScreenState extends State<MethodScreen> {
   }
 }
 
-/// Table of contents: a quiet list on the side (desktop) or a collapsible
-/// list at the top (phone). Entries scroll to their section.
-/// Card with a title and one-line summary; the details open on tap.
+/// Card with a big section number, a title and one-line summary; the
+/// details open on tap.
 class _Collapsible extends StatelessWidget {
+  final int number;
   final String title;
   final String summary;
   final bool open;
@@ -561,6 +620,7 @@ class _Collapsible extends StatelessWidget {
   final Widget child;
 
   const _Collapsible({
+    required this.number,
     required this.title,
     required this.summary,
     required this.open,
@@ -570,60 +630,67 @@ class _Collapsible extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AnimatedContainer(
+      duration: motion(context, 200),
       decoration: BoxDecoration(
-        color: kCardBg,
+        color: open ? kCardBgRaised : kCardBg,
         borderRadius: BorderRadius.circular(kRadius),
         border: Border.all(
-          color: open ? kBlue.withValues(alpha: 0.4) : kBorder,
+          color: open ? kSignal.withValues(alpha: 0.35) : kBorder,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          InkWell(
-            onTap: onToggle,
-            borderRadius: BorderRadius.circular(kRadius),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: kTextPrimary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
+          Semantics(
+            button: true,
+            expanded: open,
+            child: InkWell(
+              onTap: onToggle,
+              borderRadius: BorderRadius.circular(kRadius),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 44,
+                      child: Text(
+                        number.toString().padLeft(2, '0'),
+                        style: mono(
+                          24,
+                          weight: FontWeight.w700,
+                          color: open ? kSignal : kTextDim,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          summary,
-                          style: const TextStyle(
-                            color: kTextMuted,
-                            fontSize: 12.5,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    open ? Icons.expand_less : Icons.expand_more,
-                    color: kTextMuted,
-                    semanticLabel: open ? 'Hide details' : 'Show details',
-                  ),
-                ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: display(17)),
+                          const SizedBox(height: 2),
+                          Text(summary, style: body(12.5, color: kTextMuted)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedRotation(
+                      turns: open ? 0.5 : 0,
+                      duration: motion(context, 200),
+                      child: Icon(
+                        Icons.expand_more,
+                        color: kTextMuted,
+                        semanticLabel: open ? 'Hide details' : 'Show details',
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
           if (open)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: const EdgeInsets.fromLTRB(60, 0, 16, 18),
               child: child,
             ),
         ],
@@ -632,10 +699,14 @@ class _Collapsible extends StatelessWidget {
   }
 }
 
+/// Table of contents: a rail beside the page (desktop) that marks the
+/// section in view, or a collapsible list at the top (phone). Entries open
+/// their section and scroll to it.
 class _ContentsList extends StatelessWidget {
   final List<_Section> sections;
   final bool collapsible;
   final bool open;
+  final String? active;
   final VoidCallback onToggle;
   final ValueChanged<_Section> onJump;
 
@@ -643,6 +714,7 @@ class _ContentsList extends StatelessWidget {
     required this.sections,
     required this.collapsible,
     required this.open,
+    required this.active,
     required this.onToggle,
     required this.onJump,
   });
@@ -656,14 +728,7 @@ class _ContentsList extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 children: [
-                  const Text(
-                    'Contents',
-                    style: TextStyle(
-                      color: kTextPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  Text('CONTENTS', style: caps(11, color: kTextSecondary)),
                   const Spacer(),
                   Icon(
                     open ? Icons.expand_less : Icons.expand_more,
@@ -674,25 +739,19 @@ class _ContentsList extends StatelessWidget {
               ),
             ),
           )
-        : const Padding(
-            padding: EdgeInsets.only(bottom: 6),
-            child: Text(
-              'Contents',
-              style: TextStyle(
-                color: kTextPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+        : Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text('CONTENTS', style: caps(11, color: kTextSecondary)),
           );
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       decoration: BoxDecoration(
         color: kCardBg,
         borderRadius: BorderRadius.circular(kRadius),
         border: Border.all(color: kBorder),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           header,
@@ -700,14 +759,345 @@ class _ContentsList extends StatelessWidget {
             for (var i = 0; i < sections.length; i++)
               InkWell(
                 onTap: () => onJump(sections[i]),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Text(
-                    '${i + 1}. ${sections[i].title}',
-                    style: const TextStyle(color: kBlue, fontSize: 12.5),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(8, 6, 4, 6),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: active == sections[i].id ? kSignal : kBorder,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 24,
+                        child: Text(
+                          (i + 1).toString().padLeft(2, '0'),
+                          style: mono(11.5, color: kTextDim),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          sections[i].title,
+                          style: body(
+                            12.5,
+                            color: active == sections[i].id
+                                ? kSignal
+                                : kTextSecondary,
+                            weight: active == sections[i].id
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "How a run works", drawn from one real result: every load step the
+/// best framework of the ranked scenario ran (one the load generator did
+/// not cap, when there is one), in order of rate. Each bar is what was
+/// served on a log scale, under an outline of what was asked; lime steps
+/// held the limits, red ones broke one, amber ones failed because the load
+/// generator itself was the limit. The flag marks the sustainable step.
+class _RunStaircase extends StatelessWidget {
+  final DashboardState state;
+
+  const _RunStaircase({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = state.sortScenario ?? state.scenario;
+    if (s == null) return const SizedBox.shrink();
+    final ranked = state
+        .rank(state.backendsIn(s), Metrics.sustainable, s)
+        .where((b) => (b.scenarios[s]?.steps.length ?? 0) > 1)
+        .toList();
+    if (ranked.isEmpty) return const SizedBox.shrink();
+    // An example the load generator capped would show its failures as the
+    // app's; prefer the best uncapped one.
+    final b = ranked.firstWhere(
+      (x) => !x.scenarios[s]!.loadgenBound,
+      orElse: () => ranked.first,
+    );
+    final r = b.scenarios[s]!;
+    final steps = [...r.steps]
+      ..sort((a, c) => a.targetRps.compareTo(c.targetRps));
+    final slo = Slo.of(state.run!.params);
+    final base = steps.first.targetRps;
+    final top = steps
+        .map((x) => math.max(x.targetRps, x.achievedRps))
+        .reduce(math.max);
+    double h(double rps) => rps <= 0
+        ? 0
+        : (math.log(math.max(rps, base) / base) / math.log(top / base)).clamp(
+            0.0,
+            1.0,
+          );
+    final lastPass = steps.lastIndexWhere((x) => x.pass);
+    final firstFail = steps.indexWhere((x) => !x.pass);
+    final sustainable = Metrics.sustainable.value(r);
+    final pick = b == ranked.first
+        ? 'the leader'
+        : 'the best framework the load generator did not cap';
+    final ticks = [
+      for (var p = 1000.0; p <= top; p *= 10)
+        if (p > base) p,
+    ];
+    const barArea = 150.0;
+    Color tone(LoadStep x) => x.pass
+        ? kSignal
+        : x.k6Bound
+        ? kAmber
+        : kRedline;
+    return SectionCard(
+      eyebrow: 'How a run works',
+      title: 'One real run, step by step',
+      subtitle:
+          'Every load step ${b.name} ($pick) ran in ${scenarioLabel(s)}, '
+          'from its median repetition, in order of rate. A bar is what was '
+          'served (log scale); the outline is what was asked. Lime steps '
+          'held p99 < ${formatMs(slo.p99Ms)} with < '
+          '${(slo.errorRate * 100).toStringAsFixed(0)}% errors; red ones '
+          'broke a limit; amber ones failed because the load generator was '
+          'the limit. Narrow bars are probes between the last pass and the '
+          'first fail. The flag is the sustainable load'
+          '${sustainable == null ? '' : ' (median of the repetitions: ${formatMetric(Metrics.sustainable, sustainable)})'}.',
+      child: LayoutBuilder(
+        builder: (context, c) {
+          const axis = 38.0;
+          final width = c.maxWidth - axis;
+          final gap = width < 500 ? 3.0 : 6.0;
+          final barW = (width - gap * (steps.length - 1)) / steps.length;
+          final labelEvery = barW < 30 ? 2 : 1;
+          final wide = barW >= 64;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: barArea + 24 + (wide ? 30 : 0) + 20,
+                child: Stack(
+                  children: [
+                    // Log gridlines with their rates.
+                    for (final t in ticks)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 26 + (wide ? 30 : 0) + barArea * h(t) - 7,
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: axis,
+                              child: Text(
+                                compactRps(t),
+                                style: mono(10.5, color: kTextMuted),
+                              ),
+                            ),
+                            Expanded(
+                              child: Container(height: 1, color: kGridLine),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Positioned.fill(
+                      left: axis,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          for (var i = 0; i < steps.length; i++) ...[
+                            if (i > 0) SizedBox(width: gap),
+                            SizedBox(
+                              width: barW,
+                              child: _StepBar(
+                                step: steps[i],
+                                index: i,
+                                held: i == lastPass,
+                                served: barArea * h(steps[i].achievedRps),
+                                asked: barArea * h(steps[i].targetRps),
+                                color: tone(steps[i]),
+                                reason: wide
+                                    ? (i == lastPass
+                                          ? 'p99 ${formatMs(steps[i].p99)} · held'
+                                          : slo.reason(steps[i]))
+                                    : null,
+                                showRate: i % labelEvery == 0 || i == lastPass,
+                                slo: slo,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    if (lastPass >= 0)
+                      TextSpan(
+                        text:
+                            'Held ${compactRps(steps[lastPass].targetRps)} '
+                            'with p99 ${formatMs(steps[lastPass].p99)}. ',
+                        style: body(12.5, color: kSignal),
+                      ),
+                    if (firstFail >= 0)
+                      TextSpan(
+                        text:
+                            'First failure at '
+                            '${compactRps(steps[firstFail].targetRps)}: '
+                            '${slo.reason(steps[firstFail])}.',
+                        style: body(
+                          12.5,
+                          color: steps[firstFail].k6Bound ? kAmber : kRedline,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _StepBar extends StatelessWidget {
+  final LoadStep step;
+  final int index;
+  final bool held;
+  final double served;
+  final double asked;
+  final Color color;
+  final String? reason;
+  final bool showRate;
+  final Slo slo;
+
+  const _StepBar({
+    required this.step,
+    required this.index,
+    required this.held,
+    required this.served,
+    required this.asked,
+    required this.color,
+    required this.reason,
+    required this.showRate,
+    required this.slo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final i = index;
+    final probe = step.refine;
+    final why = slo.reason(step);
+    return Tooltip(
+      message:
+          '${formatRps(step.targetRps)} req/s asked · served '
+          '${formatRps(step.achievedRps)} · p99 ${formatMs(step.p99)} · '
+          'errors ${(step.errorRate * 100).toStringAsFixed(2)}%'
+          '${probe ? ' · probe step' : ''}'
+          '${why.isEmpty ? ' · held' : ' · failed: $why'}',
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (held)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 2),
+              child: Icon(
+                Icons.flag,
+                size: 16,
+                color: kSignal,
+                semanticLabel: 'Highest step held',
+              ),
+            ),
+          FractionallySizedBox(
+            widthFactor: probe ? 0.62 : 1,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: motion(context, 360 + i * 45),
+              curve: Interval(
+                i * 45 / (360 + i * 45),
+                1,
+                curve: Curves.easeOutCubic,
+              ),
+              builder: (context, t, _) => SizedBox(
+                height: 6 + asked * t,
+                child: Stack(
+                  children: [
+                    // What was asked: an outline cap.
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(4),
+                          ),
+                          border: Border.all(
+                            color: color.withValues(alpha: 0.55),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // What was served.
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: (6 + served * t).clamp(0, 6 + asked * t),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: color.withValues(
+                            alpha: step.pass ? (held ? 0.95 : 0.45) : 0.4,
+                          ),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(4),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 14,
+            child: showRate
+                ? FittedBox(
+                    child: Text(
+                      compactRps(step.targetRps),
+                      style: mono(
+                        10.5,
+                        color: held ? kSignal : kTextMuted,
+                        weight: held ? FontWeight.w700 : FontWeight.w400,
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          if (reason != null)
+            SizedBox(
+              height: 30,
+              child: Text(
+                reason!,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: mono(10, color: color, height: 1.25),
+              ),
+            ),
         ],
       ),
     );
@@ -825,7 +1215,7 @@ class RunPicker extends StatelessWidget {
                         RunKind.run => Icons.play_circle_outline,
                       },
                       size: 15,
-                      color: e.kind == RunKind.latest ? kBlue : kTextMuted,
+                      color: e.kind == RunKind.latest ? kSignal : kTextMuted,
                     ),
                     const SizedBox(width: 8),
                     Flexible(

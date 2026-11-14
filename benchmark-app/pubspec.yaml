@@ -10,6 +10,7 @@ dependencies:
   fl_chart: ^1.1.1
   flutter:
     sdk: flutter
+  material_ui: ^1.11.0
   provider: ^6.1.5+1
   url_launcher: ^6.3.3
 
@@ -23,3 +24,26 @@ flutter:
   assets:
     - assets/results/
     - assets/results/runs/
+  # Bundled so nothing is fetched at runtime (Apache 2.0, see
+  # assets/fonts/LICENSE.txt). Copied from the Flutter SDK's material fonts
+  # and the Roboto Mono shipped with pub packages.
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
+    - family: RobotoCondensed
+      fonts:
+        - asset: assets/fonts/RobotoCondensed-Regular.ttf
+        - asset: assets/fonts/RobotoCondensed-Bold.ttf
+          weight: 700
+    - family: RobotoMono
+      fonts:
+        - asset: assets/fonts/RobotoMono-Regular.ttf
+        - asset: assets/fonts/RobotoMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/RobotoMono-Bold.ttf
+          weight: 700

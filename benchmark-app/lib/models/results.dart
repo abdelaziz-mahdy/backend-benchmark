@@ -335,6 +335,10 @@ class BackendResult {
   final String? implementationFrom;
   final Map<String, ScenarioResult> scenarios;
 
+  /// The name this backend had in the run's own files, when the dashboard
+  /// shows today's name instead (v1 results used slug-like names).
+  final String? formerName;
+
   const BackendResult({
     required this.key,
     required this.name,
@@ -352,7 +356,31 @@ class BackendResult {
     required this.implementation,
     required this.implementationFrom,
     required this.scenarios,
+    this.formerName,
   });
+
+  /// The same backend shown under [newName]; numbers are untouched.
+  BackendResult renamed(String newName) => newName == name
+      ? this
+      : BackendResult(
+          key: key,
+          name: newName,
+          language: language,
+          framework: framework,
+          version: version,
+          runtime: runtime,
+          variant: variant,
+          db: db,
+          pgbouncer: pgbouncer,
+          notes: notes,
+          status: status,
+          path: path,
+          apiStyle: apiStyle,
+          implementation: implementation,
+          implementationFrom: implementationFrom,
+          scenarios: scenarios,
+          formerName: name,
+        );
 
   factory BackendResult.fromJson(Map<String, dynamic> j) {
     final scenarios = <String, ScenarioResult>{};
@@ -389,6 +417,7 @@ class BackendResult {
     if (version != null) 'v$version',
     ?runtime,
     if (db == 'none') 'own storage',
+    if (formerName != null) 'v1 name: $formerName',
   ].join(' · ');
 
   /// Source folder on GitHub (main branch), when the backend still exists.
@@ -492,6 +521,21 @@ class RunSummary {
     ];
   }
 
+  /// This run with its backends replaced (e.g. renamed for display).
+  RunSummary withBackends(List<BackendResult> next) => RunSummary(
+    id: id,
+    kind: kind,
+    date: date,
+    machine: machine,
+    methodology: methodology,
+    dirty: dirty,
+    gitSha: gitSha,
+    contributor: contributor,
+    params: params,
+    docker: docker,
+    backends: next,
+  );
+
   BackendResult? backend(String key) {
     for (final b in backends) {
       if (b.key == key) return b;
@@ -500,4 +544,17 @@ class RunSummary {
   }
 
   bool get isLegacy => methodology == 'v1';
+
+  /// Cores pinned to each app, from the "0-1" cpuset; "2" when unknown.
+  String get appCores {
+    final cpusets = params['cpusets'] as Map? ?? const {};
+    final cpuset = cpusets['app'];
+    if (cpuset is! String) return '2';
+    final m = RegExp(r'^(\d+)-(\d+)$').firstMatch(cpuset);
+    if (m == null) return cpuset;
+    return '${int.parse(m[2]!) - int.parse(m[1]!) + 1}';
+  }
+
+  /// Repetitions per scenario.
+  Object get reps => params['reps'] ?? 3;
 }

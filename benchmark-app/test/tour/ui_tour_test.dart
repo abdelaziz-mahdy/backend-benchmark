@@ -8,7 +8,7 @@ library;
 import 'package:benchmark_app/main.dart';
 import 'package:benchmark_app/services/results_service.dart';
 import 'package:benchmark_app/state/dashboard_state.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -42,6 +42,7 @@ void main() {
       Future<void> shot(String name) async {
         // Two frames: the first schedules implicit animations (hint fade,
         // chip colours), the second lets them finish.
+        await t.pump(const Duration(milliseconds: 600));
         await t.pump(const Duration(milliseconds: 600));
         await t.pump(const Duration(milliseconds: 600));
         await expectLater(

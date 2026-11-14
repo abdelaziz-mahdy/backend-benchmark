@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/link.dart';
 
 import '../models/results.dart';
-import '../utils/colors.dart';
 import '../utils/theme_constants.dart';
 import 'common.dart';
 
@@ -37,15 +36,15 @@ class SourceLink extends StatelessWidget {
                   label,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: kBlue,
+                    color: kSignal,
                     fontSize: fontSize,
                     decoration: TextDecoration.underline,
-                    decorationColor: kBlue.withValues(alpha: 0.5),
+                    decorationColor: kSignal.withValues(alpha: 0.5),
                   ),
                 ),
               ),
               const SizedBox(width: 3),
-              Icon(Icons.open_in_new, size: fontSize - 1, color: kBlue),
+              Icon(Icons.open_in_new, size: fontSize - 1, color: kSignal),
             ],
           ),
         ),
@@ -79,10 +78,7 @@ class FactList extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: labelWidth,
-                      child: Text(
-                        label,
-                        style: const TextStyle(color: kTextMuted, fontSize: 12),
-                      ),
+                      child: Text(label, style: body(12.5, color: kTextMuted)),
                     ),
                     Expanded(child: value),
                   ],
@@ -95,10 +91,8 @@ class FactList extends StatelessWidget {
   }
 }
 
-Widget factText(String text) => Text(
-  text,
-  style: const TextStyle(color: kTextSecondary, fontSize: 12.5, height: 1.35),
-);
+Widget factText(String text) =>
+    Text(text, style: body(13, color: kTextSecondary, height: 1.4));
 
 /// One muted line under a framework name: "server · db access".
 class ImplLine extends StatelessWidget {
@@ -201,16 +195,9 @@ class ImplementationCard extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ColorDot(color: BackendColors.of(b.key), size: 10),
-                  const SizedBox(width: 8),
-                  Text(
-                    'How ${b.name} is implemented',
-                    style: const TextStyle(
-                      color: kTextPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  Monogram(backend: b, size: 24),
+                  const SizedBox(width: 10),
+                  Text('How ${b.name} is implemented', style: display(18)),
                 ],
               ),
               if (b.subtitle.isNotEmpty)

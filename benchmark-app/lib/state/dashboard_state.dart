@@ -34,8 +34,8 @@ class Rank {
     return v / l;
   }
 
-  /// "#3 of 12", "tied #1 of 12".
-  String get label => '${tied > 1 ? 'tied ' : ''}#$position of $total';
+  /// "P3 of 12", "tied P1 of 12": one form for positions everywhere.
+  String get label => '${tied > 1 ? 'tied ' : ''}P$position of $total';
 }
 
 /// Everything the screens share: which run is loaded, how the home table is
@@ -75,6 +75,10 @@ class DashboardState extends ChangeNotifier {
   String? detailKey;
   final List<String> compareKeys = [];
 
+  /// Picks hidden because the loaded run lacks them; they come back when a
+  /// run that has them is loaded again (see [selectRun]).
+  final List<String> parkedCompare = [];
+
   Future<void> load() async {
     try {
       index = await _service.loadIndex();
@@ -94,8 +98,9 @@ class DashboardState extends ChangeNotifier {
     loading = true;
     notifyListeners();
     try {
-      final loaded = await _service.loadRun(next);
+      var loaded = await _service.loadRun(next);
       if (entry != next) return; // a newer selection won
+      if (loaded.isLegacy) loaded = _withCurrentNames(loaded);
       run = loaded;
       error = null;
       final scenarios = loaded.scenarios;
@@ -110,7 +115,17 @@ class DashboardState extends ChangeNotifier {
         metric = Metrics.headlineFor(results);
       }
       final keys = loaded.backends.map((b) => b.key).toSet();
-      compareKeys.removeWhere((k) => !keys.contains(k));
+      // Picks the run lacks are parked, not dropped, and parked picks the
+      // run has come back (while there is room).
+      for (final k in compareKeys.where((k) => !keys.contains(k)).toList()) {
+        compareKeys.remove(k);
+        if (!parkedCompare.contains(k)) parkedCompare.add(k);
+      }
+      for (final k in parkedCompare.where(keys.contains).toList()) {
+        if (compareKeys.length >= maxCompare) break;
+        parkedCompare.remove(k);
+        if (!compareKeys.contains(k)) compareKeys.add(k);
+      }
       if (detailKey != null && !keys.contains(detailKey)) detailKey = null;
       if (expandedKey != null && !keys.contains(expandedKey)) {
         expandedKey = null;
@@ -125,8 +140,8 @@ class DashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// DB mixed is the closest to a real API and is never capped by the load
-  /// generator; No DB ties most frameworks at the k6 limit.
+  /// DB mixed (80% reads, 20% inserts) is the closest to a real API; No DB
+  /// ties most frameworks at the load generator's limit.
   static String? defaultSortScenario(List<String> scenarios) {
     if (scenarios.contains('db_mixed')) return 'db_mixed';
     return scenarios.isEmpty ? null : scenarios.first;
@@ -186,6 +201,7 @@ class DashboardState extends ChangeNotifier {
       compareKeys.contains(key) || compareKeys.length < maxCompare;
 
   void toggleCompare(String key) {
+    parkedCompare.remove(key);
     if (!compareKeys.remove(key)) {
       if (compareKeys.length >= maxCompare) return;
       compareKeys.add(key);
@@ -195,14 +211,17 @@ class DashboardState extends ChangeNotifier {
 
   void clearCompare() {
     compareKeys.clear();
+    parkedCompare.clear();
     notifyListeners();
   }
 
   /// Puts [key] and the best other frameworks of the sorted column into the
-  /// tray (up to [maxCompare]) and opens the Compare page.
-  void compareWithLeaders(String key) {
+  /// tray (up to [maxCompare]) and opens the Compare page. Never drops a
+  /// pick: returns false, and changes nothing, when [key] is not in a full
+  /// tray.
+  bool compareWithLeaders(String key) {
     if (!compareKeys.contains(key)) {
-      if (compareKeys.length >= maxCompare) compareKeys.removeLast();
+      if (compareKeys.length >= maxCompare) return false;
       compareKeys.insert(0, key);
     }
     for (final b in leaders) {
@@ -211,12 +230,85 @@ class DashboardState extends ChangeNotifier {
     }
     page = DashboardPage.compare;
     notifyListeners();
+    return true;
+  }
+
+  /// Adds [a] and [b] to the tray and opens Compare. Returns false, and
+  /// changes nothing, when the tray has no room for them.
+  bool comparePair(String a, String b) {
+    final missing = [a, b].where((k) => !compareKeys.contains(k)).toList();
+    if (compareKeys.length + missing.length > maxCompare) return false;
+    compareKeys.addAll(missing);
+    page = DashboardPage.compare;
+    notifyListeners();
+    return true;
   }
 
   /// Opens the Compare page for whatever is in the tray.
   void openCompare() => setPage(DashboardPage.compare);
 
+  /// Shows what a link points at (see app_router.dart). Unknown frameworks
+  /// and scenarios are ignored rather than shown empty; a details link to a
+  /// framework the run lacks lands on the home page.
+  void applyRoute({
+    required DashboardPage page,
+    String? detail,
+    List<String> compare = const [],
+    String? scenario,
+  }) {
+    final r = run;
+    if (r == null) return;
+    final keys = {for (final b in r.backends) b.key};
+    if (scenario != null && r.scenarios.contains(scenario)) {
+      this.scenario = scenario;
+    }
+    var next = page;
+    if (next == DashboardPage.details) {
+      if (detail != null && keys.contains(detail)) {
+        detailKey = detail;
+      } else {
+        next = DashboardPage.home;
+      }
+    }
+    if (next == DashboardPage.compare && compare.isNotEmpty) {
+      final picked = <String>[];
+      for (final k in compare) {
+        if (keys.contains(k) && !picked.contains(k)) picked.add(k);
+      }
+      compareKeys
+        ..clear()
+        ..addAll(picked.take(maxCompare));
+      parkedCompare.clear();
+    }
+    this.page = next;
+    notifyListeners();
+  }
+
+  /// v1 results named backends after their folders ("python fast api");
+  /// show today's name for the same key so they can be matched, and keep
+  /// the old one as [BackendResult.formerName]. Numbers are untouched.
+  RunSummary _withCurrentNames(RunSummary legacy) {
+    final current = index
+        .where((e) => !e.isLegacy)
+        .map((e) => e.names)
+        .firstWhere((n) => n.isNotEmpty, orElse: () => const {});
+    if (current.isEmpty) return legacy;
+    return legacy.withBackends([
+      for (final b in legacy.backends) b.renamed(current[b.key] ?? b.name),
+    ]);
+  }
+
   // ---------------------------------------------------------------- derived
+
+  /// A framework's current name from the index, for keys the loaded run may
+  /// not have (parked picks); the key when no run names it.
+  String nameOf(String key) {
+    for (final e in index) {
+      final n = e.names[key];
+      if (n != null) return n;
+    }
+    return key;
+  }
 
   /// Rows of the home table: every backend of the run that matches the
   /// query, best first in the sorted column, missing values last.

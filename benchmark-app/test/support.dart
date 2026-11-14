@@ -30,26 +30,38 @@ class MapBundle extends CachingAssetBundle {
   }
 }
 
-/// Loads Roboto and Material Icons from the Flutter SDK so screenshots show
-/// real text instead of the test font's boxes.
+/// Loads the app's bundled fonts (assets/fonts) and Material Icons from
+/// the Flutter SDK so screenshots show real text instead of the test font's
+/// boxes.
 Future<void> loadRealFonts() async {
   final flutterRoot =
       Platform.environment['FLUTTER_ROOT'] ??
       File(Platform.resolvedExecutable).parent.parent.parent.parent.parent.path;
-  final dir = '$flutterRoot/bin/cache/artifacts/material_fonts';
-  Future<void> family(String name, List<String> files) async {
+  Future<void> family(String name, List<String> paths) async {
     final loader = FontLoader(name);
-    for (final f in files) {
-      final bytes = File('$dir/$f').readAsBytesSync();
+    for (final f in paths) {
+      final bytes = File(f).readAsBytesSync();
       loader.addFont(Future.value(ByteData.sublistView(bytes)));
     }
     await loader.load();
   }
 
+  const fonts = 'assets/fonts';
   await family('Roboto', [
-    'Roboto-Regular.ttf',
-    'Roboto-Medium.ttf',
-    'Roboto-Bold.ttf',
+    '$fonts/Roboto-Regular.ttf',
+    '$fonts/Roboto-Medium.ttf',
+    '$fonts/Roboto-Bold.ttf',
   ]);
-  await family('MaterialIcons', ['MaterialIcons-Regular.otf']);
+  await family('RobotoCondensed', [
+    '$fonts/RobotoCondensed-Regular.ttf',
+    '$fonts/RobotoCondensed-Bold.ttf',
+  ]);
+  await family('RobotoMono', [
+    '$fonts/RobotoMono-Regular.ttf',
+    '$fonts/RobotoMono-Medium.ttf',
+    '$fonts/RobotoMono-Bold.ttf',
+  ]);
+  await family('MaterialIcons', [
+    '$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+  ]);
 }

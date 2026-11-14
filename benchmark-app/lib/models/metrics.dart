@@ -29,6 +29,12 @@ class Metric {
     _ => label,
   };
 
+  /// Whether the metric is a race: more is better and ranking by it is fair
+  /// (throughput, efficiency). The others (latency, errors, CPU, memory) are
+  /// measured at each framework's own sustainable load, so a framework that
+  /// serves less can look better; they are context, not a ranking.
+  bool get isRace => higherIsBetter;
+
   /// Value plus min/max across reps when it is a direct stat.
   Stat? stat(ScenarioResult r) => r.stats[id];
 }
