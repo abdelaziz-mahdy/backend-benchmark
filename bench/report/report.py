@@ -213,8 +213,12 @@ def describe_backend(backends_dir, key, item):
 
 
 def _display_name(item, key):
-    """Variants of one backend need distinct names ("foam3 (embedded)")."""
+    """Variants of one backend need distinct names ("foam3 (embedded)"), and
+    so do older releases run for the version history ("serverpod 4.0.3")."""
     name = item.get("name", key)
+    if item.get("history") and item.get("version"):
+        key = key.removesuffix(f"-v{item['version']}")
+        name = f"{name} {item['version']}"
     variant = item.get("variant")
     if variant and key.endswith(f"-{variant}") and variant not in name:
         return f"{name} ({variant})"
@@ -238,6 +242,8 @@ def build_run(run_dir, problems, backends_dir=None):
             "language": item.get("language"),
             "framework": item.get("framework"),
             "version": item.get("version"),
+            # An older release benchmarked for the version history.
+            "history": item.get("history", False),
             "runtime": item.get("runtime"),
             "variant": item.get("variant"),
             "db": item.get("db"),

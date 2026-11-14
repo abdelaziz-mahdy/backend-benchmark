@@ -44,6 +44,7 @@ class Stack:
             K6_CPUSET=cpus["k6"],
             APP_DIR=str(item.app_dir),
             BACKEND_SLUG=item.key,
+            FRAMEWORK_VERSION=item.history_version,
             DATABASE_HOST=item.database_host,
             BENCH_VARIANT=item.variant.id,
             BENCH_PORT=str(PORT),
@@ -522,7 +523,9 @@ def main():
             path=item.path,
             language=item.manifest.get("language"),
             framework=item.manifest.get("framework"),
-            version=item.manifest.get("version"),
+            version=item.version,
+            # True for an older release benchmarked for the version history.
+            history=bool(item.history_version),
             runtime=item.manifest.get("runtime"),
             variant=item.variant.id,
             db=item.variant.db,
@@ -565,7 +568,7 @@ def main():
                 result = run_rep(stack, item, scenario, steps, rep_dir, digest, cpus["k6_cores"], best)
                 result.update(
                     finished_at=dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-                    framework_version=item.manifest.get("version"),
+                    framework_version=item.version,
                     runtime=item.manifest.get("runtime"),
                 )
                 write_json(rep_dir / "meta.json", result)

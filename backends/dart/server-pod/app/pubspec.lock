@@ -5,10 +5,10 @@ packages:
     dependency: transitive
     description:
       name: archive
-      sha256: "6c5bcd986e06b94e3c40244af471750840a3d2341d1f9763a1100a14add517b4"
+      sha256: de5ac590b8155e4e676088d714bd41ea620449a6adc0f7950c5073874b287ddb
       url: "https://pub.dev"
     source: hosted
-    version: "4.3.0"
+    version: "4.6.0"
   args:
     dependency: transitive
     description:
@@ -53,10 +53,10 @@ packages:
     dependency: transitive
     description:
       name: code_assets
-      sha256: "828110d598123b5ea96c00c9f3c72105bf79f8ee36c20a39b26209ade421ec57"
+      sha256: "1ef22a0be3af9370bd9481ac76db114db92bfe75d5ca2b2d7bc911764478a4d9"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.0"
+    version: "2.2.0"
   collection:
     dependency: transitive
     description:
@@ -85,10 +85,10 @@ packages:
     dependency: transitive
     description:
       name: crypto
-      sha256: c8ea0233063ba03258fbcf2ca4d6dadfefe14f02fab57702265467a19f27fadf
+      sha256: e3626ae6270383c9e3a549f34c9e4cd26c09ae6a9adaab2bf4737a00340efdc4
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.7"
+    version: "3.0.8"
   ffi:
     dependency: transitive
     description:
@@ -197,10 +197,10 @@ packages:
     dependency: transitive
     description:
       name: native_toolchain_c
-      sha256: "90eaad8059ebc2004a63810a4696ea9acdb02473e47ed3b6b3bafb100ac77e31"
+      sha256: "120b6fc66acd8a5ddeaeb1e59b78836bb3ec9919bd9d9dfb1e2401985710c2c0"
       url: "https://pub.dev"
     source: hosted
-    version: "0.19.5"
+    version: "0.19.6"
   path:
     dependency: transitive
     description:
@@ -229,18 +229,18 @@ packages:
     dependency: transitive
     description:
       name: posix
-      sha256: bc1bad54ad2b735816e31f8d4600cfde6c7839975085ddfbca48b6c9f7c4044e
+      sha256: "613646d076944f3acc125830af935b48d4b8a57a388691547bbfd25b434f4d63"
       url: "https://pub.dev"
     source: hosted
-    version: "6.5.2"
+    version: "6.5.4"
   postgres:
     dependency: transitive
     description:
       name: postgres
-      sha256: dee84c58a69ea165c8a8daf7d755049f5868d4407062dde9305f914d2a33d0d3
+      sha256: "45a7ea2d064526500a44b1a62680e21406d5b3f3f3b1c21feb8b3053c2bad95e"
       url: "https://pub.dev"
     source: hosted
-    version: "3.5.18"
+    version: "3.6.0"
   process:
     dependency: transitive
     description:
@@ -277,26 +277,34 @@ packages:
     dependency: transitive
     description:
       name: relic
-      sha256: "0239101113221b185c2467e7ff9b45e9100c900f52c8d1d9eba00e34da43be4b"
+      sha256: e0e296037aca90e34cebf0f76dd2bd9f177a966893f06c562b3034e568097761
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.0-rc.2"
+    version: "2.0.0-rc.4"
   relic_core:
     dependency: transitive
     description:
       name: relic_core
-      sha256: d0c13d2c1821aa5057ce771923377ec35494cd4257de0901148e2055b6dd4c41
+      sha256: c4cd3d32585683b17ada175a32e83986e4c7f3e93d98dabd8c2097cc922fc4b5
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.0-rc.2"
+    version: "2.0.0-rc.7"
+  relic_headers:
+    dependency: transitive
+    description:
+      name: relic_headers
+      sha256: ad98682450eefe7aca4dbe908d6e05f9858ff0a78cd0b9f73406e325dbf0d4ec
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.0-rc.7"
   relic_io:
     dependency: transitive
     description:
       name: relic_io
-      sha256: fba5368494f615172a47b99d4ef49c83aa46b5abb91014a33085b2ea53f64c72
+      sha256: "3f8199da78f146f79f4a69a6e0c7519a4568f843fa2b423f183e395b6becd09f"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.0-rc.2"
+    version: "2.0.0-rc.7"
   rfc_6901:
     dependency: transitive
     description:
@@ -309,26 +317,26 @@ packages:
     dependency: "direct main"
     description:
       name: serverpod
-      sha256: f98517ca2d7d2c834d9891f7ed13a46022c3260f10515b89090c15882ea5ed8f
+      sha256: "2e386146d27ba3070cec67bc1541ddd6578863c6d8179245ab77fa4de2e5a307"
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.3"
+    version: "4.1.1"
   serverpod_database:
     dependency: transitive
     description:
       name: serverpod_database
-      sha256: "761463ecb24201fa5743f9938e4bc20b0c29a35c0a03d1ee36085f6f57a76eb5"
+      sha256: c061a0d847ec52081ab855ae48f443154ff3a0d8211e7bc10db612829f2ebfad
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.3"
+    version: "4.1.1"
   serverpod_embedded_postgres:
     dependency: transitive
     description:
       name: serverpod_embedded_postgres
-      sha256: f98b685137b74b767097131cc93da4881ff9c2184e5eb85c63b923122a26fdd1
+      sha256: "7b60b51d73e43cf16da5526f204f5ec7328f751f37cdd776f72b81144d746ee5"
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.3"
+    version: "4.1.1"
   serverpod_logging:
     dependency: transitive
     description:
@@ -341,18 +349,18 @@ packages:
     dependency: transitive
     description:
       name: serverpod_serialization
-      sha256: "35f02a34ef6843d5d5077fe3829ece5c7226dc53a4ebe9c1a2da563a3ccce1d1"
+      sha256: "6b892d984f122c0c82a5359396c5416b304ca9159eb76aa11e825db7ff9a1aec"
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.3"
+    version: "4.1.1"
   serverpod_shared:
     dependency: transitive
     description:
       name: serverpod_shared
-      sha256: "99e1e2ee568d9e00cedf8ff0b9d22a330a0c4f999e9fe156ec3d8519a30417fe"
+      sha256: "1b68fa80daa55bf97b962d081909e4647d751ad1ceeecb68425b681caf54b7e0"
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.3"
+    version: "4.1.1"
   source_span:
     dependency: transitive
     description:
@@ -365,26 +373,26 @@ packages:
     dependency: transitive
     description:
       name: sqlite3
-      sha256: cc62d72dbf16bb1f6ae8954b238016de1473e53df060ed0c332eed0a41dd1848
+      sha256: "8765980411f9b6733534efe9d014fad0750fa649590598772c04692deb34886b"
       url: "https://pub.dev"
     source: hosted
-    version: "3.7.0"
+    version: "3.9.1"
   sqlite3_connection_pool:
     dependency: transitive
     description:
       name: sqlite3_connection_pool
-      sha256: b01024fd67922680e5512abf3201974dab2d98d0664d145ec741740b448fdc5f
+      sha256: "0813880ccff75e3d1a91ff4b15be09b3d29f937acc29fae0a62cd1b3591dc97c"
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.11"
+    version: "0.2.17"
   sqlite3_web:
     dependency: transitive
     description:
       name: sqlite3_web
-      sha256: "8c140bd9124c060dd54227c5ccc5e1ce32123ef5d0c2f8cf46820c6c511c6c63"
+      sha256: aa6af15ef8bf8551d3a84203e3cbc022990567372e46ef98f91bdb2018fcfb0e
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.5"
+    version: "0.9.4"
   sqlite_async:
     dependency: transitive
     description:
@@ -397,10 +405,10 @@ packages:
     dependency: transitive
     description:
       name: sqlparser
-      sha256: "40bdddb306a727be9ce510bd2d2b9a6c9db6c586d846ef7b22e3990a2b24f02d"
+      sha256: "8121dae2c5de4a1e39153d95c55f7fd1816e32d1232fe270bc415a4a370d6e47"
       url: "https://pub.dev"
     source: hosted
-    version: "0.44.5"
+    version: "0.45.1"
   stack_trace:
     dependency: transitive
     description:
@@ -429,10 +437,10 @@ packages:
     dependency: transitive
     description:
       name: synchronized
-      sha256: "397b146f97613b83d84bdccb439bc8d0f3aebb6c1d14a9641e6f24201c490b2d"
+      sha256: a77637ebe1460f3b48cac89a790d2eb634f0a8593cab0d3f340c6db174ba9b94
       url: "https://pub.dev"
     source: hosted
-    version: "3.4.2"
+    version: "3.6.1+1"
   system_resources_2:
     dependency: transitive
     description:
@@ -469,18 +477,18 @@ packages:
     dependency: transitive
     description:
       name: vm_service
-      sha256: "5f37239c4851efcef929cea7824e76df7f2f0970aef85d66bbc430afa40e72f0"
+      sha256: "89b11d62e1040ee681af3b4f1c97a803ecbf010c6e8b9c5896ee5b08c3bf7b78"
       url: "https://pub.dev"
     source: hosted
-    version: "15.3.0"
+    version: "15.4.0"
   web:
     dependency: transitive
     description:
       name: web
-      sha256: "868d88a33d8a87b18ffc05f9f030ba328ffefba92d6c127917a2ba740f9cfe4a"
+      sha256: e119e82ac4795c7925103b7cf3768191f33941b99e7ccffbd6c645201d9f606b
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.1"
+    version: "1.1.2"
   web_socket:
     dependency: transitive
     description:
