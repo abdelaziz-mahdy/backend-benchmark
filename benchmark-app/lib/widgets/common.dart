@@ -32,9 +32,9 @@ class SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: kCardBg,
+        color: context.palette.surface,
         borderRadius: BorderRadius.circular(kRadius),
-        border: Border.all(color: kBorder),
+        border: Border.all(color: context.palette.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -60,7 +60,10 @@ class SectionCard extends StatelessWidget {
                       Text(title, style: display(18)),
                       if (subtitle != null) ...[
                         const SizedBox(height: 3),
-                        Text(subtitle!, style: body(12.5, color: kTextMuted)),
+                        Text(
+                          subtitle!,
+                          style: body(12.5, color: context.palette.muted),
+                        ),
                       ],
                     ],
                   ),
@@ -115,9 +118,9 @@ class PageTitle extends StatelessWidget {
         TextButton.icon(
           onPressed: onBack,
           icon: const Icon(Icons.arrow_back, size: 16),
-          label: const Text('Leaderboard'),
+          label: const Text('Back to the results'),
           style: TextButton.styleFrom(
-            foregroundColor: kSignal,
+            foregroundColor: context.palette.accent,
             padding: const EdgeInsets.symmetric(horizontal: 8),
             visualDensity: VisualDensity.compact,
             textStyle: labelStyle(context, 13, weight: FontWeight.w600),
@@ -145,7 +148,7 @@ class PageTitle extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         subtitle!,
-                        style: body(13, color: kTextMuted),
+                        style: body(13, color: context.palette.muted),
                       ),
                     ),
                 ],
@@ -196,12 +199,12 @@ class ScenarioTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tabs = Container(
-      height: 40,
+      height: 50,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: kCardBg,
+        color: context.palette.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: kBorder),
+        border: Border.all(color: context.palette.line),
       ),
       child: Row(
         children: [
@@ -255,7 +258,8 @@ class _Tab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? kSignal : (dim ? kTextDim : kTextSecondary);
+    final p = context.palette;
+    final color = selected ? p.bg : (dim ? p.muted : p.text);
     return Tooltip(
       message: help,
       waitDuration: _tooltipDelay,
@@ -269,13 +273,9 @@ class _Tab extends StatelessWidget {
             duration: motion(context, 200),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: selected ? kCardBgRaised : Colors.transparent,
+              color: selected ? p.text : Colors.transparent,
               borderRadius: BorderRadius.circular(7),
-              border: Border.all(
-                color: selected
-                    ? kSignal.withValues(alpha: 0.5)
-                    : Colors.transparent,
-              ),
+              border: Border.all(color: Colors.transparent),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -294,7 +294,7 @@ class _Tab extends StatelessWidget {
                 ),
                 if (icon != null) ...[
                   const SizedBox(width: 3),
-                  Icon(icon, size: 13, color: kSignal),
+                  Icon(icon, size: 13, color: p.bg),
                 ],
               ],
             ),
@@ -363,10 +363,12 @@ class StatTile extends StatelessWidget {
     final tile = Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: hero ? kCardBgRaised : kCardBg,
+        color: hero ? context.palette.accentSoft : context.palette.surface,
         borderRadius: BorderRadius.circular(kRadius),
         border: Border.all(
-          color: hero ? kSignal.withValues(alpha: 0.45) : kBorder,
+          color: hero
+              ? context.palette.accent.withValues(alpha: 0.45)
+              : context.palette.line,
         ),
       ),
       child: Column(
@@ -380,12 +382,12 @@ class StatTile extends StatelessWidget {
             style: mono(
               hero ? 26 : 19,
               weight: FontWeight.w700,
-              color: accent ?? kTextPrimary,
+              color: accent ?? context.palette.text,
             ),
           ),
           if (detail != null) ...[
             const SizedBox(height: 4),
-            Text(detail!, style: mono(11.5, color: kTextMuted)),
+            Text(detail!, style: mono(11.5, color: context.palette.muted)),
           ],
         ],
       ),
@@ -434,7 +436,7 @@ class Monogram extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = BackendColors.of(backend.key);
+    final color = identityColor(context.palette, backend.key);
     final text = monogramOf(backend.language);
     return ExcludeSemantics(
       child: Container(
@@ -453,60 +455,15 @@ class Monogram extends StatelessWidget {
             weight: FontWeight.w700,
             // Lifted 35% toward white: the darkest identity colours sit
             // near 3:1 on their own tint; this keeps every letter over 5:1.
-            color: Color.lerp(color, Colors.white, 0.35)!,
+            color: Color.lerp(
+              color,
+              context.palette.isDark ? Colors.white : Colors.black,
+              0.35,
+            )!,
             height: 1,
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Monogram + framework name (+ optional subtitle).
-class BackendLabel extends StatelessWidget {
-  final BackendResult backend;
-  final bool showSubtitle;
-  final double fontSize;
-
-  const BackendLabel({
-    super.key,
-    required this.backend,
-    this.showSubtitle = true,
-    this.fontSize = 14,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final subtitle = backend.subtitle;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Monogram(backend: backend, size: 24),
-        const SizedBox(width: 9),
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                backend.name,
-                overflow: TextOverflow.ellipsis,
-                style: body(
-                  fontSize,
-                  color: kTextPrimary,
-                  weight: FontWeight.w600,
-                ),
-              ),
-              if (showSubtitle && subtitle.isNotEmpty)
-                Text(
-                  subtitle,
-                  overflow: TextOverflow.ellipsis,
-                  style: body(11.5, color: kTextDim),
-                ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -529,19 +486,20 @@ class ColorDot extends StatelessWidget {
 class Flag extends StatelessWidget {
   final String text;
   final String tooltip;
-  final Color color;
+  final Color? color;
   final IconData? icon;
 
   const Flag({
     super.key,
     required this.text,
     required this.tooltip,
-    this.color = kAmber,
+    this.color,
     this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? context.palette.warn;
     final pill = Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
@@ -615,111 +573,11 @@ class MarkerIcon extends StatelessWidget {
     child: Icon(
       marker.icon,
       size: size,
-      color: kAmber,
+      color: context.palette.warn,
       semanticLabel: marker.label,
     ),
   );
 }
-
-/// The markers of one result, side by side.
-class MarkerIcons extends StatelessWidget {
-  final ScenarioResult? result;
-  final double size;
-
-  const MarkerIcons(this.result, {super.key, this.size = 13});
-
-  @override
-  Widget build(BuildContext context) {
-    final marks = Marker.of(result);
-    if (marks.isEmpty) return const SizedBox.shrink();
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final m in marks)
-          Padding(
-            padding: const EdgeInsets.only(left: 3),
-            child: MarkerIcon(m, size: size),
-          ),
-      ],
-    );
-  }
-}
-
-/// Every marker with its short meaning, plus the dash for "not measured".
-class MarkerLegend extends StatelessWidget {
-  final bool compact;
-
-  /// Markers to list; all of them by default.
-  final Iterable<Marker> markers;
-
-  const MarkerLegend({
-    super.key,
-    this.compact = false,
-    this.markers = Marker.values,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    Widget item(Widget icon, String text) => Text.rich(
-      TextSpan(
-        children: [
-          WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 5),
-              child: icon,
-            ),
-          ),
-          TextSpan(text: text),
-        ],
-      ),
-      style: body(compact ? 11.5 : 12, color: kTextMuted),
-    );
-    return Wrap(
-      spacing: 16,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        for (final m in markers)
-          item(
-            Icon(m.icon, size: 13, color: kAmber),
-            compact ? m.short : m.label,
-          ),
-        item(Text('—', style: mono(12, color: kTextDim)), 'Not measured'),
-      ],
-    );
-  }
-}
-
-/// Flags for a result as labelled pills, empty when nothing is worth
-/// flagging.
-List<Widget> resultFlags(BackendResult b, ScenarioResult? r) => [
-  if (r != null && r.loadgenBound)
-    const Flag(
-      text: 'capped',
-      icon: Icons.speed,
-      tooltip:
-          'k6 used most of its CPU at the top steps: the real limit may be '
-          'higher than measured on this machine.',
-    ),
-  if (r != null && r.unstable)
-    Flag(
-      text: '±${(r.spread * 100).toStringAsFixed(0)}%',
-      icon: Icons.waves,
-      tooltip:
-          'Repetitions differed by more than 10% on the headline number; '
-          'treat small differences with care.',
-    ),
-  if (r != null && r.restarts > 0)
-    Flag(
-      text: 'restarted ${r.restarts}×',
-      icon: Icons.restart_alt,
-      tooltip:
-          'Stopped responding under overload and was restarted by the '
-          'runner.',
-    ),
-  if (b.notes != null) Flag(text: 'note', tooltip: b.notes!, color: kTextMuted),
-];
 
 /// Horizontal bar scaled to [max] that grows in, with an optional min–max
 /// whisker.
@@ -766,7 +624,7 @@ class LaneBar extends StatelessWidget {
   final double stagger;
   final double? low;
   final double? high;
-  final Color track;
+  final Color? track;
 
   /// A lime finish line at the end of the track (the ranked column).
   final bool finish;
@@ -779,7 +637,7 @@ class LaneBar extends StatelessWidget {
     this.stagger = 0,
     this.low,
     this.high,
-    this.track = kGridLine,
+    this.track,
     this.finish = false,
   });
 
@@ -795,7 +653,9 @@ class LaneBar extends StatelessWidget {
           painter: _LanePainter(
             fraction: f,
             color: color,
-            track: track,
+            track: track ?? context.palette.line.withValues(alpha: 0.6),
+            mark: context.palette.accent,
+            whisker: context.palette.text,
             low: low,
             high: high,
             finish: finish,
@@ -810,6 +670,8 @@ class _LanePainter extends CustomPainter {
   final double fraction;
   final Color color;
   final Color track;
+  final Color mark;
+  final Color whisker;
   final double? low;
   final double? high;
   final bool finish;
@@ -818,6 +680,8 @@ class _LanePainter extends CustomPainter {
     required this.fraction,
     required this.color,
     required this.track,
+    required this.mark,
+    required this.whisker,
     this.low,
     this.high,
     this.finish = false,
@@ -840,7 +704,7 @@ class _LanePainter extends CustomPainter {
     if (finish) {
       canvas.drawRect(
         Rect.fromLTWH(size.width - 1.5, -3, 1.5, size.height + 6),
-        Paint()..color = kSignal,
+        Paint()..color = mark,
       );
     }
     final lo = low, hi = high;
@@ -853,7 +717,7 @@ class _LanePainter extends CustomPainter {
           (hi * size.width).clamp(lo * size.width + 1, size.width),
           y + 1,
         ),
-        Paint()..color = kTextPrimary,
+        Paint()..color = whisker,
       );
     }
   }
@@ -863,6 +727,8 @@ class _LanePainter extends CustomPainter {
       old.fraction != fraction ||
       old.color != color ||
       old.track != track ||
+      old.mark != mark ||
+      old.whisker != whisker ||
       old.low != low ||
       old.high != high ||
       old.finish != finish;
@@ -877,9 +743,9 @@ class InfoIcon extends StatelessWidget {
   Widget build(BuildContext context) => Tooltip(
     message: message,
     waitDuration: _tooltipDelay,
-    child: const Padding(
-      padding: EdgeInsets.only(left: 4),
-      child: Icon(Icons.info_outline, size: 14, color: kTextDim),
+    child: Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Icon(Icons.info_outline, size: 14, color: context.palette.muted),
     ),
   );
 }
@@ -904,19 +770,19 @@ class EmptyState extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
       child: Column(
         children: [
-          Icon(icon, size: 40, color: kTextDim),
+          Icon(icon, size: 40, color: context.palette.muted),
           const SizedBox(height: 12),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: display(18, color: kTextPrimary),
+            style: display(18, color: context.palette.text),
           ),
           if (message != null) ...[
             const SizedBox(height: 6),
             Text(
               message!,
               textAlign: TextAlign.center,
-              style: body(13, color: kTextMuted),
+              style: body(13, color: context.palette.muted),
             ),
           ],
           if (action != null) ...[const SizedBox(height: 14), action!],
@@ -924,94 +790,4 @@ class EmptyState extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Chequered flag glyph for the wordmark: a 3 × 3 board, lime and track.
-class FinishFlag extends StatelessWidget {
-  final double size;
-
-  const FinishFlag({super.key, this.size = 18});
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    width: size,
-    height: size,
-    child: CustomPaint(painter: _FlagPainter()),
-  );
-}
-
-class _FlagPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cell = size.width / 3;
-    final lime = Paint()..color = kSignal;
-    final dark = Paint()..color = kSignal.withValues(alpha: 0.18);
-    for (var r = 0; r < 3; r++) {
-      for (var c = 0; c < 3; c++) {
-        canvas.drawRect(
-          Rect.fromLTWH(c * cell, r * cell, cell, cell),
-          (r + c).isEven ? lime : dark,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_FlagPainter oldDelegate) => false;
-}
-
-/// A strip of chequered-flag squares: the mark of a leader (the winner's
-/// card, the P1 row). Vertical by default; [horizontal] runs it across.
-class ChequerBand extends StatelessWidget {
-  final double thickness;
-  final bool horizontal;
-  final Color color;
-
-  const ChequerBand({
-    super.key,
-    this.thickness = 6,
-    this.horizontal = false,
-    this.color = kSignal,
-  });
-
-  @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-    child: SizedBox(
-      width: horizontal ? double.infinity : thickness,
-      height: horizontal ? thickness : double.infinity,
-      child: CustomPaint(
-        painter: _ChequerPainter(color: color, horizontal: horizontal),
-      ),
-    ),
-  );
-}
-
-class _ChequerPainter extends CustomPainter {
-  final Color color;
-  final bool horizontal;
-
-  _ChequerPainter({required this.color, required this.horizontal});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Two squares across the band, as many as fit along it.
-    final cell = (horizontal ? size.height : size.width) / 2;
-    if (cell <= 0) return;
-    final on = Paint()..color = color.withValues(alpha: 0.85);
-    final off = Paint()..color = color.withValues(alpha: 0.12);
-    final along = horizontal ? size.width : size.height;
-    for (var i = 0; i * cell < along; i++) {
-      for (var j = 0; j < 2; j++) {
-        final a = i * cell, b = j * cell;
-        final rect = horizontal
-            ? Rect.fromLTWH(a, b, cell, cell)
-            : Rect.fromLTWH(b, a, cell, cell);
-        canvas.drawRect(rect, (i + j).isEven ? on : off);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_ChequerPainter old) =>
-      old.color != color || old.horizontal != horizontal;
 }

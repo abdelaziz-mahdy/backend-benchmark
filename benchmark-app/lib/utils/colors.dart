@@ -1,4 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
+
+import 'theme_constants.dart';
 
 /// Framework identity: one hue family per language, siblings in a language
 /// told apart by lightness. None of these is the lime, amber or red that
@@ -81,3 +85,12 @@ String languageLabel(String l) => switch (l) {
   'javascript' => 'JavaScript',
   _ => l.isEmpty ? l : l[0].toUpperCase() + l.substring(1),
 };
+
+/// A framework's identity colour for [p]: as is on dark, darkened on light
+/// so the paler hues stay visible on the light surface.
+Color identityColor(Palette p, String key) {
+  final c = BackendColors.of(key);
+  if (p.isDark) return c;
+  final hsl = HSLColor.fromColor(c);
+  return hsl.withLightness(math.min(hsl.lightness, 0.40)).toColor();
+}

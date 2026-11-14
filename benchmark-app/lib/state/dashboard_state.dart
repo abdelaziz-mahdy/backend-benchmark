@@ -1,46 +1,28 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/metrics.dart';
+import '../models/plain.dart';
 import '../models/results.dart';
 import '../services/results_service.dart';
 
-/// The home table, plus the pages opened from it. Every page except
-/// [home] has a Back control that returns to the table.
-enum DashboardPage { home, details, compare, history, method }
+/// The home page, and the two pages opened from its footer.
+enum DashboardPage { home, history, method }
 
-/// Where a backend stands among the backends of one scenario for one metric.
-class Rank {
-  final int position; // 1-based
-  final int total;
-  final double? value;
-  final double? leader;
+/// The "Show me" choices on the home page.
+enum HomeView {
+  short('The short answer'),
+  one('One framework'),
+  all('Every number'),
+  compare('Compare');
 
-  /// How many backends share this value (1 = no tie). Tied backends share
-  /// the same position ("competition" ranking: 1, 1, 1, 4, …).
-  final int tied;
+  final String label;
 
-  const Rank(
-    this.position,
-    this.total,
-    this.value,
-    this.leader, {
-    this.tied = 1,
-  });
-
-  /// value / leader for higher-is-better metrics, null when undefined.
-  double? get shareOfLeader {
-    final v = value, l = leader;
-    if (v == null || l == null || l <= 0) return null;
-    return v / l;
-  }
-
-  /// "P3 of 12", "tied P1 of 12": one form for positions everywhere.
-  String get label => '${tied > 1 ? 'tied ' : ''}P$position of $total';
+  const HomeView(this.label);
 }
 
-/// Everything the screens share: which run is loaded, how the home table is
-/// sorted and filtered, which row is expanded, which page is open, which
-/// scenario the chart pages show, and which frameworks are being compared.
+/// Everything the screens share: which run is loaded, which page and view
+/// are open, the framework looked up, the frameworks being compared, the
+/// test the chart sections show, and how the Every number table is sorted.
 class DashboardState extends ChangeNotifier {
   final ResultsService _service;
 
@@ -55,29 +37,31 @@ class DashboardState extends ChangeNotifier {
   bool loading = true;
 
   DashboardPage page = DashboardPage.home;
+  HomeView view = HomeView.short;
 
-  /// Scenario the Details and Compare pages show charts for.
+  /// Test the chart sections (and History) show.
   String? scenario;
 
-  /// Number shown in every cell of the home table.
-  Metric metric = Metrics.sustainable;
+  /// Framework open in One framework.
+  String? selectedKey;
 
-  /// Scenario column the home table is sorted by.
-  String? sortScenario;
+  /// A framework that was looked up but is not in the loaded run. It comes
+  /// back when a run that has it is loaded again (see [selectRun]).
+  String? missingKey;
 
-  /// Free-text filter over the rows of the home table.
-  String query = '';
-
-  /// Row expanded in place on the home table.
-  String? expandedKey;
-
-  /// Framework open on the Details page.
-  String? detailKey;
   final List<String> compareKeys = [];
 
   /// Picks hidden because the loaded run lacks them; they come back when a
   /// run that has them is loaded again (see [selectRun]).
   final List<String> parkedCompare = [];
+
+  /// Every number: what the cells show, which column sorts (a test, or
+  /// [sortByName]), the direction, and whether run ranges are shown.
+  Measure measure = Measure.load;
+  String? sortTest;
+  static const sortByName = '__name__';
+  bool sortDesc = true;
+  bool showRange = false;
 
   Future<void> load() async {
     try {
@@ -103,16 +87,13 @@ class DashboardState extends ChangeNotifier {
       if (loaded.isLegacy) loaded = _withCurrentNames(loaded);
       run = loaded;
       error = null;
-      final scenarios = loaded.scenarios;
-      if (!scenarios.contains(scenario)) {
-        scenario = scenarios.isEmpty ? null : scenarios.first;
+      final tests = loaded.scenarios;
+      if (!tests.contains(scenario)) {
+        scenario = tests.isEmpty ? null : tests.first;
       }
-      if (!scenarios.contains(sortScenario)) {
-        sortScenario = defaultSortScenario(scenarios);
-      }
-      final results = [for (final b in loaded.backends) ...b.scenarios.values];
-      if (!Metrics.available(results, [metric]).contains(metric)) {
-        metric = Metrics.headlineFor(results);
+      if (sortTest != sortByName && !tests.contains(sortTest)) {
+        sortTest = tests.isEmpty ? sortByName : tests.first;
+        sortDesc = true;
       }
       final keys = loaded.backends.map((b) => b.key).toSet();
       // Picks the run lacks are parked, not dropped, and parked picks the
@@ -126,12 +107,16 @@ class DashboardState extends ChangeNotifier {
         parkedCompare.remove(k);
         if (!compareKeys.contains(k)) compareKeys.add(k);
       }
-      if (detailKey != null && !keys.contains(detailKey)) detailKey = null;
-      if (expandedKey != null && !keys.contains(expandedKey)) {
-        expandedKey = null;
-      }
-      if (page == DashboardPage.details && detailKey == null) {
-        page = DashboardPage.home;
+      // The same for the framework looked up.
+      final selected = selectedKey;
+      if (selected != null && !keys.contains(selected)) {
+        missingKey = selected;
+        selectedKey = null;
+      } else if (selected == null &&
+          missingKey != null &&
+          keys.contains(missingKey)) {
+        selectedKey = missingKey;
+        missingKey = null;
       }
     } catch (e) {
       error = e;
@@ -140,12 +125,7 @@ class DashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// DB mixed (80% reads, 20% inserts) is the closest to a real API; No DB
-  /// ties most frameworks at the load generator's limit.
-  static String? defaultSortScenario(List<String> scenarios) {
-    if (scenarios.contains('db_mixed')) return 'db_mixed';
-    return scenarios.isEmpty ? null : scenarios.first;
-  }
+  // ------------------------------------------------------------ navigation
 
   void setPage(DashboardPage next) {
     if (page == next) return;
@@ -153,53 +133,71 @@ class DashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void goHome() => setPage(DashboardPage.home);
+  /// Back to the short answer (the site name and the logo do this).
+  void goHome() {
+    if (page == DashboardPage.home && view == HomeView.short) return;
+    page = DashboardPage.home;
+    view = HomeView.short;
+    notifyListeners();
+  }
+
+  void setView(HomeView next) {
+    if (page == DashboardPage.home && view == next) return;
+    page = DashboardPage.home;
+    view = next;
+    notifyListeners();
+  }
+
+  /// Opens One framework on [key]; null shows the picker.
+  void selectFramework(String? key) {
+    final r = run;
+    if (key != null && r?.backend(key) == null) return;
+    selectedKey = key;
+    missingKey = null;
+    page = DashboardPage.home;
+    view = HomeView.one;
+    notifyListeners();
+  }
 
   void setScenario(String next) {
+    if (scenario == next) return;
     scenario = next;
     notifyListeners();
   }
 
-  void setMetric(Metric next) {
-    metric = next;
+  // ---------------------------------------------------------- every number
+
+  void setMeasure(Measure next) {
+    if (measure == next) return;
+    measure = next;
     notifyListeners();
   }
 
-  void setSortScenario(String next) {
-    sortScenario = next;
+  /// Sorts by [test] (or [sortByName]); the same column again flips the
+  /// direction.
+  void sortBy(String test) {
+    if (sortTest == test) {
+      sortDesc = !sortDesc;
+    } else {
+      sortTest = test;
+      sortDesc = true;
+    }
     notifyListeners();
   }
 
-  void setQuery(String next) {
-    if (query == next) return;
-    query = next;
+  void setShowRange(bool next) {
+    if (showRange == next) return;
+    showRange = next;
     notifyListeners();
   }
 
-  /// Expands [key] in place, or collapses it when it is already open.
-  void toggleExpanded(String key) {
-    expandedKey = expandedKey == key ? null : key;
-    notifyListeners();
-  }
-
-  /// Expands the first row that matches [text], if any.
-  bool expandFirstMatch(String text) {
-    final hit = sortedBackends.where((b) => b.matches(text)).firstOrNull;
-    if (hit == null) return false;
-    expandedKey = hit.key;
-    notifyListeners();
-    return true;
-  }
-
-  void openDetails(String key) {
-    detailKey = key;
-    page = DashboardPage.details;
-    notifyListeners();
-  }
+  // --------------------------------------------------------------- compare
 
   bool canAddCompare(String key) =>
       compareKeys.contains(key) || compareKeys.length < maxCompare;
 
+  /// Adds [key] to the comparison, or removes it. Never drops a pick to
+  /// make room: a full comparison ignores a new key.
   void toggleCompare(String key) {
     parkedCompare.remove(key);
     if (!compareKeys.remove(key)) {
@@ -215,45 +213,13 @@ class DashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Puts [key] and the best other frameworks of the sorted column into the
-  /// tray (up to [maxCompare]) and opens the Compare page. Never drops a
-  /// pick: returns false, and changes nothing, when [key] is not in a full
-  /// tray.
-  bool compareWithLeaders(String key) {
-    if (!compareKeys.contains(key)) {
-      if (compareKeys.length >= maxCompare) return false;
-      compareKeys.insert(0, key);
-    }
-    for (final b in leaders) {
-      if (compareKeys.length >= maxCompare) break;
-      if (!compareKeys.contains(b.key)) compareKeys.add(b.key);
-    }
-    page = DashboardPage.compare;
-    notifyListeners();
-    return true;
-  }
-
-  /// Adds [a] and [b] to the tray and opens Compare. Returns false, and
-  /// changes nothing, when the tray has no room for them.
-  bool comparePair(String a, String b) {
-    final missing = [a, b].where((k) => !compareKeys.contains(k)).toList();
-    if (compareKeys.length + missing.length > maxCompare) return false;
-    compareKeys.addAll(missing);
-    page = DashboardPage.compare;
-    notifyListeners();
-    return true;
-  }
-
-  /// Opens the Compare page for whatever is in the tray.
-  void openCompare() => setPage(DashboardPage.compare);
-
   /// Shows what a link points at (see app_router.dart). Unknown frameworks
-  /// and scenarios are ignored rather than shown empty; a details link to a
-  /// framework the run lacks lands on the home page.
+  /// and tests are ignored rather than shown empty.
   void applyRoute({
     required DashboardPage page,
-    String? detail,
-    List<String> compare = const [],
+    HomeView view = HomeView.short,
+    String? selected,
+    List<String>? compare,
     String? scenario,
   }) {
     final r = run;
@@ -262,15 +228,13 @@ class DashboardState extends ChangeNotifier {
     if (scenario != null && r.scenarios.contains(scenario)) {
       this.scenario = scenario;
     }
-    var next = page;
-    if (next == DashboardPage.details) {
-      if (detail != null && keys.contains(detail)) {
-        detailKey = detail;
-      } else {
-        next = DashboardPage.home;
-      }
+    if (page == DashboardPage.home && view == HomeView.one) {
+      selectedKey = selected != null && keys.contains(selected)
+          ? selected
+          : null;
+      missingKey = null;
     }
-    if (next == DashboardPage.compare && compare.isNotEmpty) {
+    if (compare != null) {
       final picked = <String>[];
       for (final k in compare) {
         if (keys.contains(k) && !picked.contains(k)) picked.add(k);
@@ -280,7 +244,8 @@ class DashboardState extends ChangeNotifier {
         ..addAll(picked.take(maxCompare));
       parkedCompare.clear();
     }
-    this.page = next;
+    this.page = page;
+    this.view = view;
     notifyListeners();
   }
 
@@ -307,57 +272,27 @@ class DashboardState extends ChangeNotifier {
       final n = e.names[key];
       if (n != null) return n;
     }
-    return key;
+    return run?.backend(key)?.name ?? key;
   }
 
-  /// Rows of the home table: every backend of the run that matches the
-  /// query, best first in the sorted column, missing values last.
-  List<BackendResult> get sortedBackends {
-    final r = run;
-    if (r == null) return const [];
-    final rows = r.backends.where((b) => b.matches(query)).toList();
-    return rank(rows, metric, sortScenario);
+  /// The number the loaded run ranks by.
+  Metric get headline => run == null ? Metrics.sustainable : headlineOf(run!);
+
+  BackendResult? get selectedBackend {
+    final key = selectedKey;
+    return key == null ? null : run?.backend(key);
   }
 
-  /// Every backend of the run, best first in the sorted column.
-  List<BackendResult> get allRanked =>
-      run == null ? const [] : rank(run!.backends, metric, sortScenario);
+  /// Picked frameworks the loaded run has, in pick order.
+  List<BackendResult> get compared => [
+    for (final k in compareKeys) ?run?.backend(k),
+  ];
 
-  /// The best frameworks of the sorted column, in order.
-  List<BackendResult> get leaders =>
-      allRanked.where((b) => valueOf(b, metric, sortScenario) != null).toList();
-
-  /// Backends of the run that have [scenario].
+  /// Backends of the run that have [s].
   List<BackendResult> backendsIn(String? s) {
     final r = run;
     if (r == null || s == null) return const [];
     return r.backends.where((b) => b.scenarios.containsKey(s)).toList();
-  }
-
-  /// Backends in the tray that have a result for [scenario], tray order.
-  List<BackendResult> compared(String? s) => [
-    for (final k in compareKeys)
-      ?backendsIn(s).where((b) => b.key == k).firstOrNull,
-  ];
-
-  /// [backend]'s place among every backend with [scenario] for [metric].
-  /// The query never changes a rank.
-  Rank? rankOf(BackendResult backend, Metric metric, String? scenario) {
-    final s = scenario ?? this.scenario;
-    final ranked = rank(backendsIn(s), metric, s);
-    final i = ranked.indexWhere((b) => b.key == backend.key);
-    if (i < 0) return null;
-    final value = valueOf(backend, metric, s);
-    if (value == null) return null;
-    final same = ranked.where((b) => valueOf(b, metric, s) == value).length;
-    final first = ranked.indexWhere((b) => valueOf(b, metric, s) == value);
-    return Rank(
-      first + 1,
-      ranked.length,
-      value,
-      valueOf(ranked.first, metric, s),
-      tied: same,
-    );
   }
 
   ScenarioResult? resultOf(BackendResult b, [String? s]) {
@@ -368,49 +303,6 @@ class DashboardState extends ChangeNotifier {
   double? valueOf(BackendResult b, Metric metric, String? s) {
     final r = resultOf(b, s);
     return r == null ? null : metric.value(r);
-  }
-
-  /// Metrics with at least one value in the run, in table order.
-  List<Metric> get availableMetrics {
-    final r = run;
-    if (r == null) return const [];
-    return Metrics.available([
-      for (final b in r.backends) ...b.scenarios.values,
-    ], Metrics.table);
-  }
-
-  /// The headline metric of the selected scenario: sustainable (v2) or
-  /// average (v1).
-  Metric get headline => Metrics.headlineFor(
-    backendsIn(scenario).map((b) => resultOf(b)).whereType<ScenarioResult>(),
-  );
-
-  BackendResult? get detailBackend {
-    final r = run;
-    final key = detailKey;
-    if (r == null || key == null) return null;
-    return r.backend(key);
-  }
-
-  /// Backends sorted by [metric] in [scenario], best first; missing values
-  /// last, alphabetical among equals so ties have a stable order.
-  List<BackendResult> rank(
-    List<BackendResult> backends,
-    Metric metric, [
-    String? scenario,
-  ]) {
-    final s = scenario ?? this.scenario;
-    final sorted = [...backends];
-    sorted.sort((a, b) {
-      final va = valueOf(a, metric, s);
-      final vb = valueOf(b, metric, s);
-      if (va == null && vb == null) return a.name.compareTo(b.name);
-      if (va == null) return 1;
-      if (vb == null) return -1;
-      final c = metric.higherIsBetter ? vb.compareTo(va) : va.compareTo(vb);
-      return c != 0 ? c : a.name.compareTo(b.name);
-    });
-    return sorted;
   }
 
   /// Index entries comparable with the selected run, oldest first, excluding

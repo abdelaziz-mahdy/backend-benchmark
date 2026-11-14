@@ -15,7 +15,7 @@ class SourceLink extends StatelessWidget {
     super.key,
     required this.url,
     required this.label,
-    this.fontSize = 12.5,
+    this.fontSize = 14.5,
   });
 
   @override
@@ -36,15 +36,21 @@ class SourceLink extends StatelessWidget {
                   label,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: kSignal,
+                    color: context.palette.accent,
                     fontSize: fontSize,
                     decoration: TextDecoration.underline,
-                    decorationColor: kSignal.withValues(alpha: 0.5),
+                    decorationColor: context.palette.accent.withValues(
+                      alpha: 0.5,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 3),
-              Icon(Icons.open_in_new, size: fontSize - 1, color: kSignal),
+              Icon(
+                Icons.open_in_new,
+                size: fontSize - 1,
+                color: context.palette.accent,
+              ),
             ],
           ),
         ),
@@ -78,7 +84,10 @@ class FactList extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: labelWidth,
-                      child: Text(label, style: body(12.5, color: kTextMuted)),
+                      child: Text(
+                        label,
+                        style: body(14.5, color: context.palette.muted),
+                      ),
                     ),
                     Expanded(child: value),
                   ],
@@ -91,8 +100,10 @@ class FactList extends StatelessWidget {
   }
 }
 
-Widget factText(String text) =>
-    Text(text, style: body(13, color: kTextSecondary, height: 1.4));
+Widget factText(String text) => Builder(
+  builder: (context) =>
+      Text(text, style: body(14.5, color: context.palette.text, height: 1.45)),
+);
 
 /// One muted line under a framework name: "server · db access".
 class ImplLine extends StatelessWidget {
@@ -113,7 +124,7 @@ class ImplLine extends StatelessWidget {
         impl.summary,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: kTextMuted, fontSize: 11),
+        style: TextStyle(color: context.palette.muted, fontSize: 11),
       ),
     );
   }
@@ -179,9 +190,9 @@ class ImplementationCard extends StatelessWidget {
     ];
     return Container(
       decoration: BoxDecoration(
-        color: kCardBg,
+        color: context.palette.surface,
         borderRadius: BorderRadius.circular(kRadius),
-        border: Border.all(color: kBorder),
+        border: Border.all(color: context.palette.line),
       ),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Column(
@@ -197,27 +208,32 @@ class ImplementationCard extends StatelessWidget {
                 children: [
                   Monogram(backend: b, size: 24),
                   const SizedBox(width: 10),
-                  Text('How ${b.name} is implemented', style: display(18)),
+                  Flexible(
+                    child: Text('How ${b.name} is built', style: display(18)),
+                  ),
                 ],
               ),
               if (b.subtitle.isNotEmpty)
                 Text(
                   b.subtitle,
-                  style: const TextStyle(color: kTextMuted, fontSize: 12.5),
+                  style: TextStyle(
+                    color: context.palette.muted,
+                    fontSize: 14.5,
+                  ),
                 ),
               ...flags,
             ],
           ),
           const SizedBox(height: 12),
-          const Divider(height: 1, color: kGridLine),
+          Divider(height: 1, color: context.palette.line),
           const SizedBox(height: 12),
           if (impl == null)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 8),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 'No implementation details recorded for this backend. '
                 'Check its source folder for how it is run.',
-                style: TextStyle(color: kTextMuted, fontSize: 12.5),
+                style: TextStyle(color: context.palette.muted, fontSize: 14.5),
               ),
             ),
           FactList(facts: facts),
@@ -225,19 +241,19 @@ class ImplementationCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               b.notes!,
-              style: const TextStyle(
-                color: kTextSecondary,
-                fontSize: 12.5,
+              style: TextStyle(
+                color: context.palette.text,
+                fontSize: 14.5,
                 fontStyle: FontStyle.italic,
               ),
             ),
           ],
           if (b.implementationFrom == 'manifest') ...[
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'Implementation details come from the current source, not from '
               'this run: the run predates the field.',
-              style: TextStyle(color: kTextDim, fontSize: 11.5),
+              style: TextStyle(color: context.palette.muted, fontSize: 13.5),
             ),
           ],
         ],

@@ -5,14 +5,15 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../models/metrics.dart';
+import '../models/plain.dart' show resultsFor;
 import '../models/results.dart';
 import '../state/dashboard_state.dart';
 import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
-import '../widgets/app_header.dart';
 import '../widgets/common.dart';
 import '../widgets/race_replay.dart' show Slo;
 import '../widgets/implementation.dart';
+import '../widgets/run_switcher.dart';
 
 /// How the numbers are made. Four key facts up front; every section shows a
 /// one-line summary and opens its details on tap, so the page reads in
@@ -155,7 +156,8 @@ class _MethodScreenState extends State<MethodScreen> {
           padding: EdgeInsets.fromLTRB(pad, 20, narrow ? pad : 12, 32),
           child: content,
         );
-        return Center(
+        return Align(
+          alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: kMaxContentWidth + pad * 2),
             child: narrow
@@ -463,10 +465,10 @@ class _MethodScreenState extends State<MethodScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
+        Text(
           'Results are only comparable within one machine and one method. '
           'Pick which run the dashboard shows:',
-          style: TextStyle(color: kTextSecondary, fontSize: 12.5),
+          style: TextStyle(color: context.palette.text, fontSize: 14.5),
         ),
         const SizedBox(height: 8),
         RunPicker(state: state),
@@ -497,21 +499,21 @@ class _MethodScreenState extends State<MethodScreen> {
         'kept measuring. Says something about resilience, not just speed.',
       ),
       _flagRow(
-        Text('—', style: mono(14, color: kTextDim)),
+        Text('—', style: mono(14, color: context.palette.muted)),
         'Not measured in that scenario.',
       ),
       _flagRow(
         const Flag(text: 'capped', icon: Icons.speed, tooltip: ''),
-        'The same load-generator cap, as a label on the Details page.',
+        'The same load-generator cap, as a label. On the home page it reads "or more" or a plus sign (+).',
       ),
       _flagRow(
         const Flag(text: '±15%', icon: Icons.waves, tooltip: ''),
         'The same spread warning, with the measured spread.',
       ),
       _flagRow(
-        const Flag(text: 'note', tooltip: '', color: kTextMuted),
+        Flag(text: 'note', tooltip: '', color: context.palette.muted),
         'The backend has a remark from its author; it is printed in full '
-        'when the row is opened.',
+        'in its profile and when its name is opened.',
       ),
       _flagRow(
         const Flag(text: 'modified', tooltip: ''),
@@ -633,10 +635,12 @@ class _Collapsible extends StatelessWidget {
     return AnimatedContainer(
       duration: motion(context, 200),
       decoration: BoxDecoration(
-        color: open ? kCardBgRaised : kCardBg,
+        color: open ? context.palette.surface : context.palette.surface,
         borderRadius: BorderRadius.circular(kRadius),
         border: Border.all(
-          color: open ? kSignal.withValues(alpha: 0.35) : kBorder,
+          color: open
+              ? context.palette.accent.withValues(alpha: 0.35)
+              : context.palette.line,
         ),
       ),
       child: Column(
@@ -659,7 +663,9 @@ class _Collapsible extends StatelessWidget {
                         style: mono(
                           24,
                           weight: FontWeight.w700,
-                          color: open ? kSignal : kTextDim,
+                          color: open
+                              ? context.palette.accent
+                              : context.palette.muted,
                         ),
                       ),
                     ),
@@ -669,7 +675,10 @@ class _Collapsible extends StatelessWidget {
                         children: [
                           Text(title, style: display(17)),
                           const SizedBox(height: 2),
-                          Text(summary, style: body(12.5, color: kTextMuted)),
+                          Text(
+                            summary,
+                            style: body(12.5, color: context.palette.muted),
+                          ),
                         ],
                       ),
                     ),
@@ -679,7 +688,7 @@ class _Collapsible extends StatelessWidget {
                       duration: motion(context, 200),
                       child: Icon(
                         Icons.expand_more,
-                        color: kTextMuted,
+                        color: context.palette.muted,
                         semanticLabel: open ? 'Hide details' : 'Show details',
                       ),
                     ),
@@ -728,12 +737,15 @@ class _ContentsList extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 children: [
-                  Text('CONTENTS', style: caps(11, color: kTextSecondary)),
+                  Text(
+                    'CONTENTS',
+                    style: caps(11, color: context.palette.text),
+                  ),
                   const Spacer(),
                   Icon(
                     open ? Icons.expand_less : Icons.expand_more,
                     size: 18,
-                    color: kTextMuted,
+                    color: context.palette.muted,
                   ),
                 ],
               ),
@@ -741,14 +753,17 @@ class _ContentsList extends StatelessWidget {
           )
         : Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text('CONTENTS', style: caps(11, color: kTextSecondary)),
+            child: Text(
+              'CONTENTS',
+              style: caps(11, color: context.palette.text),
+            ),
           );
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       decoration: BoxDecoration(
-        color: kCardBg,
+        color: context.palette.surface,
         borderRadius: BorderRadius.circular(kRadius),
-        border: Border.all(color: kBorder),
+        border: Border.all(color: context.palette.line),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -765,7 +780,9 @@ class _ContentsList extends StatelessWidget {
                   decoration: BoxDecoration(
                     border: Border(
                       left: BorderSide(
-                        color: active == sections[i].id ? kSignal : kBorder,
+                        color: active == sections[i].id
+                            ? context.palette.accent
+                            : context.palette.line,
                         width: 2,
                       ),
                     ),
@@ -777,7 +794,7 @@ class _ContentsList extends StatelessWidget {
                         width: 24,
                         child: Text(
                           (i + 1).toString().padLeft(2, '0'),
-                          style: mono(11.5, color: kTextDim),
+                          style: mono(11.5, color: context.palette.muted),
                         ),
                       ),
                       Expanded(
@@ -786,8 +803,8 @@ class _ContentsList extends StatelessWidget {
                           style: body(
                             12.5,
                             color: active == sections[i].id
-                                ? kSignal
-                                : kTextSecondary,
+                                ? context.palette.accent
+                                : context.palette.text,
                             weight: active == sections[i].id
                                 ? FontWeight.w700
                                 : FontWeight.w500,
@@ -817,12 +834,12 @@ class _RunStaircase extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = state.sortScenario ?? state.scenario;
-    if (s == null) return const SizedBox.shrink();
-    final ranked = state
-        .rank(state.backendsIn(s), Metrics.sustainable, s)
-        .where((b) => (b.scenarios[s]?.steps.length ?? 0) > 1)
-        .toList();
+    final s = state.scenario;
+    final run = state.run;
+    if (s == null || run == null) return const SizedBox.shrink();
+    final ranked = [
+      for (final r in resultsFor(run, s, Metrics.sustainable)) r.backend,
+    ].where((b) => (b.scenarios[s]?.steps.length ?? 0) > 1).toList();
     if (ranked.isEmpty) return const SizedBox.shrink();
     // An example the load generator capped would show its failures as the
     // app's; prefer the best uncapped one.
@@ -856,10 +873,10 @@ class _RunStaircase extends StatelessWidget {
     ];
     const barArea = 150.0;
     Color tone(LoadStep x) => x.pass
-        ? kSignal
+        ? context.palette.accent
         : x.k6Bound
-        ? kAmber
-        : kRedline;
+        ? context.palette.warn
+        : context.palette.danger;
     return SectionCard(
       eyebrow: 'How a run works',
       title: 'One real run, step by step',
@@ -900,11 +917,14 @@ class _RunStaircase extends StatelessWidget {
                               width: axis,
                               child: Text(
                                 compactRps(t),
-                                style: mono(10.5, color: kTextMuted),
+                                style: mono(10.5, color: context.palette.muted),
                               ),
                             ),
                             Expanded(
-                              child: Container(height: 1, color: kGridLine),
+                              child: Container(
+                                height: 1,
+                                color: context.palette.line,
+                              ),
                             ),
                           ],
                         ),
@@ -950,7 +970,7 @@ class _RunStaircase extends StatelessWidget {
                         text:
                             'Held ${compactRps(steps[lastPass].targetRps)} '
                             'with p99 ${formatMs(steps[lastPass].p99)}. ',
-                        style: body(12.5, color: kSignal),
+                        style: body(12.5, color: context.palette.accent),
                       ),
                     if (firstFail >= 0)
                       TextSpan(
@@ -960,7 +980,9 @@ class _RunStaircase extends StatelessWidget {
                             '${slo.reason(steps[firstFail])}.',
                         style: body(
                           12.5,
-                          color: steps[firstFail].k6Bound ? kAmber : kRedline,
+                          color: steps[firstFail].k6Bound
+                              ? context.palette.warn
+                              : context.palette.danger,
                         ),
                       ),
                   ],
@@ -1013,12 +1035,12 @@ class _StepBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           if (held)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 2),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
               child: Icon(
                 Icons.flag,
                 size: 16,
-                color: kSignal,
+                color: context.palette.accent,
                 semanticLabel: 'Highest step held',
               ),
             ),
@@ -1080,7 +1102,9 @@ class _StepBar extends StatelessWidget {
                       compactRps(step.targetRps),
                       style: mono(
                         10.5,
-                        color: held ? kSignal : kTextMuted,
+                        color: held
+                            ? context.palette.accent
+                            : context.palette.muted,
                         weight: held ? FontWeight.w700 : FontWeight.w400,
                       ),
                     ),
@@ -1119,9 +1143,9 @@ class _Para extends StatelessWidget {
           padding: EdgeInsets.only(top: i == 0 ? 0 : 6),
           child: Text(
             items[i],
-            style: const TextStyle(
-              color: kTextSecondary,
-              fontSize: 13,
+            style: TextStyle(
+              color: context.palette.text,
+              fontSize: 15,
               height: 1.45,
             ),
           ),
@@ -1146,8 +1170,8 @@ class _Facts extends StatelessWidget {
           for (final (label, text) in rows)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: kGridLine)),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: context.palette.line)),
               ),
               child: stacked
                   ? Column(
@@ -1167,12 +1191,14 @@ class _Facts extends StatelessWidget {
     },
   );
 
-  Widget _label(String s) => Text(
-    s,
-    style: const TextStyle(
-      color: kTextPrimary,
-      fontSize: 12.5,
-      fontWeight: FontWeight.w600,
+  Widget _label(String s) => Builder(
+    builder: (context) => Text(
+      s,
+      style: TextStyle(
+        color: context.palette.text,
+        fontSize: 14.5,
+        fontWeight: FontWeight.w600,
+      ),
     ),
   );
 }
@@ -1189,18 +1215,18 @@ class RunPicker extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: kBackground,
+        color: context.palette.bg,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: kBorder),
+        border: Border.all(color: context.palette.line),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: selected?.id,
           isExpanded: true,
           isDense: true,
-          dropdownColor: kCardBg,
-          icon: const Icon(Icons.expand_more, color: kTextMuted, size: 20),
-          style: labelStyle(context, 13, color: kTextPrimary),
+          dropdownColor: context.palette.surface,
+          icon: Icon(Icons.expand_more, color: context.palette.muted, size: 20),
+          style: labelStyle(context, 15, color: context.palette.text),
           padding: const EdgeInsets.symmetric(vertical: 8),
           items: [
             for (final e in state.index)
@@ -1215,7 +1241,9 @@ class RunPicker extends StatelessWidget {
                         RunKind.run => Icons.play_circle_outline,
                       },
                       size: 15,
-                      color: e.kind == RunKind.latest ? kSignal : kTextMuted,
+                      color: e.kind == RunKind.latest
+                          ? context.palette.accent
+                          : context.palette.muted,
                     ),
                     const SizedBox(width: 8),
                     Flexible(

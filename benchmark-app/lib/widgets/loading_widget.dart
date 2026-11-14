@@ -7,7 +7,8 @@ class LoadingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final p = context.palette;
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -16,14 +17,14 @@ class LoadingWidget extends StatelessWidget {
             height: 40,
             child: CircularProgressIndicator(
               strokeWidth: 3,
-              color: kSignal,
-              backgroundColor: kGridLine,
+              color: p.accent,
+              backgroundColor: p.line,
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Text(
-            'Loading benchmark data',
-            style: TextStyle(fontSize: 12, color: kTextMuted),
+            'Loading the results',
+            style: TextStyle(fontSize: 15, color: p.muted),
           ),
         ],
       ),

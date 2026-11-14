@@ -6,14 +6,18 @@ import 'state/dashboard_state.dart';
 /// Location of what is on screen, for the URL (hash routing on the web, so
 /// GitHub Pages needs no server rules):
 ///
-///     /                         leaderboard
-///     /f/KEY?s=SCENARIO         a framework's details
-///     /compare/KEY1,KEY2?s=…    a comparison
-///     /history?s=…              history
-///     /method                   how it's measured
+///     /                          the short answer
+///     /one                       One framework, nothing chosen yet
+///     /one/KEY?s=TEST            One framework, KEY's profile
+///     /all                       Every number
+///     /compare/KEY1,KEY2?s=TEST  Compare
+///     /history?s=TEST            history
+///     /method                    how it's measured
 ///
-/// Search, metric and sort stay out of the URL, so typing does not flood
-/// the browser history.
+/// Older links still land: /f/KEY (the details page) opens KEY in One
+/// framework, and /compare/… opens Compare. The Every number sort and
+/// measure stay out of the URL, so clicking around does not flood the
+/// browser history.
 Uri locationOf(DashboardState s) {
   final scenario = s.scenario;
   Uri at(String path, {bool withScenario = true}) => Uri(
@@ -21,31 +25,42 @@ Uri locationOf(DashboardState s) {
     queryParameters: withScenario && scenario != null ? {'s': scenario} : null,
   );
   return switch (s.page) {
-    DashboardPage.home => Uri(path: '/'),
-    DashboardPage.details => at('/f/${s.detailKey ?? ''}'),
-    DashboardPage.compare => at('/compare/${s.compareKeys.join(',')}'),
     DashboardPage.history => at('/history'),
     DashboardPage.method => at('/method', withScenario: false),
+    DashboardPage.home => switch (s.view) {
+      HomeView.short => Uri(path: '/'),
+      HomeView.one =>
+        s.selectedKey == null ? Uri(path: '/one') : at('/one/${s.selectedKey}'),
+      HomeView.all => Uri(path: '/all'),
+      HomeView.compare =>
+        s.compareKeys.isEmpty
+            ? Uri(path: '/compare')
+            : at('/compare/${s.compareKeys.join(',')}'),
+    },
   };
 }
 
-/// Shows [uri] in [state]; unknown paths go to the leaderboard.
+/// Shows [uri] in [state]; unknown paths go to the short answer.
 void applyLocation(DashboardState state, Uri uri) {
   final parts = uri.pathSegments.where((p) => p.isNotEmpty).toList();
   final scenario = uri.queryParameters['s'];
   final first = parts.isEmpty ? '' : parts.first;
   final rest = parts.length > 1 ? parts[1] : null;
   switch (first) {
-    case 'f':
+    case 'one' || 'f':
       state.applyRoute(
-        page: DashboardPage.details,
-        detail: rest,
+        page: DashboardPage.home,
+        view: HomeView.one,
+        selected: rest,
         scenario: scenario,
       );
+    case 'all':
+      state.applyRoute(page: DashboardPage.home, view: HomeView.all);
     case 'compare':
       state.applyRoute(
-        page: DashboardPage.compare,
-        compare: rest == null ? const [] : rest.split(','),
+        page: DashboardPage.home,
+        view: HomeView.compare,
+        compare: rest?.split(','),
         scenario: scenario,
       );
     case 'history':
@@ -123,7 +138,9 @@ class DashRouterDelegate extends RouterDelegate<Uri> with ChangeNotifier {
 
   @override
   Future<bool> popRoute() async {
-    if (state.page == DashboardPage.home) return false;
+    if (state.page == DashboardPage.home && state.view == HomeView.short) {
+      return false;
+    }
     state.goHome();
     return true;
   }

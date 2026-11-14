@@ -23,6 +23,14 @@ final _historyMetrics = [
 String legacyScenario(String scenario) =>
     scenario.startsWith('no_db') ? 'no_db_test' : 'db_test';
 
+/// The current test closest to a v1 one (a v1 run may be loaded while
+/// History shows current runs).
+String currentScenario(String scenario) => switch (scenario) {
+  'no_db_test' => 'no_db',
+  'db_test' => 'db_mixed',
+  _ => scenario,
+};
+
 /// One line per backend for one machine+method group.
 class HistoryGroup {
   final String groupKey;
@@ -50,7 +58,7 @@ class HistoryGroup {
   }) {
     final runs = state.historyFor(groupKey);
     final legacy = runs.isNotEmpty && runs.first.isLegacy;
-    final sc = legacy ? legacyScenario(scenario) : scenario;
+    final sc = legacy ? legacyScenario(scenario) : currentScenario(scenario);
     final m = legacy && metric == Metrics.sustainable ? Metrics.avgRps : metric;
     final keys = <String>{
       for (final r in runs)
@@ -138,7 +146,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             Text('METRIC', style: caps(10.5)),
             SegmentedButton<Metric>(
               showSelectedIcon: false,
-              style: kSegmentedStyle,
+              style: segmentedStyle(context.palette),
               segments: [
                 for (final m in _historyMetrics)
                   ButtonSegment(
@@ -194,7 +202,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: lines.isEmpty
           ? Text(
               'No results for this scenario.',
-              style: body(13, color: kTextMuted),
+              style: body(13, color: context.palette.muted),
             )
           : multi.isEmpty
           ? _Snapshot(group: g, lines: legend, last: last)
@@ -205,7 +213,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 const SizedBox(height: 6),
                 for (final l in multi)
                   _Change(
-                    color: BackendColors.of(l.$1),
+                    color: identityColor(context.palette, l.$1),
                     name: l.$2,
                     values: l.$3,
                     labels: labels,
@@ -217,7 +225,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     child: Text(
                       '$single of ${lines.length} frameworks have one run '
                       'here so far; they show as single dots.',
-                      style: body(12, color: kTextMuted),
+                      style: body(12, color: context.palette.muted),
                     ),
                   ),
                 const SizedBox(height: 14),
@@ -244,7 +252,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           SizedBox(
                             width: two ? w : null,
                             child: _LegendChip(
-                              color: BackendColors.of(l.$1),
+                              color: identityColor(context.palette, l.$1),
                               name: l.$2,
                               value: formatMetricShort(g.metric, last(l.$3)),
                               selected: _focus == l.$1,
@@ -294,7 +302,9 @@ class _Change extends StatelessWidget {
     final pct = a == 0 ? null : (b - a) / a * 100;
     final better = metric.higherIsBetter ? b > a : b < a;
     final same = formatMetricShort(metric, a) == formatMetricShort(metric, b);
-    final tone = same ? kTextMuted : (better ? kSignal : kRedline);
+    final tone = same
+        ? context.palette.muted
+        : (better ? context.palette.accent : context.palette.danger);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Wrap(
@@ -309,7 +319,11 @@ class _Change extends StatelessWidget {
               const SizedBox(width: 7),
               Text(
                 name,
-                style: body(13.5, color: kTextPrimary, weight: FontWeight.w600),
+                style: body(
+                  13.5,
+                  color: context.palette.text,
+                  weight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -318,11 +332,15 @@ class _Change extends StatelessWidget {
             children: [
               Text(
                 formatMetricShort(metric, a),
-                style: mono(13, color: kTextSecondary),
+                style: mono(13, color: context.palette.text),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 5),
-                child: Icon(Icons.arrow_forward, size: 13, color: kTextMuted),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: Icon(
+                  Icons.arrow_forward,
+                  size: 13,
+                  color: context.palette.muted,
+                ),
               ),
               Text(
                 formatMetricShort(metric, b),
@@ -348,7 +366,7 @@ class _Change extends StatelessWidget {
             ),
           Text(
             '${labels[i0]} to ${labels[i1]}',
-            style: mono(11, color: kTextMuted),
+            style: mono(11, color: context.palette.muted),
           ),
         ],
       ),
@@ -386,7 +404,7 @@ class _Snapshot extends StatelessWidget {
           'Each framework has one run here so far '
           '(${runAxisLabels(group.runs).join('; ')}), so there is nothing to '
           'draw over time yet. Ranked, longer is better:',
-          style: body(12.5, color: kTextMuted),
+          style: body(12.5, color: context.palette.muted),
         ),
         const SizedBox(height: 8),
         for (var i = 0; i < lines.length; i++)
@@ -400,12 +418,15 @@ class _Snapshot extends StatelessWidget {
                     'P${positions[i]}',
                     style: mono(
                       11.5,
-                      color: kTextMuted,
+                      color: context.palette.muted,
                       weight: FontWeight.w700,
                     ),
                   ),
                 ),
-                ColorDot(color: BackendColors.of(lines[i].$1), size: 9),
+                ColorDot(
+                  color: identityColor(context.palette, lines[i].$1),
+                  size: 9,
+                ),
                 const SizedBox(width: 7),
                 SizedBox(
                   width: 130,
@@ -413,13 +434,13 @@ class _Snapshot extends StatelessWidget {
                     lines[i].$2,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: body(12.5, color: kTextSecondary),
+                    style: body(12.5, color: context.palette.text),
                   ),
                 ),
                 Expanded(
                   child: LaneBar(
                     fraction: barShare(m, last(lines[i].$3), best),
-                    color: BackendColors.of(lines[i].$1),
+                    color: identityColor(context.palette, lines[i].$1),
                     height: 6,
                     stagger: i * 0.03,
                   ),
@@ -471,9 +492,11 @@ class _LegendChip extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.fromLTRB(8, 5, 10, 5),
             decoration: BoxDecoration(
-              color: selected ? kCardBgRaised : kBackground,
+              color: selected ? context.palette.surface : context.palette.bg,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: selected ? color : kBorder),
+              border: Border.all(
+                color: selected ? color : context.palette.line,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -485,7 +508,7 @@ class _LegendChip extends StatelessWidget {
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: body(12.5, color: kTextPrimary),
+                    style: body(12.5, color: context.palette.text),
                   ),
                 ),
                 const SizedBox(width: 8),

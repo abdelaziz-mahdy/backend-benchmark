@@ -1,4 +1,5 @@
 import 'results.dart';
+import 'tests.dart';
 
 enum Unit { rps, ms, percent, cpu, mb, ratio }
 
@@ -220,23 +221,8 @@ class Metrics {
   ) => from.where((m) => results.any((r) => m.value(r) != null)).toList();
 }
 
-String scenarioLabel(String id) => switch (id) {
-  'no_db' => 'No DB',
-  'db_read' => 'DB read',
-  'db_write' => 'DB write',
-  'db_mixed' => 'DB mixed',
-  'no_db_test' => 'No DB (v1)',
-  'db_test' => 'DB (v1)',
-  _ => id,
-};
+/// Short plain name of a test: "Typical app".
+String scenarioLabel(String id) => testInfo(id).short;
 
-String scenarioHelp(String id) => switch (id) {
-  'no_db' => 'Static JSON response: framework and HTTP overhead only.',
-  'db_read' =>
-    'Half paged lists (20 rows), half single-row reads over 10,000 rows.',
-  'db_write' => 'Inserts only.',
-  'db_mixed' => '80% reads, 20% inserts.',
-  'no_db_test' => 'Static endpoint under a 10k-user Locust ramp.',
-  'db_test' => 'Read-all and insert under a 10k-user Locust ramp.',
-  _ => '',
-};
+/// What a test's requests do, in one line.
+String scenarioHelp(String id) => testInfo(id).what;

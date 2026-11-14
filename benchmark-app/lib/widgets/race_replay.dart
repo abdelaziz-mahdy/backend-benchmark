@@ -176,7 +176,7 @@ class _RaceReplayState extends State<RaceReplay>
     if (_lanes.isEmpty || _rates.isEmpty) {
       return Text(
         'No recorded load steps for this scenario.',
-        style: body(13, color: kTextMuted),
+        style: body(13, color: context.palette.muted),
       );
     }
     final rate = _rates[_step.clamp(0, _rates.length - 1)];
@@ -203,8 +203,8 @@ class _RaceReplayState extends State<RaceReplay>
               tooltip: playing ? 'Pause the replay' : 'Replay the race',
               onPressed: _toggle,
               style: IconButton.styleFrom(
-                backgroundColor: kSignal,
-                foregroundColor: kSignalInk,
+                backgroundColor: context.palette.accent,
+                foregroundColor: context.palette.accentInk,
               ),
               icon: Icon(playing ? Icons.pause : Icons.play_arrow),
             ),
@@ -223,10 +223,10 @@ class _RaceReplayState extends State<RaceReplay>
             Expanded(
               child: SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: kSignal,
-                  inactiveTrackColor: kBorderStrong,
-                  thumbColor: kSignal,
-                  overlayColor: kSignal.withValues(alpha: 0.12),
+                  activeTrackColor: context.palette.accent,
+                  inactiveTrackColor: context.palette.line,
+                  thumbColor: context.palette.accent,
+                  overlayColor: context.palette.accent.withValues(alpha: 0.12),
                   trackHeight: 3,
                 ),
                 child: Slider(
@@ -274,9 +274,13 @@ class _RaceReplayState extends State<RaceReplay>
               spacing: 14,
               runSpacing: 4,
               children: [
-                _key(kSignal, 'flag: highest step held so far'),
-                _key(kRedline, 'broke a limit', hatched: true),
-                _key(kAmber, 'the load generator was the limit', hatched: true),
+                _key(context.palette.accent, 'flag: highest step held so far'),
+                _key(context.palette.danger, 'broke a limit', hatched: true),
+                _key(
+                  context.palette.warn,
+                  'the load generator was the limit',
+                  hatched: true,
+                ),
               ],
             ),
           ),
@@ -294,7 +298,7 @@ class _RaceReplayState extends State<RaceReplay>
         child: hatched ? HatchFill(color: c) : ColoredBox(color: c),
       ),
       const SizedBox(width: 5),
-      Text(text, style: body(11.5, color: kTextMuted)),
+      Text(text, style: body(11.5, color: context.palette.muted)),
     ],
   );
 }
@@ -330,15 +334,15 @@ class _ReplayLane extends StatelessWidget {
         ? 'served ${formatRps(step.achievedRps)}'
         : 'held ${formatRps(step.targetRps)}, no step here';
     final barColor = step == null
-        ? kBorder
+        ? context.palette.line
         : !failed
-        ? BackendColors.of(b.key)
+        ? identityColor(context.palette, b.key)
         : step.k6Bound
-        ? kAmber
-        : kRedline;
+        ? context.palette.warn
+        : context.palette.danger;
     final statusColor = failed && !done
-        ? (step.k6Bound ? kAmber : kRedline)
-        : kTextSecondary;
+        ? (step.k6Bound ? context.palette.warn : context.palette.danger)
+        : context.palette.text;
     return Semantics(
       label: '${b.name}: $status',
       child: Padding(
@@ -357,7 +361,7 @@ class _ReplayLane extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: body(
                       13,
-                      color: kTextPrimary,
+                      color: context.palette.text,
                       weight: FontWeight.w600,
                     ),
                   ),
@@ -379,7 +383,7 @@ class _ReplayLane extends StatelessWidget {
                         bottom: 5,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: kGridLine,
+                            color: context.palette.line,
                             borderRadius: BorderRadius.circular(3),
                           ),
                         ),
@@ -415,7 +419,7 @@ class _ReplayLane extends StatelessWidget {
                           top: -2,
                           bottom: -2,
                           width: 3,
-                          child: Container(color: kSignal),
+                          child: Container(color: context.palette.accent),
                         ),
                     ],
                   );
