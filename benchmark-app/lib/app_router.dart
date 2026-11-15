@@ -83,10 +83,16 @@ void applyLocation(DashboardState state, Uri uri) {
         compare: rest?.split(',') ?? const [],
         scenario: scenario,
       );
+    // History and Method keep the results view underneath, so the header's
+    // "Results" returns to it as it was left.
     case 'history':
-      state.applyRoute(page: DashboardPage.history, scenario: scenario);
+      state.applyRoute(
+        page: DashboardPage.history,
+        view: state.view,
+        scenario: scenario,
+      );
     case 'method':
-      state.applyRoute(page: DashboardPage.method);
+      state.applyRoute(page: DashboardPage.method, view: state.view);
     default:
       state.applyRoute(page: DashboardPage.home, scenario: scenario);
   }
@@ -126,10 +132,6 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
 
   /// The side state last reported, to notice changes the link misses.
   String? _lastSide;
-
-  /// The test last reported. The Compare link shows no test while nothing
-  /// is picked, so a test change is judged by this, not by the link.
-  String? _lastTest;
 
   /// The entry being applied needed a run change first, and the picks and
   /// set-aside picks before that change (none of them may be lost).
@@ -174,18 +176,20 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     // still updates the entry: same link, so the browser replaces it.
     final side = jsonEncode(state.sideState);
     if (now != _last || side != _lastSide) {
-      // Picking frameworks while Compare stays open is a choice, not a
-      // move: it replaces the entry, so Back leaves Compare in one step.
+      // Choices on a page (Compare picks, or the test on any view) replace
+      // the entry; only moving to another page or run adds one, so Back
+      // always moves between pages.
       final last = _last;
-      final picksOnly =
+      final sameRun =
           last != null &&
-          last.pathSegments.firstOrNull == 'compare' &&
-          now.pathSegments.firstOrNull == 'compare' &&
-          last.queryParameters['run'] == now.queryParameters['run'] &&
-          state.scenario == _lastTest;
+          last.queryParameters['run'] == now.queryParameters['run'];
+      final picksOnly =
+          sameRun &&
+          ((last.pathSegments.firstOrNull == 'compare' &&
+                  now.pathSegments.firstOrNull == 'compare') ||
+              last.path == now.path);
       _last = now;
       _lastSide = side;
-      _lastTest = state.scenario;
       _report(replace: picksOnly);
     }
   }
@@ -226,7 +230,10 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
           info.state,
           restorePicks: crossed || fresh,
           keep: before,
-          linkHasTest: uri.queryParameters.containsKey('s'),
+          // History's test is its own; the main test comes from the entry.
+          linkHasTest:
+              uri.queryParameters.containsKey('s') &&
+              uri.pathSegments.firstOrNull != 'history',
         );
         // Picks Back put on screen are the visitor's from now on, so a
         // later Forward to an entry saved without them keeps them.
@@ -237,7 +244,6 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     }
     _last = locationOf(state);
     _lastSide = jsonEncode(state.sideState);
-    _lastTest = state.scenario;
     if (fromHistory) {
       // Shown as it is now; if that differs from the entry's link, the
       // entry is replaced, never followed by a new one.

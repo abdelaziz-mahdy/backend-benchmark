@@ -378,7 +378,10 @@ class DashboardState extends ChangeNotifier {
     final r = run;
     if (r == null) return;
     final keys = {for (final b in r.backends) b.key};
-    if (scenario != null && r.scenarios.contains(scenario)) {
+    // History's test is its own choice and never changes the main test.
+    if (page != DashboardPage.history &&
+        scenario != null &&
+        r.scenarios.contains(scenario)) {
       this.scenario = scenario;
     }
     if (page == DashboardPage.history) historyTest = scenario;

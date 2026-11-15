@@ -970,6 +970,20 @@ void main() {
       expect(state.compareKeys, ['foam3']);
     });
 
+    testWidgets('History keeps the results view and its own test', (t) async {
+      final state = await pumpApp(t, realisticBundle());
+      final key = state.run!.backends.first.key;
+      state.selectFramework(key);
+      final main = state.scenario;
+      final other = state.run!.scenarios.firstWhere((x) => x != main);
+      applyLocation(state, Uri.parse('/history?s=$other'));
+      expect(state.page, DashboardPage.history);
+      expect(state.historyTest, other);
+      // The main test and the view under History stay as they were.
+      expect(state.scenario, main);
+      expect(state.view, HomeView.one);
+    });
+
     testWidgets('a copied link keeps an older run', (t) async {
       final state = await pumpApp(t, twoRunBundle());
       expect(locationOf(state).queryParameters, isNot(contains('run')));
