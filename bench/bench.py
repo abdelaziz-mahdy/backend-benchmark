@@ -531,7 +531,7 @@ def main():
             db=item.variant.db,
             pgbouncer=item.variant.pgbouncer,
             api_style=item.api_style,
-            notes=item.manifest.get("notes"),
+            notes=item.variant.notes or item.manifest.get("notes"),
             implementation=item.manifest.get("implementation"),
         )
         stack = Stack(item, cpus)

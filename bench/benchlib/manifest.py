@@ -13,6 +13,7 @@ class Variant:
     id: str
     db: str = "postgres"  # "postgres" or "none"
     pgbouncer: bool = False
+    notes: str | None = None  # this variant's own note, over the shared one
 
 
 @dataclass
