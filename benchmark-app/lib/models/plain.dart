@@ -449,9 +449,20 @@ String answerFor(List<Result> results) {
     out.add('${capFirst(leader.name)} is the fastest.');
   }
   final blocks = followerBlocks(sorted, all: all);
-  for (final (i, block) in blocks.take(followers).indexed) {
-    final v = block.first.value;
-    final how = leader.value <= 0 ? '' : ', ${asFast(v / leader.value)}';
+  // Neighbouring blocks with the same speed word are said together, so a
+  // sentence never says "then" for frameworks it gives the same words.
+  String word(List<Result> b) =>
+      leader.value <= 0 ? '' : asFast(b.first.value / leader.value);
+  final said = <List<Result>>[];
+  for (final b in blocks) {
+    if (said.isNotEmpty && word(said.last) == word(b)) {
+      said.last = [...said.last, ...b];
+    } else {
+      said.add(b);
+    }
+  }
+  for (final (i, block) in said.take(followers).indexed) {
+    final how = leader.value <= 0 ? '' : ', ${word(block)}';
     final who = _names(block);
     out.add(
       i == 0
@@ -569,6 +580,8 @@ String compareVerdict(
   final head = most == contested
       ? (contested == 1
             ? '${capFirst(names[top]!)} was fastest.'
+            : contested == 2
+            ? '${capFirst(names[top]!)} was fastest in both tests.'
             : '${capFirst(names[top]!)} was fastest in all '
                   '${kindsOfWork(contested)}.')
       : '${capFirst(names[top]!)} was fastest in ${numberWord(most)} of '

@@ -5,7 +5,6 @@ import 'package:material_ui/material_ui.dart';
 import '../models/plain.dart';
 import '../models/results.dart';
 import '../utils/colors.dart';
-import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
 import 'calm.dart';
 import 'motion.dart';
@@ -214,9 +213,9 @@ class _RaceReplayState extends State<RaceReplay>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            IconButton.filled(
+        LayoutBuilder(
+          builder: (context, c) {
+            final playButton = IconButton.filled(
               tooltip: playing ? 'Pause the replay' : 'Replay the race',
               onPressed: _toggle,
               style: IconButton.styleFrom(
@@ -224,45 +223,66 @@ class _RaceReplayState extends State<RaceReplay>
                 foregroundColor: context.palette.accentInk,
               ),
               icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Asked for', style: caps(10.5)),
-                Text(
-                  '${whole(rate)} a second',
-                  style: mono(18, weight: FontWeight.w700),
-                ),
-              ],
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: context.palette.accent,
-                  inactiveTrackColor: context.palette.line,
-                  thumbColor: context.palette.accent,
-                  overlayColor: context.palette.accent.withValues(alpha: 0.12),
-                  trackHeight: 3,
-                ),
-                child: Slider(
-                  value: _step.toDouble(),
-                  min: 0,
-                  max: math.max(1, _rates.length - 1).toDouble(),
-                  divisions: math.max(1, _rates.length - 1),
-                  label: '${whole(rate)} a second',
-                  semanticFormatterCallback: (v) =>
-                      '${formatRps(_rates[v.round().clamp(0, _rates.length - 1)])} '
-                      'requests per second requested',
-                  onChanged: (v) {
-                    _play.stop();
-                    setState(() => _step = v.round());
-                  },
-                ),
+            );
+            // A fixed width, so the slider never moves while it is dragged.
+            final readout = SizedBox(
+              width: 170,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Asked for', style: caps(10.5)),
+                  Text(
+                    '${whole(rate)} a second',
+                    style: mono(18, weight: FontWeight.w700),
+                  ),
+                ],
               ),
-            ),
-          ],
+            );
+            final slider = SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: context.palette.accent,
+                inactiveTrackColor: context.palette.line,
+                thumbColor: context.palette.accent,
+                overlayColor: context.palette.accent.withValues(alpha: 0.12),
+                trackHeight: 3,
+              ),
+              child: Slider(
+                value: _step.toDouble(),
+                min: 0,
+                max: math.max(1, _rates.length - 1).toDouble(),
+                divisions: math.max(1, _rates.length - 1),
+                label: '${whole(rate)} a second',
+                semanticFormatterCallback: (v) =>
+                    '${whole(_rates[v.round().clamp(0, _rates.length - 1)])} '
+                    'requests a second asked for',
+                onChanged: (v) {
+                  _play.stop();
+                  setState(() => _step = v.round());
+                },
+              ),
+            );
+            // Phones: the slider gets the whole width on its own line.
+            if (c.maxWidth < 480) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [playButton, const SizedBox(width: 12), readout],
+                  ),
+                  slider,
+                ],
+              );
+            }
+            return Row(
+              children: [
+                playButton,
+                const SizedBox(width: 12),
+                readout,
+                const SizedBox(width: 8),
+                Expanded(child: slider),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 6),
         RepaintBoundary(
@@ -460,10 +480,10 @@ class _ReplayLane extends StatelessWidget {
                 },
               ),
             );
+            // Two lines, never cut: the reason is what dragging shows.
             final label = Text(
               status,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
               style: mono(11.5, color: statusColor),
             );
             if (narrow) {

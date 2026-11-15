@@ -194,37 +194,50 @@ class _RunLine extends StatelessWidget {
     final t = Txt.of(context);
     final entry = state.entry;
     final run = state.run!;
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.center,
+    // The icon stays beside the text; the text and "Change run" wrap
+    // together beside it, never leaving the icon on a line of its own.
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          Icons.calendar_today_outlined,
-          size: 16,
-          color: context.palette.muted,
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(
+            Icons.calendar_today_outlined,
+            size: 16,
+            color: context.palette.muted,
+          ),
         ),
         const SizedBox(width: 6),
-        Text(
-          // The latest view combines each framework's newest run.
-          '${entry?.kind != RunKind.latest
-              ? 'Results from'
-              : entry == state.index.firstOrNull
-              ? 'Latest results, up to'
-              : 'Combined results of an older method, up to'} '
-          '${longDate(entry?.date ?? run.date)}'
-          '${run.isLegacy ? ' (old method)' : ''}',
-          style: t.small,
-        ),
-        const SizedBox(width: 10),
-        ChangeRunButton(state: state),
-        if (state.loading)
-          const Padding(
-            padding: EdgeInsets.only(left: 8),
-            child: SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+        Expanded(
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: 2,
+            children: [
+              Text(
+                // The latest view combines each framework's newest run.
+                '${entry?.kind != RunKind.latest
+                    ? 'Results from'
+                    : entry == state.index.firstOrNull
+                    ? 'Latest results, up to'
+                    : 'Combined results of an older method, up to'} '
+                '${longDate(entry?.date ?? run.date)}'
+                '${run.isLegacy ? ' (old method)' : ''}',
+                style: t.small,
+              ),
+              const SizedBox(width: 10),
+              ChangeRunButton(state: state),
+              if (state.loading)
+                const Padding(
+                  padding: EdgeInsets.only(left: 8),
+                  child: SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+            ],
           ),
+        ),
       ],
     );
   }

@@ -485,6 +485,24 @@ void main() {
       );
     });
 
+    test('the same speed word is said once; two tests are "both"', () {
+      expect(
+        compareTestSentence([
+          res('a', 46000),
+          res('b', 25000),
+          res('c', 21000),
+        ]),
+        'A is the fastest. Next are b and c, about half as fast.',
+      );
+      expect(
+        compareVerdict({
+          'db_test': [res('a', 900), res('b', 300)],
+          'no_db_test': [res('a', 900), res('b', 300)],
+        }),
+        startsWith('A was fastest in both tests.'),
+      );
+    });
+
     test('a chain of close calls never stretches one speed word', () {
       final blocks = followerBlocks([
         res('bun', 24000),
@@ -719,6 +737,20 @@ void main() {
       state.setHistoryTest('db_write');
       expect(locationOf(state).queryParameters['s'], 'db_write');
       expect(state.scenario, before);
+    });
+
+    testWidgets('a freed Compare place brings back a set-aside pick', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final keys = [for (final b in state.run!.backends) b.key];
+      for (final k in keys.take(4)) {
+        state.toggleCompare(k);
+      }
+      state.parkedCompare.add(keys[4]);
+      state.toggleCompare(keys[0]);
+      expect(state.compareKeys, contains(keys[4]));
+      expect(state.parkedCompare, isEmpty);
     });
 
     testWidgets('a copied link keeps an older run', (t) async {

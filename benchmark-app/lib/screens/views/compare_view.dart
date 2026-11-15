@@ -82,18 +82,35 @@ class CompareView extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         _Picked(state: state, picked: picked),
-        if (parked.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              '${capFirst(joinAnd([for (final k in parked) state.nameOf(k)]))} '
-              '${parked.length == 1 ? 'is' : 'are'} not in this run, so '
-              '${parked.length == 1 ? 'it is' : 'they are'} left out. '
-              '${parked.length == 1 ? 'It comes' : 'They come'} back when you '
-              'change to a run that has ${parked.length == 1 ? 'it' : 'them'}.',
-              style: t.small,
-            ),
+        // Set-aside picks, said for what they are: missing from this run,
+        // or in it but past the most Compare holds.
+        for (final (keys, why) in [
+          (
+            [
+              for (final k in parked)
+                if (run.backend(k) == null) k,
+            ],
+            'not in this run',
           ),
+          (
+            [
+              for (final k in parked)
+                if (run.backend(k) != null) k,
+            ],
+            'over the ${numberWord(DashboardState.maxCompare)} Compare holds',
+          ),
+        ])
+          if (keys.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                '${capFirst(joinAnd([for (final k in keys) state.nameOf(k)]))} '
+                '${keys.length == 1 ? 'is' : 'are'} $why, so '
+                '${keys.length == 1 ? 'it is' : 'they are'} set aside. '
+                '${why.startsWith('not') ? '${keys.length == 1 ? 'It comes' : 'They come'} back when you change to a run that has ${keys.length == 1 ? 'it' : 'them'}.' : 'Remove a pick to bring ${keys.length == 1 ? 'it' : 'them'} back.'}',
+                style: t.small,
+              ),
+            ),
         if (picked.length < 2) ...[
           const SizedBox(height: 18),
           Text(
@@ -179,9 +196,11 @@ class CompareView extends StatelessWidget {
           Fold(
             key: ValueKey('charts-${run.id}'),
             title: 'Charts and all numbers',
-            subtitle:
-                'The load steps, processor and memory over time, every '
-                'measured number side by side, and how each is built.',
+            subtitle: run.isLegacy
+                ? 'Processor and memory over time, every measured number '
+                      'side by side, and how each is built.'
+                : 'The load steps, processor and memory over time, every '
+                      'measured number side by side, and how each is built.',
             child: _WithTestPicker(
               child: _Charts(state: state, picked: picked),
             ),
@@ -192,7 +211,7 @@ class CompareView extends StatelessWidget {
           spacing: 10,
           runSpacing: 10,
           children: [
-            if (picked.isNotEmpty)
+            if (picked.isNotEmpty || parked.isNotEmpty)
               CalmButton(
                 label: 'Clear all',
                 onTap: () {
@@ -653,8 +672,7 @@ class _ChartsState extends State<_Charts> {
         ChartBlock(
           title: 'All numbers side by side',
           subtitle:
-              'Each one at its own result, so only the first rows are a '
-              'race.'
+              '${widget.state.run!.isLegacy ? 'The old test sent every framework the same traffic.' : 'Each one at its own result, so only the first rows are a race.'}'
               // Phones show each number's meaning under its name.
               '${MediaQuery.sizeOf(context).width < 480 ? '' : ' Hover over or press and hold a name for what it means.'}',
           child: _SideBySide(state: state, picked: here, test: s),
@@ -716,8 +734,7 @@ class _ChartsState extends State<_Charts> {
     return ChartBlock(
       title: 'Over time',
       subtitle:
-          'The whole test, warm-up included. Faster frameworks ran more '
-          'steps, so their lines are longer.'
+          '${widget.state.run!.isLegacy ? 'The whole test; every framework ran for the same time.' : 'The whole test, warm-up included. Faster frameworks ran more steps, so their lines are longer.'}'
           '${switch (mode) {
             _OverTime.cpu => ' Processor: how much of its ${numberWord(cores)} ${cores == 1 ? 'core' : 'cores'} each one used; 100% is ${cores == 1 ? 'that core' : 'all of them'}.',
             _OverTime.dbCpu => " Database: the database's processor use; 100% is one core.",
@@ -803,60 +820,85 @@ class _SideBySide extends StatelessWidget {
       for (final (i, (label, _)) in picked.first.builtFacts.indexed)
         (label, (b) => b.builtFacts[i].$2),
     ];
+    // Build details a run did not record come from today's code; say so,
+    // as the profile's card does.
+    final today = [
+      for (final b in picked)
+        if (b.implementationFrom == 'manifest') b.name,
+    ];
+    final Widget? fromToday = today.isEmpty
+        ? null
+        : Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'How ${joinAnd(today)} ${today.length == 1 ? 'is' : 'are'} '
+              "built comes from today's code: this run did not record it.",
+              style: t.small,
+            ),
+          );
     // A phone gets one block per number, one row per framework, instead
     // of a table wider than the screen.
     if (MediaQuery.sizeOf(context).width < 480) {
-      return ByMeasure(
-        blocks: [
-          for (final m in metrics)
-            (
-              plainMetricLabel(m),
-              metricMeaning(m, state.run!),
-              [
-                for (final b in picked)
-                  (
-                    b,
-                    Text(
-                      fmt(
-                        m,
-                        m.value(b.scenarios[test]!),
-                        capped: b.scenarios[test]!.loadgenBound,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ByMeasure(
+            blocks: [
+              for (final m in metrics)
+                (
+                  plainMetricLabel(m),
+                  metricMeaning(m, state.run!),
+                  [
+                    for (final b in picked)
+                      (
+                        b,
+                        Text(
+                          fmt(
+                            m,
+                            m.value(b.scenarios[test]!),
+                            capped: b.scenarios[test]!.loadgenBound,
+                          ),
+                          style: cell,
+                        ),
                       ),
-                      style: cell,
-                    ),
+                  ],
+                ),
+              for (final (label, value) in impl)
+                if (picked.any((b) => value(b) != null))
+                  (
+                    label,
+                    null,
+                    [
+                      for (final b in picked)
+                        (
+                          b,
+                          Text(
+                            value(b) ?? '—',
+                            style: cell.copyWith(fontSize: 13),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
-            ),
-          for (final (label, value) in impl)
-            if (picked.any((b) => value(b) != null))
               (
-                label,
+                'Code',
                 null,
                 [
                   for (final b in picked)
                     (
                       b,
-                      Text(value(b) ?? '—', style: cell.copyWith(fontSize: 13)),
+                      b.sourceUrl == null
+                          ? Text('—', style: cell)
+                          : SourceLink(
+                              url: b.sourceUrlAt(sha) ?? b.sourceUrl!,
+                              label: 'Code on GitHub',
+                              fontSize: 13,
+                            ),
                     ),
                 ],
               ),
-          (
-            'Code',
-            null,
-            [
-              for (final b in picked)
-                (
-                  b,
-                  b.sourceUrl == null
-                      ? Text('—', style: cell)
-                      : SourceLink(
-                          url: b.sourceUrlAt(sha) ?? b.sourceUrl!,
-                          label: 'Code on GitHub',
-                          fontSize: 13,
-                        ),
-                ),
             ],
           ),
+          ?fromToday,
         ],
       );
     }
@@ -950,9 +992,12 @@ class _SideBySide extends StatelessWidget {
         ),
       ],
     );
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: table,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SingleChildScrollView(scrollDirection: Axis.horizontal, child: table),
+        ?fromToday,
+      ],
     );
   }
 }

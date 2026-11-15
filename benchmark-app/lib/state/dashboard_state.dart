@@ -221,6 +221,16 @@ class DashboardState extends ChangeNotifier {
     if (!compareKeys.remove(key)) {
       if (compareKeys.length >= maxCompare) return;
       compareKeys.add(key);
+    } else {
+      // A freed place brings back a set-aside pick this run has.
+      final r = run;
+      final back = parkedCompare
+          .where((k) => r?.backend(k) != null)
+          .firstOrNull;
+      if (back != null) {
+        parkedCompare.remove(back);
+        compareKeys.add(back);
+      }
     }
     notifyListeners();
   }
