@@ -27,7 +27,7 @@ class ShortAnswerView extends StatelessWidget {
     }
     final main = testInfo(tests.first);
     final m = state.measure;
-    final unit = m == Measure.load ? unitFor(state.headline) : m.label;
+    final unit = m == Measure.load ? unitFor(state.headline, run) : m.label;
     final cores = appCoreCount(run);
     Widget bars(String id) {
       final rs = measureResults(run, id, m);
@@ -119,7 +119,7 @@ class MeasurePicker extends StatelessWidget {
       for (final x in Measure.values)
         if (x == state.measure ||
             tests.any((id) => measureResults(run, id, x).isNotEmpty))
-          (x, x == Measure.load ? '${x.label} (the result)' : x.label),
+          (x, x.title(run)),
     ];
     return Wrap(
       spacing: 6,
@@ -130,6 +130,7 @@ class MeasurePicker extends StatelessWidget {
           value: state.measure,
           options: options,
           onChanged: state.setMeasure,
+          maxWidth: 400,
         ),
         Padding(
           padding: const EdgeInsets.only(bottom: 12),

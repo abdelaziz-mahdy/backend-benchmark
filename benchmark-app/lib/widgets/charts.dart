@@ -287,7 +287,7 @@ class StepLoadChart extends StatelessWidget {
             leftTitles: AxisTitles(
               axisNameSize: 18,
               axisNameWidget: Text(
-                throughput ? 'handled a second' : 'slow reply',
+                throughput ? 'handled a second' : '99 in 100 within',
                 style: _axisNameStyle(p),
               ),
               sideTitles: SideTitles(
@@ -309,7 +309,7 @@ class StepLoadChart extends StatelessWidget {
             final st = series[s.barIndex - offset].steps[s.spotIndex];
             final name = series[s.barIndex - offset].backend.name;
             return '$name, asked for ${whole(st.targetRps)} a second\n'
-                'handled ${whole(st.achievedRps)} · slow reply '
+                'handled ${whole(st.achievedRps)} · 99 in 100 within '
                 '${msText(st.p99)}'
                 '${st.errorRate > 0 ? ' · ${(st.errorRate * 100).toStringAsFixed(2)}% failed' : ''}'
                 '${st.pass

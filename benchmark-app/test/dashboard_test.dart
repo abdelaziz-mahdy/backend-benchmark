@@ -622,7 +622,7 @@ void main() {
     testWidgets('the bars can show another measure, best first', (t) async {
       final state = await pumpApp(t, realisticBundle());
       expect(find.text('What to show'), findsOneWidget);
-      expect(find.text('Fast replies a second (the result)'), findsWidgets);
+      expect(find.text('Replies a second, 99% within 100 ms'), findsWidgets);
       for (final m in Measure.values) {
         state.setMeasure(m);
         await settle(t);

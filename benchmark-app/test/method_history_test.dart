@@ -27,7 +27,7 @@ final _jargon = <Pattern>[
   RegExp(r'\bprobe', caseSensitive: false),
   RegExp('monolith', caseSensitive: false),
   RegExp(r'\bORM\b'),
-  RegExp(r'\bmedian\b', caseSensitive: false),
+  // "Median reply time" is the user's chosen name (feedback round 2).
   // Commit hashes.
   RegExp(r'\b[0-9a-f]{7}\b'),
   // Compact numbers such as "30.0K".
@@ -210,11 +210,11 @@ void main() {
         state.setScenario(test);
         await _settle(t);
         for (final name in const [
-          'Fast replies a second',
-          'Most at any step',
-          'Slow reply',
-          'Processor',
-          'Memory',
+          'Replies a second, 99% within 100 ms',
+          'Most at any speed',
+          'Reply time 99 in 100 beat',
+          'Processor use',
+          'Memory use',
         ]) {
           final option = find.text(name).first;
           await t.ensureVisible(option);

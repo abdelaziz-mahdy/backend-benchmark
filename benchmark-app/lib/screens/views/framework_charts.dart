@@ -141,7 +141,7 @@ class FrameworkCharts extends StatelessWidget {
               ),
             ),
             ChartBlock(
-              title: 'Slow reply time at each step',
+              title: 'Reply time 99 in 100 beat, at each step',
               subtitle:
                   '99 of every 100 replies were faster than this. Above the '
                   'red line is too slow.'
@@ -192,7 +192,7 @@ class FrameworkCharts extends StatelessWidget {
           ),
         ),
       ChartBlock(
-        title: 'Processor over time',
+        title: 'Processor use over time',
         subtitle:
             'How much of its ${numberWord(cores)} processor '
             '${cores == 1 ? 'core' : 'cores'} it used. 100% is '
@@ -209,7 +209,7 @@ class FrameworkCharts extends StatelessWidget {
         ),
       ),
       ChartBlock(
-        title: 'Memory over time',
+        title: 'Memory use over time',
         subtitle: 'The whole test, warm-up included.',
         child: TimeSeriesChart(
           series: [(b, ts)],
@@ -307,10 +307,10 @@ class _Percentiles extends StatelessWidget {
     final t = Txt(p);
     final rows = [
       // The same names as the table above and Method's "Words we use".
-      (Metrics.p50, 'Typical reply'),
-      (Metrics.p90, '9 in 10 replies'),
-      (Metrics.p99, 'Slow reply'),
-      (Metrics.p999, '999 in 1,000 replies'),
+      (Metrics.p50, plainMetricLabel(Metrics.p50)),
+      (Metrics.p90, plainMetricLabel(Metrics.p90)),
+      (Metrics.p99, plainMetricLabel(Metrics.p99)),
+      (Metrics.p999, plainMetricLabel(Metrics.p999)),
     ].where((e) => e.$1.value(result) != null).toList();
     if (rows.isEmpty) return const SizedBox.shrink();
     final top = rows
@@ -420,7 +420,7 @@ class _FrameworkHistory extends StatelessWidget {
       title: 'History',
       subtitle:
           'Every run of ${backend.name} on ${entry.machine.cpu} with the same '
-          'method, in ${unitFor(metric)}.',
+          'method, in ${unitFor(metric, context.read<DashboardState>().run!)}.',
       child: HistoryChart(
         labels: runDates(runs),
         lines: [

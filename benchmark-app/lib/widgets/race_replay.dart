@@ -34,7 +34,7 @@ class Slo {
   String reason(LoadStep s, {bool resultCapped = false}) {
     if (s.pass) return '';
     final parts = [
-      if (s.p99 >= p99Ms) 'slow reply ${msText(s.p99)}',
+      if (s.p99 >= p99Ms) '99 in 100 within ${msText(s.p99)}',
       if (s.errorRate >= errorRate)
         '${(s.errorRate * 100).toStringAsFixed(1)}% errors',
       // Rounded down, so 94.7% never reads as the 95% that passes.
