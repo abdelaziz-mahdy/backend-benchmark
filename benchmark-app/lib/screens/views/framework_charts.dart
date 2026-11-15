@@ -110,8 +110,8 @@ class FrameworkCharts extends StatelessWidget {
           ChartBlock(
             title: 'All numbers from this test',
             subtitle: r.reps > 1
-                ? 'The middle of ${numberWord(r.reps)} runs, with the lowest '
-                      'and highest run after it.'
+                ? 'The middle of ${numberWord(r.reps)} tries, with the lowest '
+                      'and highest try after it.'
                 : null,
             child: _AllNumbers(result: r, cores: appCoreCount(run)),
           ),

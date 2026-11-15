@@ -853,8 +853,10 @@ class SpeedBar extends StatelessWidget {
               if (capped)
                 Positioned(
                   left: w + 2,
-                  top: 3,
-                  bottom: 3,
+                  // Inset in proportion, so thin bars (the table's) still
+                  // show their stripes.
+                  top: height * 0.18,
+                  bottom: height * 0.18,
                   width: stripe - 2,
                   child: CustomPaint(painter: _BarStripes(color)),
                 ),

@@ -93,7 +93,7 @@ class EveryNumberView extends StatelessWidget {
             if (m == Measure.load && !legacy)
               _Check(
                 value: state.showRange,
-                label: 'Also show the lowest and highest run',
+                label: 'Also show the lowest and highest try',
                 onChanged: state.setShowRange,
               ),
           ],
@@ -264,7 +264,7 @@ class _Table extends StatelessWidget {
           final s = r == null ? null : state.headline.stat(r);
           if (s == null) return null;
           return whole(s.min) == whole(s.max)
-              ? 'all runs equal'
+              ? 'all tries equal'
               : '${whole(s.min)} to ${whole(s.max)}';
         }
 

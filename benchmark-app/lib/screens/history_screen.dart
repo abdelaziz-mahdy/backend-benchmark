@@ -395,8 +395,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
           if (g.capped.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
-              "+ and a striped bar end = hit our testing tool's limit, so it "
-              'may be faster.',
+              // Striped ends only exist where this box draws bars.
+              multi.isEmpty
+                  ? "+ and a striped bar end = hit our testing tool's limit, "
+                        'so it may be faster.'
+                  : "+ = hit our testing tool's limit, so it may be faster.",
               style: t.small,
             ),
           ],

@@ -348,8 +348,8 @@ class _MethodScreenState extends State<MethodScreen> {
         FactCard(
           icon: Icons.repeat,
           label: 'Every result is',
-          value: 'Middle of $reps runs',
-          detail: 'Every test runs ${numberWord(reps)} times.',
+          value: 'Middle of $reps tries',
+          detail: 'Every test is tried ${numberWord(reps)} times.',
         ),
       ],
     );
@@ -575,8 +575,9 @@ class _MethodScreenState extends State<MethodScreen> {
           ),
           Point(
             'Repeats:',
-            'every test runs ${numberWord(reps)} times. We show the middle '
-                'run; tap a bar to see the lowest and highest next to it.',
+            'every test is tried ${numberWord(reps)} times. We show the '
+                'middle try; tap a bar to see the lowest and highest next to '
+                'it.',
           ),
         ]),
       ],
@@ -810,7 +811,7 @@ class _MethodScreenState extends State<MethodScreen> {
           'the busiest step it passed: 99 of every 100 replies within '
               '${msText(slo.p99Ms)}, fewer than ${_pct(slo.errorRate)} '
               'errors, and at least ${_pct(slo.servedRatio)} of requests '
-              'answered. The middle of the ${numberWord(_reps(run))} runs.',
+              'answered. The middle of the ${numberWord(_reps(run))} tries.',
         'peak_rps' =>
           'the most requests a second it answered at any step, '
               'however slow the replies were.',
@@ -1365,7 +1366,7 @@ class _RunStaircase extends StatelessWidget {
             if (sustainable != null)
               Point(
                 'The result: ${whole(sustainable)} requests a second.',
-                'That is the middle of the ${numberWord(reps)} runs, so it '
+                'That is the middle of the ${numberWord(reps)} tries, so it '
                     'can differ a little from this one.',
                 leading: Icon(Icons.flag, size: 20, color: p.accent),
               ),

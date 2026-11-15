@@ -46,8 +46,12 @@ class Result {
   String get key => backend.key;
   String get name => backend.name;
 
-  /// The lowest-to-highest run ranges of the two overlap.
-  bool overlaps(Result o) => low <= o.high && o.low <= high;
+  /// About the same: each one's middle number falls within the other's
+  /// lowest-to-highest tries. (Ranges that merely touch are not enough:
+  /// one wide range would otherwise call clearly different bars "the
+  /// same".)
+  bool overlaps(Result o) =>
+      o.low <= value && value <= o.high && low <= o.value && o.value <= high;
 }
 
 /// Every framework with a result in [test], highest first (name order
@@ -185,8 +189,10 @@ const kLimitSentence =
 String runsSentence(Result r) {
   if (r.reps <= 1) return 'We ran this test once.';
   final n = numberWord(r.reps);
-  if (whole(r.low) == whole(r.high)) return 'All $n runs gave the same result.';
-  return 'Across $n runs it ranged from ${whole(r.low)} to ${whole(r.high)}.';
+  if (whole(r.low) == whole(r.high)) {
+    return 'All $n tries gave the same result.';
+  }
+  return 'Across $n tries it ranged from ${whole(r.low)} to ${whole(r.high)}.';
 }
 
 /// "Too close to call with A and B." or "".
@@ -604,15 +610,15 @@ List<String> howWeTested(RunSummary run) {
         'processor ${cores == 1 ? 'core' : 'cores'}'
         '${memText == null ? '' : ' with $memText of memory'}. A PostgreSQL '
         'database ran beside it on its own cores.',
-    'A load tool sent requests at a steady rate'
+    'Our testing tool sent requests at a steady rate'
         '${seconds == null ? '' : ' for $seconds seconds'}, then at a higher '
         'rate, and kept stepping up until replies got slow.',
     'The result is the highest rate at which 99 of every 100 replies still '
         'came back ${sloPhrase(run)}'
         '${oneIn == null ? '' : ', and fewer than 1 in $oneIn failed'}.',
     if (reps != null && reps > 1)
-      'We ran every test ${numberWord(reps)} times. The number we show is the '
-          'middle run. The lowest and highest runs are shown next to it '
+      'We tried every test ${numberWord(reps)} times. The number we show is '
+          'the middle try. The lowest and highest tries are shown next to it '
           'wherever you see a range.',
     "When two frameworks' runs overlap, we call them about the same.",
     if (limit != null)

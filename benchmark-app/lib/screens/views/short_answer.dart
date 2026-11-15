@@ -135,6 +135,10 @@ class SpeedBars extends StatefulWidget {
   /// Shows the "Longer bar = …" note under the bars.
   final bool legend;
 
+  /// The framework whose page this is: its box offers no "More about" (it
+  /// would only lead back to the same page).
+  final String? page;
+
   const SpeedBars({
     super.key,
     required this.test,
@@ -144,6 +148,7 @@ class SpeedBars extends StatefulWidget {
     required this.onOpen,
     this.all,
     this.legend = true,
+    this.page,
   });
 
   @override
@@ -193,7 +198,7 @@ class _SpeedBarsState extends State<SpeedBars> {
                       all: widget.all ?? widget.results,
                       test: widget.test,
                       unit: widget.unit,
-                      onOpen: widget.onOpen,
+                      onOpen: r.key == widget.page ? null : widget.onOpen,
                     ),
                   ),
                 ),
@@ -283,7 +288,9 @@ class Reveal extends StatelessWidget {
   final List<Result> all;
   final String test;
   final String unit;
-  final void Function(String key) onOpen;
+
+  /// Opens the framework's page; null on that page itself.
+  final void Function(String key)? onOpen;
 
   const Reveal({
     super.key,
@@ -336,12 +343,14 @@ class Reveal extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(sentences.join(' '), style: t.smallText),
-          const SizedBox(height: 12),
-          CalmButton(
-            label: 'More about ${result.name}',
-            accent: true,
-            onTap: () => onOpen(result.key),
-          ),
+          if (onOpen case final open?) ...[
+            const SizedBox(height: 12),
+            CalmButton(
+              label: 'More about ${result.name}',
+              accent: true,
+              onTap: () => open(result.key),
+            ),
+          ],
         ],
       ),
     );

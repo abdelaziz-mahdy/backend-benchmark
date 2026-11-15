@@ -502,10 +502,33 @@ class HistoryChart extends StatelessWidget {
     var maxY = 0.0;
     final bars = <LineChartBarData>[];
     final names = <String>[];
-    for (final (key, name, values) in lines) {
+    // Frameworks with equal numbers at one run would hide each other's
+    // dots: nudge them apart sideways, in a fixed order.
+    final shared = <(int, double), List<String>>{};
+    for (final (key, _, values) in lines) {
+      for (var i = 0; i < values.length; i++) {
+        final v = values[i];
+        if (v != null) (shared[(i, v)] ??= []).add(key);
+      }
+    }
+    double nudge(String key, int i, double v) {
+      final same = shared[(i, v)]!;
+      if (same.length < 2) return 0;
+      return (same.indexOf(key) - (same.length - 1) / 2) * 0.07;
+    }
+
+    // The highlighted line is drawn last, on top of the faded ones.
+    final ordered = [
+      for (final l in lines)
+        if (l.$1 != highlight) l,
+      for (final l in lines)
+        if (l.$1 == highlight) l,
+    ];
+    for (final (key, name, values) in ordered) {
       final spots = <FlSpot>[
         for (var i = 0; i < values.length; i++)
-          if (values[i] != null) FlSpot(i.toDouble(), values[i]!),
+          if (values[i] != null)
+            FlSpot(i + nudge(key, i, values[i]!), values[i]!),
       ];
       if (spots.isEmpty) continue;
       for (final s in spots) {

@@ -393,6 +393,7 @@ class _TestRow extends StatelessWidget {
             unit: unit,
             mine: backend.key,
             onOpen: nav.open,
+            page: backend.key,
             legend: false,
           ),
         ],

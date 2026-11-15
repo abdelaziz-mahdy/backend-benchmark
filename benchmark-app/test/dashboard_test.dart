@@ -335,15 +335,21 @@ void main() {
       expect(whole(1234567.4), '1,234,567');
     });
 
-    test('runs whose ranges overlap are too close to call', () {
+    test('about the same only when each middle is in the other range', () {
       final all = [
         res('a', 5000, low: 4000, high: 6000),
-        res('b', 4500, low: 4400, high: 4600),
+        res('b', 4800, low: 4600, high: 5100),
         res('c', 3000, low: 2900, high: 3100),
       ];
       expect(closeTo(all, all[0]).map((r) => r.key), ['b']);
       expect(closeTo(all, all[2]), isEmpty);
       expect(closeSentence(all, all[0]), contains('b'));
+      // One wide range is not enough: serverpod (1,900 to 5,750) is not
+      // "about the same" as fastapi at 2,900 with tight tries.
+      final wide = res('serverpod', 4250, low: 1900, high: 5750);
+      final tight = res('fastapi', 2900, low: 2800, high: 3000);
+      expect(wide.overlaps(tight), isFalse);
+      expect(answerFor([wide, tight]), startsWith('Serverpod is the fastest'));
     });
 
     test('bands group by round numbers, highest first', () {

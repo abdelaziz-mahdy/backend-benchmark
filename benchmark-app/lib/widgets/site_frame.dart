@@ -264,7 +264,7 @@ class _ExternalIcon extends StatelessWidget {
                     Icon(icon, size: 18, color: p.text),
                     const SizedBox(height: 1),
                     Text(
-                      'Code',
+                      'GitHub',
                       style: t.body.copyWith(fontSize: 11, height: 1.1),
                     ),
                   ],
@@ -369,7 +369,7 @@ class SiteFooter extends StatelessWidget {
                 ),
               ]),
               col('PROJECT', [
-                _FooterUrl(url: kRepoUrl, label: 'Code on GitHub'),
+                _FooterUrl(url: kRepoUrl, label: 'GitHub'),
                 _FooterUrl(url: kAddFrameworkUrl, label: 'Add your framework'),
               ]),
             ],
