@@ -148,9 +148,11 @@ class DashboardState extends ChangeNotifier {
         final near = loaded.isLegacy
             ? legacyScenario(was)
             : currentScenario(was);
+        // A direction or measure changed on the old run clears the saved
+        // direction: that newer choice is kept as it is.
         if (back && _currentMethodSortDesc != null) {
           sortDesc = _currentMethodSortDesc!;
-        } else if (next != near) {
+        } else if (!back && next != near) {
           sortDesc = measure == Measure.load;
         }
       }
@@ -243,6 +245,7 @@ class DashboardState extends ChangeNotifier {
   void setMeasure(Measure next) {
     if (measure == next) return;
     measure = next;
+    if (run?.isLegacy ?? false) _currentMethodSortDesc = null;
     // Best first: most requests a second, but the lowest reply time,
     // processor and memory.
     if (sortTest != sortByName) sortDesc = next == Measure.load;
@@ -252,6 +255,7 @@ class DashboardState extends ChangeNotifier {
   /// Sorts by [test] (or [sortByName]); the same column again flips the
   /// direction.
   void sortBy(String test) {
+    if (run?.isLegacy ?? false) _currentMethodSortDesc = null;
     if (sortTest == test) {
       sortDesc = !sortDesc;
     } else {
