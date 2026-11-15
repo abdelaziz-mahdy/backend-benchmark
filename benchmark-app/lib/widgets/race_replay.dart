@@ -109,6 +109,9 @@ class _Lane {
   }
 
   double get top => steps.isEmpty ? 0 : steps.last.targetRps;
+
+  /// It has already failed a step at or below [rate]: out of the race.
+  bool outBy(double rate) => steps.any((s) => s.targetRps <= rate && !s.pass);
 }
 
 class _RaceReplayState extends State<RaceReplay>
@@ -203,9 +206,15 @@ class _RaceReplayState extends State<RaceReplay>
         : (math.log(math.max(rps, base) / base) / math.log(top / base) * 0.94 +
                   0.06)
               .clamp(0.0, 1.0);
-    // Best held so far first: lanes overtake as the replay climbs.
+    // Still climbing first, then best held so far: a framework that has
+    // already failed never leads one that has not, even when its extra
+    // steps passed a rate the other simply never tried.
     final order = [..._lanes]
       ..sort((a, b) {
+        final out = a.outBy(rate) == b.outBy(rate)
+            ? 0
+            : (a.outBy(rate) ? 1 : -1);
+        if (out != 0) return out;
         final c = (b.heldUpTo(rate) ?? 0).compareTo(a.heldUpTo(rate) ?? 0);
         return c != 0 ? c : a.backend.name.compareTo(b.backend.name);
       });

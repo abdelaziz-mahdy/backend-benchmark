@@ -216,13 +216,14 @@ class DashboardState extends ChangeNotifier {
 
   /// Adds [key] to the comparison, or removes it. Never drops a pick to
   /// make room: a full comparison ignores a new key.
-  void toggleCompare(String key) {
+  /// Adds or removes [key]. With [restore] (Compare's own remove, where the
+  /// set-aside picks are explained), a freed place brings one back.
+  void toggleCompare(String key, {bool restore = false}) {
     parkedCompare.remove(key);
     if (!compareKeys.remove(key)) {
       if (compareKeys.length >= maxCompare) return;
       compareKeys.add(key);
-    } else {
-      // A freed place brings back a set-aside pick this run has.
+    } else if (restore) {
       final r = run;
       final back = parkedCompare
           .where((k) => r?.backend(k) != null)
@@ -232,6 +233,17 @@ class DashboardState extends ChangeNotifier {
         compareKeys.add(back);
       }
     }
+    notifyListeners();
+  }
+
+  /// Puts back what "Clear all" took, set-aside picks included (Undo).
+  void restoreCompare(List<String> picks, List<String> parked) {
+    compareKeys
+      ..clear()
+      ..addAll(picks);
+    parkedCompare
+      ..clear()
+      ..addAll(parked);
     notifyListeners();
   }
 

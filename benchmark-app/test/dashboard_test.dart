@@ -748,9 +748,21 @@ void main() {
         state.toggleCompare(k);
       }
       state.parkedCompare.add(keys[4]);
+      // Elsewhere a remove only removes.
       state.toggleCompare(keys[0]);
+      expect(state.compareKeys, isNot(contains(keys[4])));
+      // Compare's own remove brings the set-aside pick back.
+      state.toggleCompare(keys[0]);
+      state.toggleCompare(keys[0], restore: true);
       expect(state.compareKeys, contains(keys[4]));
       expect(state.parkedCompare, isEmpty);
+      // Clear all, then Undo, puts back picks and set-aside picks.
+      final picks = [...state.compareKeys];
+      state.parkedCompare.add('gone-framework');
+      state.clearCompare();
+      state.restoreCompare(picks, ['gone-framework']);
+      expect(state.compareKeys, picks);
+      expect(state.parkedCompare, ['gone-framework']);
     });
 
     testWidgets('a copied link keeps an older run', (t) async {

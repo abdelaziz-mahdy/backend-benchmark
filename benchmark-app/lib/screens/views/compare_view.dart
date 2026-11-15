@@ -216,25 +216,22 @@ class CompareView extends StatelessWidget {
                 label: 'Clear all',
                 onTap: () {
                   final was = [...state.compareKeys];
+                  final aside = [...state.parkedCompare];
+                  final n = was.length + aside.length;
                   state.clearCompare();
                   ScaffoldMessenger.maybeOf(context)
                     ?..hideCurrentSnackBar()
                     ..showSnackBar(
                       SnackBar(
+                        // Set-aside picks count too, and Undo puts both back.
                         content: Text(
-                          'Cleared ${numberWord(was.length)} '
-                          '${was.length == 1 ? 'framework' : 'frameworks'}.',
+                          'Cleared ${numberWord(n)} '
+                          '${n == 1 ? 'framework' : 'frameworks'}.',
                         ),
                         behavior: SnackBarBehavior.floating,
                         action: SnackBarAction(
                           label: 'Undo',
-                          onPressed: () {
-                            for (final k in was) {
-                              if (!state.compareKeys.contains(k)) {
-                                state.toggleCompare(k);
-                              }
-                            }
-                          },
+                          onPressed: () => state.restoreCompare(was, aside),
                         ),
                       ),
                     );
@@ -283,7 +280,7 @@ class _Picked extends StatelessWidget {
             for (final b in picked)
               Pressable(
                 key: ValueKey('picked-${b.key}'),
-                onTap: () => state.toggleCompare(b.key),
+                onTap: () => state.toggleCompare(b.key, restore: true),
                 radius: 999,
                 semanticLabel: 'Remove ${b.name}',
                 builder: (context, hovered) => Container(
