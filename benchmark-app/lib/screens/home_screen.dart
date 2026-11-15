@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../state/dashboard_state.dart';
 import '../utils/theme_constants.dart';
+import '../widgets/calm.dart' show Messages;
 import '../widgets/common.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/run_switcher.dart';
@@ -45,18 +46,22 @@ class _HomeScreenState extends State<HomeScreen> {
     if (s == null) return;
     // Gone once another run is chosen or loads: its Try again would be stale.
     // Only this message: an Undo shown since stays.
-    if (_failureSnack != null && s.failedRun == null) {
-      _failureSnack!.close();
+    final shown = _failureSnack;
+    if (shown != null && s.failedRun == null) {
       _failureSnack = null;
+      try {
+        shown.close();
+      } on StateError {
+        // It timed out a moment ago and is already gone.
+      }
     }
     if (s.runFailures == _failuresSeen) return;
     _failuresSeen = s.runFailures;
     final failed = s.failedRun;
-    if (failed == null || !mounted) return;
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger.hideCurrentSnackBar();
-    final snack = messenger.showSnackBar(
+    // Another message (an Undo) stays: the note on the page says it too.
+    if (failed == null || !mounted || Messages.open > 0) return;
+    final snack = Messages.show(
+      context,
       SnackBar(
         content: Text(
           'Could not load '
@@ -72,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+    if (snack == null) return;
     _failureSnack = snack;
     snack.closed.then((_) {
       if (identical(_failureSnack, snack)) _failureSnack = null;

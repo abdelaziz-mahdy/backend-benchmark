@@ -486,6 +486,16 @@ class DashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sets aside [keys] that are neither picked nor set aside (those the run
+  /// on screen lacks come back by themselves on a run that has them).
+  void setAside(Iterable<String> keys) {
+    for (final k in keys) {
+      if (compareKeys.contains(k) || parkedCompare.contains(k)) continue;
+      parkedCompare.add(k);
+      if (run?.backend(k) == null) _awayForRun.add(k);
+    }
+  }
+
   /// Sets aside [keys] the run on screen lacks (and that are not picked or
   /// set aside already), so they come back on a run that has them.
   void setAsideMissing(Iterable<String> keys) {

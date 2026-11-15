@@ -950,3 +950,23 @@ IconData testIcon(String id) => switch (id) {
   'no_db' || 'no_db_test' => Icons.bolt_outlined,
   _ => Icons.science_outlined,
 };
+
+/// Floating messages, counted while open, so a lesser one (one that also
+/// shows on the page) never pushes away another, such as an Undo.
+abstract final class Messages {
+  static int open = 0;
+
+  /// Shows [bar] in place of the current message.
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? show(
+    BuildContext context,
+    SnackBar bar,
+  ) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return null;
+    messenger.hideCurrentSnackBar();
+    final c = messenger.showSnackBar(bar);
+    open++;
+    c.closed.whenComplete(() => open--);
+    return c;
+  }
+}

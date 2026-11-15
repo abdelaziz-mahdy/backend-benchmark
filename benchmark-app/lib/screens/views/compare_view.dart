@@ -247,25 +247,24 @@ class CompareView extends StatelessWidget {
                   final away = state.awayForRun;
                   final n = was.length + aside.length;
                   state.clearCompare();
-                  ScaffoldMessenger.maybeOf(context)
-                    ?..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      SnackBar(
-                        // Set-aside picks count too, and Undo puts both back.
-                        content: Text(
-                          'Cleared ${numberWord(n)} '
-                          '${n == 1 ? 'framework' : 'frameworks'}.',
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                        // Times out, so a stale Undo cannot replace newer
-                        // picks.
-                        persist: false,
-                        action: SnackBarAction(
-                          label: 'Undo',
-                          onPressed: () => state.undoClear(was, aside, away),
-                        ),
+                  Messages.show(
+                    context,
+                    SnackBar(
+                      // Set-aside picks count too, and Undo puts both back.
+                      content: Text(
+                        'Cleared ${numberWord(n)} '
+                        '${n == 1 ? 'framework' : 'frameworks'}.',
                       ),
-                    );
+                      behavior: SnackBarBehavior.floating,
+                      // Times out, so a stale Undo cannot replace newer
+                      // picks.
+                      persist: false,
+                      action: SnackBarAction(
+                        label: 'Undo',
+                        onPressed: () => state.undoClear(was, aside, away),
+                      ),
+                    ),
+                  );
                 },
               ),
             if (picked.length >= 2)

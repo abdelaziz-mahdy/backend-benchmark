@@ -141,6 +141,10 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
   /// The next report replaces the current entry (a cancelled Back's).
   bool _replaceNext = false;
 
+  /// Try again is replaying a failed entry: when it lands, it replaces the
+  /// stand-in entry instead of adding one.
+  bool _retrying = false;
+
   /// The entry being applied needed a run change first, and the picks and
   /// set-aside picks before that change (none of them may be lost).
   bool _crossedRun = false;
@@ -219,6 +223,7 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
             const {'one', 'f'}.contains(parts.firstOrNull) && parts.length > 1
             ? parts[1]
             : null;
+        final before = _beforeCross;
         final here = Uri(
           path: pending.uri.path,
           queryParameters: query.isEmpty ? null : query,
@@ -228,17 +233,25 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
           openedAs: pending.state == null ? pending.uri : null,
           replace: pending.state != null,
           after: () {
+            // A link replaces the picks; those on screen are set aside.
+            state.setAside(before);
             state.setAsideMissing(wanted);
             if (framework != null && state.run?.backend(framework) == null) {
               state.missingKey = framework;
             }
           },
         );
-        // Try again replays the whole entry, as a Back that worked would.
-        state.retryFailed = () => _apply(pending);
+        // Try again replays the whole entry, as a Back that worked would,
+        // in place of the stand-in entry shown meanwhile.
+        _retrying = false;
+        state.retryFailed = () {
+          _retrying = true;
+          _apply(pending);
+        };
       } else {
         // The visitor acted while it waited: their action wins. The waiting
         // entry was never shown, so it is replaced by what is.
+        _retrying = false;
         _crossedRun = false;
         _beforeCross = const [];
         _last = null;
@@ -360,12 +373,13 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
       // entry is replaced, never followed by a new one.
       _openedAs = null;
       _openedFor = null;
-      _report(replace: replace || _last != uri);
+      _report(replace: replace || _retrying || _last != uri);
     } else {
       _openedAs = openedAs ?? uri;
       _openedFor = _last;
-      notifyListeners();
+      _report(replace: _retrying);
     }
+    _retrying = false;
   }
 
   @override
