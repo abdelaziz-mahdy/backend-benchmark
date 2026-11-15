@@ -110,9 +110,13 @@ class DashboardState extends ChangeNotifier {
       // has other tests), and the way back restores the test chosen before.
       String? fit(String? want, String? remembered) {
         if (want != null && tests.contains(want)) return want;
+        // The test chosen before the old-method run, only while the old
+        // run still shows its match (no newer choice made there).
         if (!loaded.isLegacy &&
             remembered != null &&
-            tests.contains(remembered)) {
+            tests.contains(remembered) &&
+            want != null &&
+            legacyScenario(remembered) == want) {
           return remembered;
         }
         if (want != null) {

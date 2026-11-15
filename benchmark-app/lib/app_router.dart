@@ -231,12 +231,14 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
           restorePicks: crossed || fresh,
           keep: before,
           // On History and Method the results underneath, test included,
-          // stay as the visitor left them; across a run change (which may
-          // reset the test) the entry's saved test brings that back.
+          // stay as the visitor left them, run change or not (the run
+          // change itself carries the test across).
           linkHasTest:
-              const {'history', 'method'}.contains(uri.pathSegments.firstOrNull)
-              ? !crossed
-              : uri.queryParameters.containsKey('s'),
+              uri.queryParameters.containsKey('s') ||
+              const {
+                'history',
+                'method',
+              }.contains(uri.pathSegments.firstOrNull),
         );
         // Picks Back put on screen are the visitor's from now on, so a
         // later Forward to an entry saved without them keeps them.
