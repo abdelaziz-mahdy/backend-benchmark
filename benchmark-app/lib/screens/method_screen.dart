@@ -768,18 +768,22 @@ class _MethodScreenState extends State<MethodScreen> {
         Points([
           for (final m in metrics)
             Point('${_label(m)}:', _meaning(m, slo, cores, run)),
-          const Point(
-            'Asked for and answered:',
-            'our testing tool asks for a fixed number of requests a second. '
-                '"Answered" is what the app really replied to. Where the step '
-                'chart leaves the dashed diagonal, the app stopped keeping up.',
-          ),
-          const Point(
-            'Limits:',
-            'the three limits a step must meet to pass: slow replies, '
-                'errors and keeping up. Engineers call these an SLO (service '
-                'level objective).',
-          ),
+          // The old method had no steps and no limits.
+          if (!run.isLegacy) ...[
+            const Point(
+              'Asked for and answered:',
+              'our testing tool asks for a fixed number of requests a second. '
+                  '"Answered" is what the app really replied to. Where the '
+                  'step chart leaves the dashed diagonal, the app stopped '
+                  'keeping up.',
+            ),
+            const Point(
+              'Limits:',
+              'the three limits a step must meet to pass: slow replies, '
+                  'errors and keeping up. Engineers call these an SLO '
+                  '(service level objective).',
+            ),
+          ],
         ]),
       ],
     );
@@ -807,45 +811,50 @@ class _MethodScreenState extends State<MethodScreen> {
   String _meaning(Metric m, Slo slo, int cores, RunSummary run) =>
       capFirst(_meaningText(m, slo, cores, run));
 
-  String _meaningText(Metric m, Slo slo, int cores, RunSummary run) =>
-      switch (m.id) {
-        'sustainable_rps' =>
-          'the busiest step it passed: 99 of every 100 replies within '
-              '${msText(slo.p99Ms)}, fewer than ${_pct(slo.errorRate)} '
-              'errors, and at least ${_pct(slo.servedRatio)} of requests '
-              'answered. The middle of the ${numberWord(_reps(run))} tries.',
-        'peak_rps' =>
-          'the most requests a second it answered at any step, '
-              'however slow the replies were.',
-        'avg_rps' =>
-          'old method: the average requests a second while '
-              'simulated users were added.',
-        'p50_ms' =>
-          'half of all replies came back faster than this, at the '
-              'busiest step it passed.',
-        'p90_ms' => '9 in 10 replies came back faster than this.',
-        'p99_ms' =>
-          '99 of every 100 replies came back within this. Lower is '
-              'better.',
-        'p999_ms' => '999 of every 1,000 replies came back within this.',
-        'error_rate' =>
-          'the share of requests that failed, at the busiest '
-              'step it passed.',
-        'app_cpu' =>
-          'how much of its ${numberWord(cores)} processor cores the app '
-              'used. 100% is all of them.',
-        'app_mem_mb' => 'how much memory the app used, on average.',
-        'db_cpu' =>
-          'how much processor the database used while serving this '
-              'framework. 100% is one full core.',
-        'rps_per_core' =>
-          'requests a second divided by the processor cores '
-              'it really used.',
-        'rps_per_100mb' =>
-          'requests a second for every 100 MB of memory it '
-              'used.',
-        _ => m.help,
-      };
+  String _meaningText(
+    Metric m,
+    Slo slo,
+    int cores,
+    RunSummary run,
+  ) => switch (m.id) {
+    'sustainable_rps' =>
+      'the busiest step it passed: 99 of every 100 replies within '
+          '${msText(slo.p99Ms)}, fewer than ${_pct(slo.errorRate)} '
+          'errors, and at least ${_pct(slo.servedRatio)} of requests '
+          'answered. The middle of the ${numberWord(_reps(run))} tries.',
+    'peak_rps' =>
+      'the most requests a second it answered at any step, '
+          'however slow the replies were.',
+    'avg_rps' =>
+      'old method: the average requests a second while '
+          'simulated users were added.',
+    'p50_ms' =>
+      'half of all replies came back faster than this, '
+          '${run.isLegacy ? 'averaged over the whole test' : 'at the busiest step it passed'}.',
+    'p90_ms' => '9 in 10 replies came back faster than this.',
+    'p99_ms' =>
+      '99 of every 100 replies came back within this. Lower is '
+          'better.',
+    'p999_ms' => '999 of every 1,000 replies came back within this.',
+    'error_rate' =>
+      'the share of requests that failed, '
+          '${run.isLegacy ? 'over the whole test' : 'at the busiest step it passed'}.',
+    'app_cpu' =>
+      'how much of its ${numberWord(cores)} processor '
+          '${cores == 1 ? 'core' : 'cores'} the app used. 100% is '
+          '${cores == 1 ? 'that core' : 'all of them'}.',
+    'app_mem_mb' => 'how much memory the app used, on average.',
+    'db_cpu' =>
+      'how much processor the database used while serving this '
+          'framework. 100% is one full core.',
+    'rps_per_core' =>
+      'requests a second divided by the processor cores '
+          'it really used.',
+    'rps_per_100mb' =>
+      'requests a second for every 100 MB of memory it '
+          'used.',
+    _ => m.help,
+  };
 
   Widget _limits(RunSummary run) {
     final limit = toolLimit(run);
@@ -880,11 +889,14 @@ class _MethodScreenState extends State<MethodScreen> {
                 'things down. Where handling requests is the limit, they show '
                 'similar numbers.',
           ),
-          const Point(
+          Point(
             'The slow reply',
-            "is measured at each framework's own result. A slower framework "
-                'can show a quicker slow reply simply because it served less '
-                'traffic.',
+            run.isLegacy
+                ? 'is an average over the whole old test, which sent the same '
+                      'traffic to every framework.'
+                : "is measured at each framework's own result. A slower "
+                      'framework can show a quicker slow reply simply because '
+                      'it served less traffic.',
           ),
           const Point(
             'Older runs:',
@@ -1227,9 +1239,26 @@ class _RunStaircase extends StatelessWidget {
         : 3;
     final p = context.palette;
     final t = Txt(p);
+    // Others it ties with (the same number, or about the same by Who's
+    // fastest's rule) are named, so the example never claims a lead that
+    // the results page does not back.
+    final results = resultsFor(run, s);
+    final mine = results.where((x) => x.key == b.key).firstOrNull;
+    final topKeys = {for (final x in topGroup(results)) x.key};
+    final tied = [
+      for (final x in results)
+        if (mine != null &&
+            x.key != b.key &&
+            (x.value == mine.value ||
+                (topKeys.contains(b.key) && topKeys.contains(x.key))))
+          x.name,
+    ];
+    final tieNote = tied.isEmpty ? '' : ' (about the same as ${joinAnd(tied)})';
     final pick = b == ranked.first
-        ? 'the fastest framework in this test'
-        : "the fastest framework that did not hit our testing tool's limit";
+        ? '${tied.isEmpty ? 'the fastest framework' : 'one of the fastest frameworks'} '
+              'in this test$tieNote'
+        : "the fastest framework that did not hit our testing tool's "
+              'limit$tieNote';
     final ticks = [
       for (var v = 1000.0; v <= top; v *= 10)
         if (v > base) v,
@@ -1564,6 +1593,9 @@ class _StepBar extends StatelessWidget {
 }
 
 /// Which run the site shows. Lives on the Method page.
+/// The one run picker on the page, so it can be scrolled back into view.
+final _runPickerKey = GlobalKey(debugLabel: 'run picker');
+
 class RunPicker extends StatelessWidget {
   final DashboardState state;
 
@@ -1574,6 +1606,7 @@ class RunPicker extends StatelessWidget {
     final p = context.palette;
     final selected = state.entry;
     return Container(
+      key: _runPickerKey,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: p.bg,
@@ -1612,9 +1645,13 @@ class RunPicker extends StatelessWidget {
                   ),
                 ),
             ],
-            onChanged: (id) {
+            onChanged: (id) async {
               final e = state.index.where((x) => x.id == id).firstOrNull;
-              if (e != null) state.selectRun(e);
+              if (e == null) return;
+              await state.selectRun(e);
+              // Sections above come and go with the run; keep the picker
+              // (and the facts it just changed) on screen.
+              bringIntoView(_runPickerKey);
             },
           ),
         ),

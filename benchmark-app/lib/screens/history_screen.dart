@@ -554,7 +554,10 @@ class _Change extends StatelessWidget {
     final pct = a == 0 ? null : (b - a) / a * 100;
     final better = metric.higherIsBetter ? b > a : b < a;
     final same = _fmt(metric, a) == _fmt(metric, b);
-    final tone = same ? p.muted : (better ? p.accent : p.danger);
+    // Reply times, processor and memory were measured at each run's own
+    // result, so a change in them is not "better" or "worse" by itself.
+    final race = metric.isRace;
+    final tone = same || !race ? p.muted : (better ? p.accent : p.danger);
     final s = proseStyle(context);
     return Wrap(
       spacing: 12,
@@ -590,8 +593,12 @@ class _Change extends StatelessWidget {
                 color: tone,
               ),
               Text(
-                '${pct >= 0 ? '+' : '−'}${pct.abs().round()}% '
-                '${better ? '(better)' : '(worse)'}',
+                '${pct >= 0 ? '+' : '−'}${pct.abs().round()}%'
+                '${!race
+                    ? ''
+                    : better
+                    ? ' (better)'
+                    : ' (worse)'}',
                 style: t.num(15).copyWith(color: tone),
               ),
             ],
@@ -638,6 +645,12 @@ class _Snapshot extends StatelessWidget {
     final t = Txt(p);
     final m = group.metric;
     final best = last(lines.first.$3);
+    // Only a race (requests a second) gets places and "longer is better";
+    // the rest were measured at each framework's own result.
+    final race = m.isRace;
+    final most = lines
+        .map((l) => last(l.$3) ?? 0)
+        .fold(0.0, (a, v) => v > a ? v : a);
     // Equal values share a place (1st, 2nd, 2nd, 4th).
     final places = <int>[];
     for (var i = 0; i < lines.length; i++) {
@@ -660,7 +673,15 @@ class _Snapshot extends StatelessWidget {
                 : 'and each framework is in only one of them, so there is no '
                       'line to draw yet.',
           ),
-          const Point('Longer bar is better.', 'Ranked from best to worst.'),
+          if (race)
+            const Point('Longer bar is better.', 'Ranked from best to worst.')
+          else
+            const Point(
+              'Not a race:',
+              'each framework was measured at its own result, so these '
+                  'numbers describe it rather than rank it. Longer bar = a '
+                  'bigger number.',
+            ),
         ]),
         const SizedBox(height: 16),
         LayoutBuilder(
@@ -673,13 +694,17 @@ class _Snapshot extends StatelessWidget {
                   if (i > 0) const SizedBox(height: 10),
                   () {
                     final color = BackendColors.of(lines[i].$1);
-                    final place = SizedBox(
-                      width: 40,
-                      child: Text(
-                        _ordinal(places[i]),
-                        style: t.small.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                    );
+                    final place = race
+                        ? SizedBox(
+                            width: 40,
+                            child: Text(
+                              _ordinal(places[i]),
+                              style: t.small.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink();
                     final who = [
                       LangBadge.of(lines[i].$1, lang(lines[i].$1), size: 20),
                       const SizedBox(width: 8),
@@ -696,7 +721,11 @@ class _Snapshot extends StatelessWidget {
                       style: t.num(15.5),
                     );
                     final bar = SpeedBar(
-                      share: barShare(m, last(lines[i].$3), best),
+                      share: race
+                          ? barShare(m, last(lines[i].$3), best)
+                          : most <= 0
+                          ? 0
+                          : (last(lines[i].$3) ?? 0) / most,
                       color: color,
                       capped: group.capped.contains(lines[i].$1),
                       height: 10,

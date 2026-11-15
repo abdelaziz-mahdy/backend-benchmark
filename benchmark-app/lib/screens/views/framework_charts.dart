@@ -315,8 +315,9 @@ class _Percentiles extends StatelessWidget {
     return ChartBlock(
       title: 'Reply times',
       subtitle:
-          'How fast replies came back at its result: half of them were '
-          'faster than the first bar, and so on.'
+          'How fast replies came back '
+          '${run.isLegacy ? 'during the old test' : 'at its result'}: half of '
+          'them were faster than the first bar, and so on.'
           '${limit == null ? '' : ' The red mark is the ${msText(limit)} limit.'}',
       child: Column(
         children: [

@@ -416,10 +416,26 @@ String answerFor(List<Result> results) {
   } else {
     out.add('${capFirst(leader.name)} is the fastest.');
   }
-  final rest = sorted.where((r) => !top.contains(r.key)).take(followers);
-  for (final (i, r) in rest.indexed) {
-    final how = leader.value <= 0 ? '' : ', ${asFast(r.value / leader.value)}';
-    out.add(i == 0 ? 'Next is ${r.name}$how.' : 'Then ${r.name}$how.');
+  // The rest in blocks of equal numbers, so frameworks with the same
+  // number are named together: "Next are A and B, about half as fast."
+  final rest = sorted.where((r) => !top.contains(r.key)).toList();
+  final blocks = <List<Result>>[];
+  for (final r in rest) {
+    if (blocks.isNotEmpty && blocks.last.first.value == r.value) {
+      blocks.last.add(r);
+    } else {
+      blocks.add([r]);
+    }
+  }
+  for (final (i, block) in blocks.take(followers).indexed) {
+    final v = block.first.value;
+    final how = leader.value <= 0 ? '' : ', ${asFast(v / leader.value)}';
+    final who = _names(block);
+    out.add(
+      i == 0
+          ? 'Next ${block.length == 1 ? 'is' : 'are'} $who$how.'
+          : 'Then $who$how.',
+    );
   }
   return (out.join(' '), limitSaid);
 }
@@ -766,8 +782,9 @@ String metricMeaning(Metric m, RunSummary run) {
       '999 of every 1,000 replies came back within this. Lower is better.',
     'error_rate' => 'The share of requests that failed. Lower is better.',
     'app_cpu' =>
-      'How much of its ${numberWord(cores)} processor cores the app used. '
-          '100% is all of them. Lower is better.',
+      'How much of its ${numberWord(cores)} processor '
+          '${cores == 1 ? 'core' : 'cores'} the app used. 100% is '
+          '${cores == 1 ? 'that core' : 'all of them'}. Lower is better.',
     'app_mem_mb' => 'How much memory the app used. Lower is better.',
     'db_cpu' =>
       "How much processor the database used while serving this framework. "

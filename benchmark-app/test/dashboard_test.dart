@@ -447,6 +447,13 @@ void main() {
       );
     });
 
+    test('frameworks with the same number are named together', () {
+      expect(
+        answerFor([res('a', 40000), res('b', 30000), res('c', 30000)]),
+        'A is the fastest. Next are b and c, about three-quarters as fast.',
+      );
+    });
+
     test('equal numbers join the top together or not at all', () {
       // express (bun) overlaps the leader, express (node) has the same
       // number but does not: neither is called "about the same".

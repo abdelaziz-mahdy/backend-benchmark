@@ -681,7 +681,7 @@ class _ChartsState extends State<_Charts> {
           'The whole test, warm-up included. Faster frameworks ran more '
           'steps, so their lines are longer.'
           '${switch (mode) {
-            _OverTime.cpu => ' Processor: how much of its ${numberWord(cores)} cores each one used; 100% is all of them.',
+            _OverTime.cpu => ' Processor: how much of its ${numberWord(cores)} ${cores == 1 ? 'core' : 'cores'} each one used; 100% is ${cores == 1 ? 'that core' : 'all of them'}.',
             _OverTime.dbCpu => " Database: the database's processor use; 100% is one core.",
             _ => '',
           }}',
