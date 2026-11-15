@@ -487,7 +487,8 @@ class _Shared extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'All ${numberWord(picked.length)} handled ${whole(shared.rps)} '
+          '${picked.length == 2 ? 'Both' : 'All ${numberWord(picked.length)}'} '
+          'handled ${whole(shared.rps)} '
           'requests a second. At that same rate, from each one\'s recorded '
           'steps:',
           style: t.body,

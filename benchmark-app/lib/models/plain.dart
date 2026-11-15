@@ -733,8 +733,9 @@ String metricMeaning(Metric m, RunSummary run) {
   return switch (m.id) {
     'sustainable_rps' =>
       'The main result: the busiest step it passed while 99 of every 100 '
-          'replies came back ${sloPhrase(run)}, with few errors. Higher is '
-          'better.',
+          'replies came back ${sloPhrase(run)}, fewer than 1 in 100 failed '
+          'and it kept up with at least ${keptUp(run)} of the requests. '
+          'Higher is better.',
     'peak_rps' =>
       'The most requests a second it answered at any step, however slow the '
           'replies were. Higher is better.',

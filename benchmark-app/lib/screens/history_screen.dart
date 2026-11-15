@@ -27,8 +27,8 @@ final _historyMetrics = [
 
 String _metricMeaning(Metric m) => switch (m.id) {
   'sustainable_rps' =>
-    'The main result: the most requests a second it handled while staying '
-        'fast and error-free. Higher is better.',
+    'The main result: the most requests a second it handled while replies '
+        'stayed fast, few failed and it kept up. Higher is better.',
   'avg_rps' =>
     'Old method: the average requests a second while users were added. '
         'Higher is better.',
@@ -169,7 +169,7 @@ class HistoryGroup {
                 switch (r.headline[k]?[sc]?[m.id]) {
                   // The app processor is recorded per core; shown, as on
                   // every other page, as a share of the app's own cores.
-                  final v? when m.id == 'app_cpu' => v / cores,
+                  final v? when m.id == 'app_cpu' => math.min(100.0, v / cores),
                   final v => v,
                 },
             ],
@@ -478,6 +478,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
               lines: lines,
               highlight: focus,
               format: (v) => _fmt(g.metric, v),
+              // A share of its cores never passes 100%.
+              top: g.metric.id == 'app_cpu' && !legacy ? 100 : null,
             ),
           ],
         ],

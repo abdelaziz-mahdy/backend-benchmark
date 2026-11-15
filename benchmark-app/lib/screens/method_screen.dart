@@ -251,8 +251,8 @@ class _MethodScreenState extends State<MethodScreen> {
         run.isLegacy ? 'What the old numbers are' : 'What the result means',
         run.isLegacy
             ? 'The average requests a second while users were added.'
-            : 'The busiest step it handled while staying fast and '
-                  'error-free.',
+            : 'The busiest step it handled while replies stayed fast, few '
+                  'failed and it kept up.',
         Icons.flag_outlined,
         _sustainable(run),
       ),
@@ -334,7 +334,7 @@ class _MethodScreenState extends State<MethodScreen> {
         FactCard(
           icon: Icons.check_circle_outline,
           label: 'To pass a step',
-          value: 'Fast, error-free, keeping up',
+          value: 'Fast, few errors, keeping up',
           detail:
               '99 of every 100 replies within ${msText(slo.p99Ms)}, fewer '
               'than ${_pct(slo.errorRate)} errors, and at least '
@@ -776,8 +776,9 @@ class _MethodScreenState extends State<MethodScreen> {
           ),
           const Point(
             'Limits:',
-            'the reply-time and error limits a step must meet to pass. '
-                'Engineers call these an SLO (service level objective).',
+            'the three limits a step must meet to pass: slow replies, '
+                'errors and keeping up. Engineers call these an SLO (service '
+                'level objective).',
           ),
         ]),
       ],

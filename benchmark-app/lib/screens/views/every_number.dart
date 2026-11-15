@@ -477,25 +477,39 @@ class _Table extends StatelessWidget {
 }
 
 /// The last column: add the framework to Compare, or take it out.
-class _CompareToggle extends StatelessWidget {
+class _CompareToggle extends StatefulWidget {
   final DashboardState state;
   final BackendResult backend;
 
   const _CompareToggle({required this.state, required this.backend});
 
   @override
+  State<_CompareToggle> createState() => _CompareToggleState();
+}
+
+class _CompareToggleState extends State<_CompareToggle> {
+  final _tip = GlobalKey<TooltipState>();
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
+    final backend = widget.backend;
     final p = context.palette;
     final on = state.compareKeys.contains(backend.key);
     final can = state.canAddCompare(backend.key);
     return Tooltip(
+      key: _tip,
       message: on
           ? 'Remove from compare'
           : can
           ? 'Add to compare'
-          : 'Compare is full (${DashboardState.maxCompare})',
+          : 'Compare holds up to ${DashboardState.maxCompare}. Remove one '
+                'there to add this one.',
       child: Pressable(
-        onTap: can ? () => state.toggleCompare(backend.key) : null,
+        // When Compare is full a tap still answers, right at the button.
+        onTap: can
+            ? () => state.toggleCompare(backend.key)
+            : () => _tip.currentState?.ensureTooltipVisible(),
         radius: 22,
         minWidth: 44,
         selected: on,

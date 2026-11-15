@@ -481,7 +481,11 @@ class HistoryChart extends StatelessWidget {
     required this.lines,
     required this.format,
     this.highlight,
+    this.top,
   });
+
+  /// A fixed top for the value axis (100 for a share of cores).
+  final double? top;
 
   @override
   Widget build(BuildContext context) {
@@ -550,8 +554,10 @@ class HistoryChart extends StatelessWidget {
       );
     }
     // Headroom above the highest point, so it sits under a labelled line.
-    final interval = _niceInterval(maxY * 1.1);
-    final top = ((maxY * 1.1) / interval).ceil() * interval;
+    final interval = this.top != null
+        ? this.top! / 4
+        : _niceInterval(maxY * 1.1);
+    final top = this.top ?? ((maxY * 1.1) / interval).ceil() * interval;
     final single = labels.length == 1;
     return SizedBox(
       height: 260,

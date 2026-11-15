@@ -472,8 +472,8 @@ class _ExtraTable extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Bullets([
-          'All of these were measured while the framework was handling the '
-              'number of requests shown above.',
+          'All of these were measured at its result: the busiest step it '
+              'passed (tap its bar above for that number).',
           'Typical reply: ${Measure.typical.meaning}.',
           'Slow reply: ${Measure.slow.meaning}.',
           'Processor: how much of its ${numberWord(cores)} processor '
