@@ -42,6 +42,11 @@ class DashboardState extends ChangeNotifier {
   /// Test the chart sections (and History) show.
   String? scenario;
 
+  /// The test History shows. History offers the newest runs' tests even
+  /// while an old run is loaded, so it keeps its own choice (and its own
+  /// place in the URL) instead of changing [scenario].
+  String? historyTest;
+
   /// Framework open in One framework.
   String? selectedKey;
 
@@ -159,9 +164,18 @@ class DashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Only a test the loaded run has; anything else would leave the views
+  /// showing "not measured" for a test that does not exist here.
   void setScenario(String next) {
     if (scenario == next) return;
+    if (run != null && !run!.scenarios.contains(next)) return;
     scenario = next;
+    notifyListeners();
+  }
+
+  void setHistoryTest(String next) {
+    if (historyTest == next) return;
+    historyTest = next;
     notifyListeners();
   }
 
@@ -232,6 +246,7 @@ class DashboardState extends ChangeNotifier {
     if (scenario != null && r.scenarios.contains(scenario)) {
       this.scenario = scenario;
     }
+    if (page == DashboardPage.history) historyTest = scenario;
     if (page == DashboardPage.home && view == HomeView.one) {
       selectedKey = selected != null && keys.contains(selected)
           ? selected

@@ -568,7 +568,7 @@ class _MethodScreenState extends State<MethodScreen> {
                 'not what slows things down.',
           ),
           const Point(
-            'Serverpod and FOAM',
+            'serverpod and foam3',
             'have their own way of calling the server (RPC) instead of plain '
                 'web addresses. We call them that way, with the same four '
                 'operations.',
@@ -861,8 +861,8 @@ class _MethodScreenState extends State<MethodScreen> {
               'it tops out around $around requests a second on this computer '
                   'in No database, and lower in the tests that use the '
                   'database, where it has more work per request. Frameworks '
-                  "that hit it get a striped bar end; their real limit is "
-                  'higher.',
+                  "that hit it get a striped bar end; they may be faster than "
+                  'their number.',
             ),
           const Point(
             'One computer:',
@@ -872,7 +872,7 @@ class _MethodScreenState extends State<MethodScreen> {
           ),
           const Point(
             'Storage options',
-            'of one framework (such as FOAM3 with its own built-in store, or '
+            'of one framework (such as foam3 with its own built-in store, or '
                 'with PostgreSQL) only differ where storage is what slows '
                 'things down. Where handling requests is the limit, they show '
                 'similar numbers.',
@@ -1257,7 +1257,7 @@ class _RunStaircase extends StatelessWidget {
           const SizedBox(height: 12),
           Lead(
             'This is what our testing tool did to ${b.name} in the '
-            '"${test.title}" test. ${b.name} is $pick.',
+            '"${test.title}" test. ${capFirst(b.name)} is $pick.',
           ),
           const SizedBox(height: 20),
           Text('Requests a second', style: t.small.copyWith(fontSize: 13.5)),
@@ -1393,7 +1393,7 @@ class _RunStaircase extends StatelessWidget {
               ),
             Point(
               'Flag:',
-              'the busiest step it passed. Its bar is the darkest.',
+              'the busiest step it passed. Its bar is solid and stands out.',
               leading: Icon(Icons.flag, size: 18, color: p.accent),
             ),
             const Point(
@@ -1586,39 +1586,26 @@ class RunPicker extends StatelessWidget {
             dropdownColor: p.surface,
             icon: Icon(Icons.expand_more, color: p.text, size: 22),
             style: Txt(p).body.copyWith(fontSize: 15.5),
-            itemHeight: 48,
+            // Two lines per run, wrapping instead of "…", so runs on the
+            // same computer can be told apart on a phone too.
+            itemHeight: null,
+            selectedItemBuilder: (context) => [
+              for (final e in state.index)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: _runLines(context, e),
+                  ),
+                ),
+            ],
             items: [
               for (final e in state.index)
                 DropdownMenuItem(
                   value: e.id,
-                  child: Row(
-                    children: [
-                      Icon(
-                        switch (e.kind) {
-                          RunKind.latest => Icons.auto_awesome,
-                          RunKind.legacy => Icons.history,
-                          RunKind.run => Icons.play_circle_outline,
-                        },
-                        size: 17,
-                        color: e.kind == RunKind.latest ? p.accent : p.muted,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          // The detail tells apart runs on the same computer.
-                          '${runLabel(e, newest: state.index.firstOrNull)} · '
-                          '${runDetail(e)}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (e.dirty) ...[
-                        const SizedBox(width: 6),
-                        const Flag(
-                          text: 'modified',
-                          tooltip: 'Made from code with changes not yet saved.',
-                        ),
-                      ],
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: _runLines(context, e),
                   ),
                 ),
             ],
@@ -1629,6 +1616,53 @@ class RunPicker extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// A run's icon, its name and, under it, its method and size.
+  Widget _runLines(BuildContext context, RunIndexEntry e) {
+    final p = context.palette;
+    final t = Txt(p);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(
+            switch (e.kind) {
+              RunKind.latest => Icons.auto_awesome,
+              RunKind.legacy => Icons.history,
+              RunKind.run => Icons.play_circle_outline,
+            },
+            size: 17,
+            color: e.kind == RunKind.latest ? p.accent : p.muted,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                runLabel(e, newest: state.index.firstOrNull),
+                style: t.body.copyWith(fontSize: 15.5, height: 1.25),
+              ),
+              Text(
+                runDetail(e),
+                style: t.small.copyWith(fontSize: 13.5, height: 1.25),
+              ),
+            ],
+          ),
+        ),
+        if (e.dirty) ...[
+          const SizedBox(width: 6),
+          const Flag(
+            text: 'modified',
+            tooltip: 'Made from code with changes not yet saved.',
+          ),
+        ],
+      ],
     );
   }
 }

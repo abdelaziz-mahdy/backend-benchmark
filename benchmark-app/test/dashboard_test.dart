@@ -607,6 +607,18 @@ void main() {
       expect(state.compareKeys, contains('foam3'));
     });
 
+    testWidgets('a test the loaded run lacks is never set', (t) async {
+      final state = await pumpApp(t, realisticBundle());
+      final before = state.scenario;
+      state.setScenario('no_such_test');
+      expect(state.scenario, before);
+      // History keeps its own test, in its own URL.
+      state.setPage(DashboardPage.history);
+      state.setHistoryTest('db_write');
+      expect(locationOf(state).queryParameters['s'], 'db_write');
+      expect(state.scenario, before);
+    });
+
     testWidgets('a copied link keeps an older run', (t) async {
       final state = await pumpApp(t, twoRunBundle());
       expect(locationOf(state).queryParameters, isNot(contains('run')));

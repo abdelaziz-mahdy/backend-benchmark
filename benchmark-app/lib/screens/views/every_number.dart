@@ -119,7 +119,7 @@ class EveryNumberView extends StatelessWidget {
                   'handled while 99 of every 100 replies came back '
                   '${sloPhrase(run)}. Higher is better.',
             if (anyCapped)
-              'A plus sign (+) means the framework reached the most our test '
+              'A plus sign (+) means the framework reached the most our testing '
                   'tool could send. Its real figure may be higher.',
           ] else ...[
             '${m.label}: ${m == Measure.processor ? 'how much of its ${numberWord(cores)} processor ${cores == 1 ? 'core' : 'cores'} the framework used' : m.meaning}. Lower is better.',
@@ -128,7 +128,14 @@ class EveryNumberView extends StatelessWidget {
             if (m == Measure.typical || m == Measure.slow)
               '"ms" means milliseconds. 1,000 ms is one second.',
           ],
-          'A dash means the framework was not measured in that test.',
+          if (rows.any(
+            (b) => tests.any(
+              (s) =>
+                  b.scenarios[s] == null ||
+                  m.value(b.scenarios[s]!, state.headline) == null,
+            ),
+          ))
+            'A dash means the framework was not measured in that test.',
           'Select a framework name to see everything about it. The last '
               'column adds it to Compare (up to ${DashboardState.maxCompare}).',
           if (state.selectedKey != null &&

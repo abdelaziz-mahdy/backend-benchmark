@@ -12,6 +12,7 @@ import '../../widgets/calm.dart';
 import '../../widgets/charts.dart';
 import '../../widgets/common.dart';
 import '../../widgets/implementation.dart';
+import '../../widgets/race_replay.dart' show Slo;
 
 /// Picks the test the chart sections show (shared with History).
 class TestPicker extends StatelessWidget {
@@ -281,7 +282,7 @@ class _AllNumbers extends StatelessWidget {
   }
 }
 
-/// Reply time percentiles as bars, with the 100 ms limit marked.
+/// Reply time percentiles as bars, with the reply-time limit marked.
 class _Percentiles extends StatelessWidget {
   final BackendResult backend;
   final ScenarioResult result;
@@ -302,14 +303,18 @@ class _Percentiles extends StatelessWidget {
     final top = rows
         .map((e) => e.$1.value(result)!)
         .reduce((a, b) => a > b ? a : b);
+    // The old method had no reply-time limit, so it gets no mark.
+    final run = context.read<DashboardState>().run!;
+    final double? limit = run.isLegacy ? null : Slo.of(run.params).p99Ms;
     // The scale always reaches past the limit so its mark is on the track.
-    final max = (top > 100 ? top : 100) * 1.15;
+    final max = (limit != null && limit > top ? limit : top) * 1.15;
     final color = identityColor(p, backend.key);
     return ChartBlock(
       title: 'Reply times',
       subtitle:
           'How fast replies came back at its result: half of them were '
-          'faster than the first bar, and so on. The red mark is 100 ms.',
+          'faster than the first bar, and so on.'
+          '${limit == null ? '' : ' The red mark is the ${msText(limit)} limit.'}',
       child: Column(
         children: [
           for (final (i, (m, label)) in rows.indexed)
@@ -330,15 +335,16 @@ class _Percentiles extends StatelessWidget {
                             height: 10,
                             stagger: i * 0.1,
                           ),
-                          Positioned(
-                            left: c.maxWidth * 100 / max - 1,
-                            top: -3,
-                            child: Container(
-                              width: 2,
-                              height: 16,
-                              color: p.danger,
+                          if (limit != null)
+                            Positioned(
+                              left: c.maxWidth * limit / max - 1,
+                              top: -3,
+                              child: Container(
+                                width: 2,
+                                height: 16,
+                                color: p.danger,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),

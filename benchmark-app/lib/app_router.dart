@@ -37,7 +37,12 @@ Uri _place(DashboardState s) {
     queryParameters: withScenario && scenario != null ? {'s': scenario} : null,
   );
   return switch (s.page) {
-    DashboardPage.history => at('/history'),
+    DashboardPage.history => Uri(
+      path: '/history',
+      queryParameters: (s.historyTest ?? scenario) == null
+          ? null
+          : {'s': s.historyTest ?? scenario!},
+    ),
     DashboardPage.method => at('/method', withScenario: false),
     DashboardPage.home => switch (s.view) {
       HomeView.short => Uri(path: '/'),

@@ -39,7 +39,7 @@ String runDetail(RunIndexEntry e) => [
       : 'method version ${methodNumber(e)}',
   if (e.kind == RunKind.latest && e.date != null) 'up to ${longDate(e.date)}',
   if (e.kind == RunKind.latest && e.runs.length > 1)
-    'combined from ${e.runs.length} runs',
+    'combined from ${numberWord(e.runs.length)} runs',
   if (e.kind != RunKind.run) '${e.backends.length} frameworks',
 ].join(' · ');
 

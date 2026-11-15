@@ -377,7 +377,9 @@ class _TestRow extends StatelessWidget {
             fastest
                 ? (top.length < 2
                       ? placeSentence(all, r)
-                      : 'Tied for fastest.$tieNote')
+                      : 'Tied for fastest with ${numberWord(top.length - 1)} '
+                            "${top.length == 2 ? 'other' : 'others'}"
+                            "${top.every((x) => x.capped) ? " at our testing tool's limit" : ''}.")
                 : '${placeSentence(all, r)} '
                       '${capFirst(asFast(share))} as the fastest.$tieNote',
             style: t.body.copyWith(fontWeight: FontWeight.w700),
@@ -476,7 +478,14 @@ class _ExtraTable extends StatelessWidget {
           'Processor: how much of its ${numberWord(cores)} processor '
               '${cores == 1 ? 'core' : 'cores'} the framework used.',
           '"ms" means milliseconds. 1,000 ms is one second.',
-          'A dash means it was not measured.',
+          if (tests.any(
+            (test) => measures.any(
+              (m) =>
+                  m.value(backend.scenarios[test]!, Metrics.sustainable) ==
+                  null,
+            ),
+          ))
+            'A dash means it was not measured.',
         ]),
       ],
     );

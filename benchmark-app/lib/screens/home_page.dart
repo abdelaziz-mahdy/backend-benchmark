@@ -245,7 +245,13 @@ class _LegacyNote extends StatelessWidget {
         spacing: 12,
         children: [
           Text(
-            'You are looking at an old run.',
+            // Said for what it is: the newest single run is not "old".
+            switch (state.entry?.kind) {
+              RunKind.legacy => 'You are looking at a run from the old method.',
+              RunKind.latest => "You are looking at an older method's results.",
+              _ =>
+                'You are looking at one run, not the latest combined results.',
+            },
             style: Txt.of(context).body.copyWith(fontWeight: FontWeight.w700),
           ),
           if (latest != null)

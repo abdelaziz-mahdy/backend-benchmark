@@ -197,11 +197,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   /// Framework highlighted across every chart (tap a legend entry).
   String? _focus;
 
-  /// The test shown. The choices come from the newest runs, whatever run
-  /// the rest of the site shows, so an old run never hides today's tests;
-  /// the old-method box maps it to its closest old test.
-  String? _test;
-
   @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardState>();
@@ -214,8 +209,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
             .firstOrNull
             ?.scenarios ??
         run.scenarios;
-    final scenario = tests.contains(_test)
-        ? _test!
+    // The choices come from the newest runs, whatever run the rest of the
+    // site shows, so an old run never hides today's tests; the old-method
+    // box maps the choice to its closest old test.
+    final chosen = state.historyTest;
+    final scenario = chosen != null && tests.contains(chosen)
+        ? chosen
         : tests.contains(currentScenario(shownTest))
         ? currentScenario(shownTest)
         : tests.firstOrNull;
@@ -274,11 +273,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     options: [for (final s in tests) (s, testInfo(s).title)],
                     icons: {for (final s in tests) s: testIcon(s)},
                     selected: scenario,
-                    onSelected: (s) {
-                      setState(() => _test = s);
-                      // Into the URL too, so a reload or a shared link keeps it.
-                      state.setScenario(s);
-                    },
+                    // Kept in the URL, so Back, a reload or a shared link
+                    // shows the same test.
+                    onSelected: state.setHistoryTest,
                   ),
                   const SizedBox(height: 8),
                   Text(testInfo(scenario).what, style: t.small),
@@ -395,10 +392,26 @@ class _HistoryScreenState extends State<HistoryScreen> {
             '"${testInfo(g.scenario).title}" test.',
             style: t.small,
           ),
+          if (g.capped.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              "+ and a striped bar end = hit our testing tool's limit, so it "
+              'may be faster.',
+              style: t.small,
+            ),
+          ],
           const SizedBox(height: 20),
           if (lines.isEmpty)
             Text(
-              'No results for this test on this computer.',
+              // Results exist but this number was never recorded (the old
+              // method kept fewer), or there are no results for the test.
+              g.runs.any(
+                    (r) => r.headline.values.any((m) => m[g.scenario] != null),
+                  )
+                  ? (legacy
+                        ? 'The old method did not record this number.'
+                        : 'These runs did not record this number.')
+                  : 'No results for this test on this computer.',
               style: proseStyle(context).copyWith(color: p.muted),
             )
           else if (multi.isEmpty)
