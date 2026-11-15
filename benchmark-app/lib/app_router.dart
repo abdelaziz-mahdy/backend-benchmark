@@ -127,6 +127,10 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
   /// The side state last reported, to notice changes the link misses.
   String? _lastSide;
 
+  /// The test last reported. The Compare link shows no test while nothing
+  /// is picked, so a test change is judged by this, not by the link.
+  String? _lastTest;
+
   /// The entry being applied needed a run change first, and the picks and
   /// set-aside picks before that change (none of them may be lost).
   bool _crossedRun = false;
@@ -178,9 +182,10 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
           last.pathSegments.firstOrNull == 'compare' &&
           now.pathSegments.firstOrNull == 'compare' &&
           last.queryParameters['run'] == now.queryParameters['run'] &&
-          last.queryParameters['s'] == now.queryParameters['s'];
+          state.scenario == _lastTest;
       _last = now;
       _lastSide = side;
+      _lastTest = state.scenario;
       _report(replace: picksOnly);
     }
   }
@@ -223,12 +228,16 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
           keep: before,
           linkHasTest: uri.queryParameters.containsKey('s'),
         );
+        // Picks Back put on screen are the visitor's from now on, so a
+        // later Forward to an entry saved without them keeps them.
+        if (fresh && state.compareKeys.isNotEmpty) state.comparePicked = true;
       }
     } finally {
       _applying = false;
     }
     _last = locationOf(state);
     _lastSide = jsonEncode(state.sideState);
+    _lastTest = state.scenario;
     if (fromHistory) {
       // Shown as it is now; if that differs from the entry's link, the
       // entry is replaced, never followed by a new one.
