@@ -55,18 +55,6 @@ String _fmt(Metric m, double? v) {
   };
 }
 
-/// v1 runs used different tests; this is the closest match.
-String legacyScenario(String scenario) =>
-    scenario.startsWith('no_db') ? 'no_db_test' : 'db_test';
-
-/// The current test closest to a v1 one (a v1 run may be loaded while
-/// History shows current runs).
-String currentScenario(String scenario) => switch (scenario) {
-  'no_db_test' => 'no_db',
-  'db_test' => 'db_mixed',
-  _ => scenario,
-};
-
 /// The date of each run, written out: "5 October 2026", or "5 Oct" when
 /// [short]. Runs that share a date are numbered: "4 Oct (2)".
 List<String> runDates(List<RunIndexEntry> runs, {bool short = false}) {

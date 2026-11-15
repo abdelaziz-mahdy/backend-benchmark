@@ -89,6 +89,13 @@ class DashboardState extends ChangeNotifier {
   }
 
   Future<void> selectRun(RunIndexEntry next) async {
+    // The test (and sort column) chosen on a current-method run, kept for
+    // the way back from an old-method run with other tests.
+    final leaving = run;
+    if (leaving != null && !leaving.isLegacy) {
+      _currentMethodTest = scenario;
+      _currentMethodSort = sortTest;
+    }
     entry = next;
     loading = true;
     notifyListeners();
@@ -99,11 +106,27 @@ class DashboardState extends ChangeNotifier {
       run = loaded;
       error = null;
       final tests = loaded.scenarios;
-      if (!tests.contains(scenario)) {
-        scenario = tests.isEmpty ? null : tests.first;
+      // A test this run lacks becomes its closest match (an old-method run
+      // has other tests), and the way back restores the test chosen before.
+      String? fit(String? want, String? remembered) {
+        if (want != null && tests.contains(want)) return want;
+        if (!loaded.isLegacy &&
+            remembered != null &&
+            tests.contains(remembered)) {
+          return remembered;
+        }
+        if (want != null) {
+          final near = loaded.isLegacy
+              ? legacyScenario(want)
+              : currentScenario(want);
+          if (tests.contains(near)) return near;
+        }
+        return tests.firstOrNull;
       }
+
+      scenario = fit(scenario, _currentMethodTest);
       if (sortTest != sortByName && !tests.contains(sortTest)) {
-        sortTest = tests.isEmpty ? sortByName : tests.first;
+        sortTest = fit(sortTest, _currentMethodSort) ?? sortByName;
         sortDesc = measure == Measure.load;
       }
       final keys = loaded.backends.map((b) => b.key).toSet();
@@ -280,6 +303,9 @@ class DashboardState extends ChangeNotifier {
       ..addAll(away);
     notifyListeners();
   }
+
+  String? _currentMethodTest;
+  String? _currentMethodSort;
 
   /// The visitor has picked (or cleared) Compare frameworks in this visit.
   /// Until then, as after a reload, Back may bring back a history entry's
