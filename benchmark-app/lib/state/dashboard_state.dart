@@ -80,7 +80,7 @@ class DashboardState extends ChangeNotifier {
       if (index.isEmpty) {
         throw StateError('No benchmark runs found');
       }
-      await selectRun(index.first);
+      await selectRun(index.first, byRouter: true);
     } catch (e) {
       error = e;
       loading = false;
@@ -88,7 +88,8 @@ class DashboardState extends ChangeNotifier {
     }
   }
 
-  Future<void> selectRun(RunIndexEntry next) async {
+  Future<void> selectRun(RunIndexEntry next, {bool byRouter = false}) async {
+    if (!byRouter) actions++;
     // The test (and sort column) chosen on a current-method run, kept for
     // the way back from an old-method run with other tests.
     final leaving = run;
@@ -105,6 +106,7 @@ class DashboardState extends ChangeNotifier {
       if (entry != next) return; // a newer selection won
       if (loaded.isLegacy) loaded = _withCurrentNames(loaded);
       run = loaded;
+      shownEntry = next;
       error = null;
       final tests = loaded.scenarios;
       // A test this run lacks becomes its closest match (an old-method run
@@ -194,6 +196,7 @@ class DashboardState extends ChangeNotifier {
   // ------------------------------------------------------------ navigation
 
   void setPage(DashboardPage next) {
+    actions++;
     if (page == next) return;
     page = next;
     notifyListeners();
@@ -201,6 +204,7 @@ class DashboardState extends ChangeNotifier {
 
   /// Back to the short answer (the site name and the logo do this).
   void goHome() {
+    actions++;
     if (page == DashboardPage.home && view == HomeView.short) return;
     page = DashboardPage.home;
     view = HomeView.short;
@@ -208,6 +212,7 @@ class DashboardState extends ChangeNotifier {
   }
 
   void setView(HomeView next) {
+    actions++;
     if (page == DashboardPage.home && view == next) return;
     page = DashboardPage.home;
     view = next;
@@ -216,6 +221,7 @@ class DashboardState extends ChangeNotifier {
 
   /// Opens One framework on [key]; null shows the picker.
   void selectFramework(String? key) {
+    actions++;
     final r = run;
     if (key != null && r?.backend(key) == null) return;
     selectedKey = key;
@@ -228,6 +234,7 @@ class DashboardState extends ChangeNotifier {
   /// Only a test the loaded run has; anything else would leave the views
   /// showing "not measured" for a test that does not exist here.
   void setScenario(String next) {
+    actions++;
     if (scenario == next) return;
     if (run != null && !run!.scenarios.contains(next)) return;
     scenario = next;
@@ -235,6 +242,7 @@ class DashboardState extends ChangeNotifier {
   }
 
   void setHistoryTest(String next) {
+    actions++;
     if (historyTest == next) return;
     historyTest = next;
     notifyListeners();
@@ -243,6 +251,7 @@ class DashboardState extends ChangeNotifier {
   // ---------------------------------------------------------- every number
 
   void setMeasure(Measure next) {
+    actions++;
     if (measure == next) return;
     measure = next;
     if (run?.isLegacy ?? false) _currentMethodSortDesc = null;
@@ -255,6 +264,7 @@ class DashboardState extends ChangeNotifier {
   /// Sorts by [test] (or [sortByName]); the same column again flips the
   /// direction.
   void sortBy(String test) {
+    actions++;
     if (run?.isLegacy ?? false) _currentMethodSortDesc = null;
     if (sortTest == test) {
       sortDesc = !sortDesc;
@@ -282,6 +292,7 @@ class DashboardState extends ChangeNotifier {
   /// Adds or removes [key]. With [restore] (Compare's own remove, where the
   /// set-aside picks are explained), a freed place brings one back.
   void toggleCompare(String key, {bool restore = false}) {
+    actions++;
     comparePicked = true;
     parkedCompare.remove(key);
     if (!compareKeys.remove(key)) {
@@ -303,6 +314,7 @@ class DashboardState extends ChangeNotifier {
   /// Brings set-aside picks this run has back into Compare, while there is
   /// room.
   void restoreParked() {
+    actions++;
     comparePicked = true;
     final r = run;
     for (final k
@@ -332,6 +344,15 @@ class DashboardState extends ChangeNotifier {
       ..addAll(away);
     notifyListeners();
   }
+
+  /// Counts the visitor's own actions (taps, picks, run changes), so the
+  /// router can tell that a Back still waiting for its run is stale: the
+  /// newest thing the visitor did wins.
+  int actions = 0;
+
+  /// The run entry on screen (the loaded run), which lags [entry] while a
+  /// run change loads; labels describe this one.
+  RunIndexEntry? shownEntry;
 
   String? _currentMethodTest;
   String? _currentMethodSort;
@@ -422,6 +443,7 @@ class DashboardState extends ChangeNotifier {
   }
 
   void clearCompare() {
+    actions++;
     comparePicked = true;
     compareKeys.clear();
     parkedCompare.clear();

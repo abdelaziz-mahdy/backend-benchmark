@@ -123,9 +123,11 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 12),
                   _RunLine(state: state),
-                  if (state.entry != null &&
+                  // Described by the run on screen, which lags the chosen
+                  // one while that loads.
+                  if ((state.shownEntry ?? state.entry) != null &&
                       state.index.isNotEmpty &&
-                      state.entry != state.index.first)
+                      (state.shownEntry ?? state.entry) != state.index.first)
                     _LegacyNote(state: state),
                   const SizedBox(height: 26),
                   SizedBox(key: _switchKey),
@@ -192,7 +194,8 @@ class _RunLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Txt.of(context);
-    final entry = state.entry;
+    // The run on screen, not the one loading: label and numbers agree.
+    final entry = state.shownEntry ?? state.entry;
     final run = state.run!;
     // The icon sits inline at the start of the text, so it always shares
     // the text's first line at every width; "Change run" wraps after it.
@@ -261,7 +264,7 @@ class _LegacyNote extends StatelessWidget {
         children: [
           Text(
             // Said for what it is: the newest single run is not "old".
-            switch (state.entry?.kind) {
+            switch ((state.shownEntry ?? state.entry)?.kind) {
               RunKind.legacy => 'You are looking at a run from the old method.',
               RunKind.latest => "You are looking at an older method's results.",
               _ =>

@@ -119,8 +119,10 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     with ChangeNotifier {
   final DashboardState state;
 
-  /// An entry that arrived before the data (or its run) did.
+  /// An entry that arrived before the data (or its run) did, and the
+  /// visitor's action count then: any action since makes it stale.
   RouteInformation? _pending;
+  int _pendingActions = 0;
   Uri? _last;
 
   /// The link last opened (pasted, Back, Forward) and the location it
@@ -166,7 +168,14 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     final pending = _pending;
     if (pending != null) {
       _pending = null;
-      _apply(pending);
+      if (state.actions == _pendingActions) {
+        _apply(pending);
+      } else {
+        // The visitor acted while it waited: their action wins, and is
+        // reported below as itself.
+        _crossedRun = false;
+        _beforeCross = const [];
+      }
     }
     final now = locationOf(state);
     // Once the visitor moves on, the opened link is no longer what is
@@ -205,13 +214,15 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     // entry waits in place of the older one, and is applied once it is in.
     if (target != null && target == state.entry && state.loading) {
       _pending = info;
+      _pendingActions = state.actions;
       return;
     }
     if (target != null && target != state.entry) {
       _pending = info;
+      _pendingActions = state.actions;
       _crossedRun = true;
       _beforeCross = [...state.compareKeys, ...state.parkedCompare];
-      state.selectRun(target);
+      state.selectRun(target, byRouter: true);
       return;
     }
     final crossed = _crossedRun;
@@ -282,6 +293,7 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
   Future<void> setNewRoutePath(RouteInformation configuration) async {
     if (state.run == null) {
       _pending = configuration;
+      _pendingActions = state.actions;
       return;
     }
     _apply(configuration);
