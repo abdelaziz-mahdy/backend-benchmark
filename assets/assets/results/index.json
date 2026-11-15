@@ -88,7 +88,8 @@
       "p99_ms": 61.31007978999999,
       "error_rate": 0.0,
       "app_cpu": 150.48999999999998,
-      "app_mem_mb": 152.50714285714292
+      "app_mem_mb": 152.50714285714292,
+      "loadgen_bound": 1.0
      }
     },
     "dart-server-pod": {
@@ -164,7 +165,8 @@
       "p99_ms": 60.49329303999999,
       "error_rate": 0.0,
       "app_cpu": 106.5546428571429,
-      "app_mem_mb": 100.94892857142857
+      "app_mem_mb": 100.94892857142857,
+      "loadgen_bound": 1.0
      }
     },
     "java-foam3-embedded": {
@@ -278,7 +280,8 @@
       "p99_ms": 63.53272139999999,
       "error_rate": 0.0,
       "app_cpu": 144.00571428571425,
-      "app_mem_mb": 670.3214285714284
+      "app_mem_mb": 670.3214285714284,
+      "loadgen_bound": 1.0
      }
     },
     "javascript-express-bun": {
@@ -316,7 +319,8 @@
       "p99_ms": 61.80573008,
       "error_rate": 0.0,
       "app_cpu": 117.75745454545456,
-      "app_mem_mb": 161.45714285714277
+      "app_mem_mb": 161.45714285714277,
+      "loadgen_bound": 1.0
      }
     },
     "javascript-express-node": {
@@ -354,7 +358,8 @@
       "p99_ms": 60.48845559999999,
       "error_rate": 0.0,
       "app_cpu": 135.28464285714287,
-      "app_mem_mb": 263.29636363636365
+      "app_mem_mb": 263.29636363636365,
+      "loadgen_bound": 1.0
      }
     },
     "python-django-async": {
@@ -479,7 +484,8 @@
       "p99_ms": 67.10157562,
       "error_rate": 0.0,
       "app_cpu": 158.76160714285717,
-      "app_mem_mb": 280.5818181818182
+      "app_mem_mb": 280.5818181818182,
+      "loadgen_bound": 1.0
      },
      "db_read": {
       "sustainable_rps": 46000.0,
@@ -488,7 +494,8 @@
       "p99_ms": 65.56396826999999,
       "error_rate": 0.0,
       "app_cpu": 162.10053571428583,
-      "app_mem_mb": 273.3464285714286
+      "app_mem_mb": 273.3464285714286,
+      "loadgen_bound": 1.0
      },
      "db_write": {
       "sustainable_rps": 29000.0,
@@ -506,7 +513,8 @@
       "p99_ms": 61.69486018999997,
       "error_rate": 0.0,
       "app_cpu": 67.24357142857141,
-      "app_mem_mb": 61.13654545454547
+      "app_mem_mb": 61.13654545454547,
+      "loadgen_bound": 1.0
      }
     }
    },
@@ -600,7 +608,8 @@
       "p99_ms": 60.596187599999986,
       "error_rate": 0.0,
       "app_cpu": 142.06250000000003,
-      "app_mem_mb": 146.78928571428568
+      "app_mem_mb": 146.78928571428568,
+      "loadgen_bound": 1.0
      }
     },
     "dart-server-pod": {
@@ -676,7 +685,8 @@
       "p99_ms": 58.97520468,
       "error_rate": 0.0,
       "app_cpu": 106.90571428571427,
-      "app_mem_mb": 101.77571428571426
+      "app_mem_mb": 101.77571428571426,
+      "loadgen_bound": 1.0
      }
     },
     "java-foam3-embedded": {
@@ -790,7 +800,8 @@
       "p99_ms": 63.671779079999986,
       "error_rate": 0.0,
       "app_cpu": 144.5601785714286,
-      "app_mem_mb": 693.310714285714
+      "app_mem_mb": 693.310714285714,
+      "loadgen_bound": 1.0
      }
     },
     "javascript-express-bun": {
@@ -828,7 +839,8 @@
       "p99_ms": 59.21722999999999,
       "error_rate": 0.0,
       "app_cpu": 117.00428571428571,
-      "app_mem_mb": 159.22181818181824
+      "app_mem_mb": 159.22181818181824,
+      "loadgen_bound": 1.0
      }
     },
     "javascript-express-node": {
@@ -866,7 +878,8 @@
       "p99_ms": 59.49584304,
       "error_rate": 0.0,
       "app_cpu": 135.88927272727275,
-      "app_mem_mb": 266.0727272727271
+      "app_mem_mb": 266.0727272727271,
+      "loadgen_bound": 1.0
      }
     },
     "python-django-async": {
@@ -991,7 +1004,8 @@
       "p99_ms": 63.72335875999995,
       "error_rate": 0.0,
       "app_cpu": 148.62482142857147,
-      "app_mem_mb": 68.55142857142854
+      "app_mem_mb": 68.55142857142854,
+      "loadgen_bound": 1.0
      },
      "db_read": {
       "sustainable_rps": 32000.0,
@@ -1000,7 +1014,8 @@
       "p99_ms": 54.824122599999995,
       "error_rate": 0.0,
       "app_cpu": 142.3396363636364,
-      "app_mem_mb": 70.91875
+      "app_mem_mb": 70.91875,
+      "loadgen_bound": 1.0
      },
      "db_write": {
       "sustainable_rps": 16000.0,
@@ -1018,7 +1033,8 @@
       "p99_ms": 60.291833,
       "error_rate": 0.0,
       "app_cpu": 67.46254545454545,
-      "app_mem_mb": 61.53499999999999
+      "app_mem_mb": 61.53499999999999,
+      "loadgen_bound": 1.0
      }
     }
    },
@@ -1214,7 +1230,8 @@
       "p99_ms": 60.596187599999986,
       "error_rate": 0.0,
       "app_cpu": 142.06250000000003,
-      "app_mem_mb": 146.78928571428568
+      "app_mem_mb": 146.78928571428568,
+      "loadgen_bound": 1.0
      }
     },
     "dart-server-pod": {
@@ -1290,7 +1307,8 @@
       "p99_ms": 58.97520468,
       "error_rate": 0.0,
       "app_cpu": 106.90571428571427,
-      "app_mem_mb": 101.77571428571426
+      "app_mem_mb": 101.77571428571426,
+      "loadgen_bound": 1.0
      }
     },
     "java-spring-boot": {
@@ -1328,7 +1346,8 @@
       "p99_ms": 63.671779079999986,
       "error_rate": 0.0,
       "app_cpu": 144.5601785714286,
-      "app_mem_mb": 693.310714285714
+      "app_mem_mb": 693.310714285714,
+      "loadgen_bound": 1.0
      }
     },
     "javascript-express-bun": {
@@ -1366,7 +1385,8 @@
       "p99_ms": 59.21722999999999,
       "error_rate": 0.0,
       "app_cpu": 117.00428571428571,
-      "app_mem_mb": 159.22181818181824
+      "app_mem_mb": 159.22181818181824,
+      "loadgen_bound": 1.0
      }
     },
     "javascript-express-node": {
@@ -1404,7 +1424,8 @@
       "p99_ms": 59.49584304,
       "error_rate": 0.0,
       "app_cpu": 135.88927272727275,
-      "app_mem_mb": 266.0727272727271
+      "app_mem_mb": 266.0727272727271,
+      "loadgen_bound": 1.0
      }
     },
     "python-django-async": {
@@ -1529,7 +1550,8 @@
       "p99_ms": 63.72335875999995,
       "error_rate": 0.0,
       "app_cpu": 148.62482142857147,
-      "app_mem_mb": 68.55142857142854
+      "app_mem_mb": 68.55142857142854,
+      "loadgen_bound": 1.0
      },
      "db_read": {
       "sustainable_rps": 32000.0,
@@ -1538,7 +1560,8 @@
       "p99_ms": 54.824122599999995,
       "error_rate": 0.0,
       "app_cpu": 142.3396363636364,
-      "app_mem_mb": 70.91875
+      "app_mem_mb": 70.91875,
+      "loadgen_bound": 1.0
      },
      "db_write": {
       "sustainable_rps": 16000.0,
@@ -1556,7 +1579,8 @@
       "p99_ms": 60.291833,
       "error_rate": 0.0,
       "app_cpu": 67.46254545454545,
-      "app_mem_mb": 61.53499999999999
+      "app_mem_mb": 61.53499999999999,
+      "loadgen_bound": 1.0
      }
     }
    },
@@ -1647,7 +1671,8 @@
       "p99_ms": 61.31007978999999,
       "error_rate": 0.0,
       "app_cpu": 150.48999999999998,
-      "app_mem_mb": 152.50714285714292
+      "app_mem_mb": 152.50714285714292,
+      "loadgen_bound": 1.0
      }
     },
     "dart-server-pod": {
@@ -1723,7 +1748,8 @@
       "p99_ms": 60.49329303999999,
       "error_rate": 0.0,
       "app_cpu": 106.5546428571429,
-      "app_mem_mb": 100.94892857142857
+      "app_mem_mb": 100.94892857142857,
+      "loadgen_bound": 1.0
      }
     },
     "java-foam3-embedded": {
@@ -1837,7 +1863,8 @@
       "p99_ms": 63.53272139999999,
       "error_rate": 0.0,
       "app_cpu": 144.00571428571425,
-      "app_mem_mb": 670.3214285714284
+      "app_mem_mb": 670.3214285714284,
+      "loadgen_bound": 1.0
      }
     },
     "javascript-express-bun": {
@@ -1875,7 +1902,8 @@
       "p99_ms": 61.80573008,
       "error_rate": 0.0,
       "app_cpu": 117.75745454545456,
-      "app_mem_mb": 161.45714285714277
+      "app_mem_mb": 161.45714285714277,
+      "loadgen_bound": 1.0
      }
     },
     "javascript-express-node": {
@@ -1913,7 +1941,8 @@
       "p99_ms": 60.48845559999999,
       "error_rate": 0.0,
       "app_cpu": 135.28464285714287,
-      "app_mem_mb": 263.29636363636365
+      "app_mem_mb": 263.29636363636365,
+      "loadgen_bound": 1.0
      }
     },
     "python-django-async": {
@@ -2038,7 +2067,8 @@
       "p99_ms": 67.10157562,
       "error_rate": 0.0,
       "app_cpu": 158.76160714285717,
-      "app_mem_mb": 280.5818181818182
+      "app_mem_mb": 280.5818181818182,
+      "loadgen_bound": 1.0
      },
      "db_read": {
       "sustainable_rps": 46000.0,
@@ -2047,7 +2077,8 @@
       "p99_ms": 65.56396826999999,
       "error_rate": 0.0,
       "app_cpu": 162.10053571428583,
-      "app_mem_mb": 273.3464285714286
+      "app_mem_mb": 273.3464285714286,
+      "loadgen_bound": 1.0
      },
      "db_write": {
       "sustainable_rps": 29000.0,
@@ -2065,7 +2096,8 @@
       "p99_ms": 61.69486018999997,
       "error_rate": 0.0,
       "app_cpu": 67.24357142857141,
-      "app_mem_mb": 61.13654545454547
+      "app_mem_mb": 61.13654545454547,
+      "loadgen_bound": 1.0
      }
     }
    },
