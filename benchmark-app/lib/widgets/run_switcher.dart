@@ -55,7 +55,8 @@ class ChangeRunButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final entry = state.entry;
+    // The run on screen is the one marked "shown now", not one loading.
+    final entry = state.shownEntry ?? state.entry;
     return PopupMenuButton<String>(
       tooltip: 'Show the results of another run',
       position: PopupMenuPosition.under,

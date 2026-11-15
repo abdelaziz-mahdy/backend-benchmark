@@ -391,7 +391,8 @@ class _FrameworkHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Txt.of(context);
-    final entry = state.entry;
+    // The run on screen, not one loading.
+    final entry = state.shownEntry ?? state.entry;
     final test = state.scenario;
     if (entry == null || test == null) return const SizedBox.shrink();
     final runs = state

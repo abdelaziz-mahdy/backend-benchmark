@@ -363,6 +363,18 @@ class DashboardState extends ChangeNotifier {
   /// saved picks: there is no choice of theirs to keep.
   bool comparePicked = false;
 
+  /// The visitor's Undo of "Clear all": their own action, so it wins over
+  /// a Back still waiting for its run.
+  void undoClear(
+    List<String> picks,
+    List<String> parked,
+    Iterable<String> away,
+  ) {
+    actions++;
+    comparePicked = true;
+    restoreCompare(picks, parked, away);
+  }
+
   /// Which set-aside picks return by themselves on a run change.
   Set<String> get awayForRun => Set.unmodifiable(_awayForRun);
 

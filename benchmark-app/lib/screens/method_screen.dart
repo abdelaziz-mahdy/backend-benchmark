@@ -1753,7 +1753,8 @@ class RunPicker extends StatelessWidget {
 /// combined view, "up to 5 October 2026, combined from 2 runs", since each
 /// framework keeps its own newest run.
 String _when(DashboardState state) {
-  final e = state.entry;
+  // The run on screen, not one loading.
+  final e = state.shownEntry ?? state.entry;
   final date = longDate(e?.date ?? state.run?.date);
   if (e == null || e.kind != RunKind.latest) return date;
   return [

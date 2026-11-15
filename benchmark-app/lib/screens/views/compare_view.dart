@@ -259,8 +259,7 @@ class CompareView extends StatelessWidget {
                         behavior: SnackBarBehavior.floating,
                         action: SnackBarAction(
                           label: 'Undo',
-                          onPressed: () =>
-                              state.restoreCompare(was, aside, away),
+                          onPressed: () => state.undoClear(was, aside, away),
                         ),
                       ),
                     );

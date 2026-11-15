@@ -135,6 +135,9 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
   /// The side state last reported, to notice changes the link misses.
   String? _lastSide;
 
+  /// The next report replaces the current entry (a cancelled Back's).
+  bool _replaceNext = false;
+
   /// The entry being applied needed a run change first, and the picks and
   /// set-aside picks before that change (none of them may be lost).
   bool _crossedRun = false;
@@ -171,10 +174,13 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
       if (state.actions == _pendingActions) {
         _apply(pending);
       } else {
-        // The visitor acted while it waited: their action wins, and is
-        // reported below as itself.
+        // The visitor acted while it waited: their action wins. The waiting
+        // entry was never shown, so it is replaced by what is.
         _crossedRun = false;
         _beforeCross = const [];
+        _last = null;
+        _lastSide = null;
+        _replaceNext = true;
       }
     }
     final now = locationOf(state);
@@ -199,7 +205,9 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
               last.path == now.path);
       _last = now;
       _lastSide = side;
-      _report(replace: picksOnly);
+      final replace = picksOnly || _replaceNext;
+      _replaceNext = false;
+      _report(replace: replace);
     }
   }
 
