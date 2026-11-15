@@ -2,8 +2,9 @@ import 'package:material_ui/material_ui.dart';
 
 import '../models/metrics.dart';
 import '../models/results.dart';
-import '../utils/colors.dart';
+import '../models/tests.dart';
 import '../utils/theme_constants.dart';
+import 'calm.dart';
 import 'motion.dart';
 
 const _tooltipDelay = Duration(milliseconds: 300);
@@ -170,17 +171,17 @@ class PageTitle extends StatelessWidget {
   }
 }
 
-/// Equal-width scenario tabs; the one place a scenario is picked on the
-/// Details, Compare and History pages (and the phone leaderboard sort).
+/// Equal-width test tabs with plain names; on a phone they wrap two to a
+/// row and a long name wraps instead of being cut off.
 class ScenarioTabs extends StatelessWidget {
   final List<String> scenarios;
   final String? selected;
   final ValueChanged<String> onSelected;
 
-  /// Scenarios that would show nothing (dimmed, still selectable).
+  /// Tests that would show nothing (dimmed, still selectable).
   final Set<String> empty;
 
-  /// Leading caps label, e.g. "Scenario" or "Rank by".
+  /// A label above the tabs, e.g. "Test" or "Rank by".
   final String? label;
 
   /// Arrow on the selected tab, for a sort control.
@@ -198,42 +199,54 @@ class ScenarioTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final tabs = Container(
-      height: 50,
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: context.palette.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: context.palette.line),
+        color: p.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: p.line),
       ),
-      child: Row(
-        children: [
-          for (final s in scenarios)
-            Expanded(
-              child: _Tab(
-                label: scenarioLabel(s),
-                help: scenarioHelp(s),
-                selected: s == selected,
-                dim: empty.contains(s),
-                icon: s == selected ? selectedIcon : null,
-                onTap: () => onSelected(s),
-              ),
-            ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final perRow = c.maxWidth < 520 && scenarios.length > 3
+              ? 2
+              : scenarios.length;
+          final w = (c.maxWidth - 4 * (perRow - 1)) / perRow;
+          return Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              for (final s in scenarios)
+                SizedBox(
+                  width: w,
+                  child: _Tab(
+                    label: testInfo(s).title,
+                    help: scenarioHelp(s),
+                    selected: s == selected,
+                    dim: empty.contains(s),
+                    icon: s == selected ? selectedIcon : null,
+                    onTap: () => onSelected(s),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label != null) ...[
-          Text(label!.toUpperCase(), style: caps(10.5)),
-          const SizedBox(width: 10),
-        ],
-        Flexible(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: tabs,
+          Text(
+            label!,
+            style: Txt(
+              p,
+            ).body.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
           ),
-        ),
+          const SizedBox(height: 8),
+        ],
+        tabs,
       ],
     );
   }
@@ -263,38 +276,43 @@ class _Tab extends StatelessWidget {
     return Tooltip(
       message: help,
       waitDuration: _tooltipDelay,
-      child: Semantics(
+      child: Pressable(
+        onTap: onTap,
         selected: selected,
-        button: true,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(7),
-          child: AnimatedContainer(
-            duration: motion(context, 200),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected ? p.text : Colors.transparent,
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(color: Colors.transparent),
-            ),
+        semanticLabel: label,
+        radius: 8,
+        builder: (context, hovered) => AnimatedContainer(
+          duration: motion(context, 200),
+          constraints: const BoxConstraints(minHeight: 44),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+          decoration: BoxDecoration(
+            color: selected
+                ? p.text
+                : hovered
+                ? p.bg
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: ExcludeSemantics(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Flexible(
                   child: Text(
                     label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: body(
-                      12.5,
+                    textAlign: TextAlign.center,
+                    style: Txt(p).body.copyWith(
+                      fontSize: 15,
+                      height: 1.2,
                       color: color,
-                      weight: selected ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
                     ),
                   ),
                 ),
                 if (icon != null) ...[
-                  const SizedBox(width: 3),
-                  Icon(icon, size: 13, color: p.bg),
+                  const SizedBox(width: 4),
+                  Icon(icon, size: 15, color: p.bg),
                 ],
               ],
             ),
@@ -422,48 +440,6 @@ class TileGrid extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-/// Language monogram in the framework's identity colour: the mark that
-/// stands for a framework in rows, chips, legends and headers.
-class Monogram extends StatelessWidget {
-  final BackendResult backend;
-  final double size;
-
-  const Monogram({super.key, required this.backend, this.size = 26});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = identityColor(context.palette, backend.key);
-    final text = monogramOf(backend.language);
-    return ExcludeSemantics(
-      child: Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(size * 0.26),
-          border: Border.all(color: color.withValues(alpha: 0.55)),
-        ),
-        child: Text(
-          text,
-          style: mono(
-            size * (text.length > 2 ? 0.34 : 0.42),
-            weight: FontWeight.w700,
-            // Lifted 35% toward white: the darkest identity colours sit
-            // near 3:1 on their own tint; this keeps every letter over 5:1.
-            color: Color.lerp(
-              color,
-              context.palette.isDark ? Colors.white : Colors.black,
-              0.35,
-            )!,
-            height: 1,
-          ),
-        ),
-      ),
     );
   }
 }

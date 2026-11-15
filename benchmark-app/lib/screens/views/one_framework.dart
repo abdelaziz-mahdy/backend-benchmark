@@ -11,6 +11,7 @@ import '../../utils/theme_constants.dart';
 import '../../widgets/calm.dart';
 import 'framework_charts.dart';
 import 'home_nav.dart';
+import 'short_answer.dart';
 
 /// One framework: a picker (type to find one), the names when nothing is
 /// chosen, and the chosen framework's profile.
@@ -35,10 +36,9 @@ class OneFrameworkView extends StatelessWidget {
           selected: b,
           focusNode: nav.picker,
           onSelected: (key) {
-            state.selectFramework(key);
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) => nav.picker.requestFocus(),
-            );
+            // Focus moves to the profile's name, not back into the search
+            // field, so a phone keyboard does not cover the profile.
+            nav.open(key);
           },
         ),
         if (missing != null && b == null)
@@ -57,7 +57,11 @@ class OneFrameworkView extends StatelessWidget {
             runSpacing: 8,
             children: [
               for (final x in alpha)
-                NameChip(label: x.name, onTap: () => nav.open(x.key)),
+                NameChip(
+                  label: x.name,
+                  leading: LangBadge.of(x.key, x.language),
+                  onTap: () => nav.open(x.key),
+                ),
             ],
           ),
         ] else
@@ -195,7 +199,13 @@ class _Profile extends StatelessWidget {
           focusNode: nav.profileHeading,
           child: Semantics(
             header: true,
-            child: Text(capFirst(b.name), style: t.h2),
+            child: Row(
+              children: [
+                LangBadge.of(b.key, b.language, size: 32),
+                const SizedBox(width: 10),
+                Flexible(child: Text(b.name, style: t.h2)),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 4),
@@ -220,12 +230,11 @@ class _Profile extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Text(
-          'On each line, the large dot is ${b.name} and the small dots are '
-          'the other ${numberWord(run.backends.length - 1)} frameworks. '
-          'Further right means more requests a second. The shaded part shows '
-          'the lowest and highest of its runs.',
-          style: t.small,
+        BarsNote(
+          mine: true,
+          capped: run.backends.any(
+            (x) => x.scenarios.values.any((r) => r.loadgenBound),
+          ),
         ),
         const SizedBox(height: 8),
         Fold(
@@ -309,8 +318,9 @@ class _ProfileActions extends StatelessWidget {
   }
 }
 
-/// One test of the profile: the number, how many others handled more, the
-/// dot strip, and the sentences about runs and close calls.
+/// One test of the profile: its name, where it placed in words, and its bar
+/// next to the fastest (or the runner-up when it is the fastest). Tapping a
+/// bar opens its number, runs and close calls, as on Who's fastest.
 class _TestRow extends StatelessWidget {
   final RunSummary run;
   final BackendResult backend;
@@ -328,11 +338,17 @@ class _TestRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = Txt(p);
-    final all = resultsFor(run, test);
+    final nav = HomeNav.of(context);
+    final all = sortResults(resultsFor(run, test));
     final r = all.where((x) => x.key == backend.key).firstOrNull;
     final info = testInfo(test);
     if (r == null) return const SizedBox.shrink();
-    final max = all.map((x) => x.high).fold(0.0, (a, b) => a > b ? a : b);
+    final max = all.first.value;
+    final fastest = all.first.key == r.key;
+    final pair = [
+      if (fastest) ...[r, ?all.skip(1).firstOrNull] else ...[all.first, r],
+    ];
+    final share = max <= 0 ? 0.0 : (r.value / max).clamp(0.0, 1.0);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
@@ -341,56 +357,38 @@ class _TestRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.end,
-            spacing: 12,
-            children: [
-              Semantics(header: true, child: Text(info.title, style: t.h3)),
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(text: numberText(r)),
-                    TextSpan(
-                      text: ' $unit',
-                      style: t.small.copyWith(fontSize: 14),
-                    ),
-                  ],
-                ),
-                style: t.num(24),
-              ),
-            ],
+          Semantics(
+            header: true,
+            child: Row(
+              children: [
+                Icon(testIcon(test), size: 20, color: p.accent),
+                const SizedBox(width: 6),
+                Flexible(child: Text(info.title, style: t.h3)),
+              ],
+            ),
           ),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
             child: Text(info.what, style: t.small),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 0),
-            child: DotStrip(
-              value: r.value,
-              low: r.low,
-              high: r.high,
-              others: [
-                for (final o in all)
-                  if (o.key != r.key) o.value,
-              ],
-              max: max,
-            ),
-          ),
-          ExcludeSemantics(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('0', style: t.small.copyWith(fontSize: 13)),
-                Text(whole(max), style: t.small.copyWith(fontSize: 13)),
-              ],
-            ),
+          const SizedBox(height: 10),
+          Text(
+            [
+              placeSentence(all, r),
+              if (!fastest) '${capFirst(asFast(share))} as the fastest.',
+            ].join(' '),
+            style: t.body.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          Text(
-            resultSentences(all, r, withPlace: true).join(' '),
-            style: t.smallText,
+          SpeedBars(
+            key: ValueKey('profile-bars-${run.id}-${backend.key}-$test'),
+            test: test,
+            results: pair,
+            all: all,
+            unit: unit,
+            mine: backend.key,
+            onOpen: nav.open,
+            legend: false,
           ),
         ],
       ),
@@ -443,7 +441,7 @@ class _ExtraTable extends StatelessWidget {
           children: [
             TableRow(
               children: [
-                c('Kind of work', head, left: true),
+                c('Test', head, left: true),
                 for (final m in measures) c(m.short, head),
               ],
             ),

@@ -14,6 +14,7 @@ import '../../widgets/implementation.dart';
 import '../../widgets/race_replay.dart';
 import 'framework_charts.dart';
 import 'home_nav.dart';
+import 'short_answer.dart';
 
 /// The highest requested rate every compared framework held (a passing
 /// step at the same rate in each one's recorded steps), and each one's
@@ -111,6 +112,7 @@ class CompareView extends StatelessWidget {
               ]..sort((a, c) => a.name.compareTo(c.name)))
                 NameChip(
                   label: b.name,
+                  leading: LangBadge.of(b.key, b.language),
                   mine: state.compareKeys.contains(b.key),
                   semanticLabel: state.compareKeys.contains(b.key)
                       ? '${b.name}, picked'
@@ -133,6 +135,7 @@ class CompareView extends StatelessWidget {
             _TestBlock(
               test: s,
               results: byTest[s]!,
+              all: resultsFor(run, s),
               missing: [
                 for (final b in picked)
                   if (!byTest[s]!.any((r) => r.key == b.key)) b.name,
@@ -140,9 +143,8 @@ class CompareView extends StatelessWidget {
               unit: unit,
               onOpen: nav.open,
             ),
+          const BarsNote(),
           const SizedBox(height: 26),
-          const TestPicker(label: 'The sections below show'),
-          const SizedBox(height: 12),
           Fold(
             key: ValueKey('replay-${run.id}'),
             title: 'Watch the load climb',
@@ -150,7 +152,9 @@ class CompareView extends StatelessWidget {
                 'Replays each framework\'s recorded steps, one rate at a '
                 'time.',
             topLine: true,
-            child: _Replay(state: state, picked: picked),
+            child: _WithTestPicker(
+              child: _Replay(state: state, picked: picked),
+            ),
           ),
           Fold(
             key: ValueKey('shared-${run.id}'),
@@ -158,7 +162,9 @@ class CompareView extends StatelessWidget {
             subtitle:
                 'Reply times, processor and memory at a rate all of them '
                 'handled.',
-            child: _Shared(state: state, picked: picked),
+            child: _WithTestPicker(
+              child: _Shared(state: state, picked: picked),
+            ),
           ),
           Fold(
             key: ValueKey('charts-${run.id}'),
@@ -166,7 +172,9 @@ class CompareView extends StatelessWidget {
             subtitle:
                 'The load steps, processor and memory over time, every '
                 'measured number side by side, and how each is built.',
-            child: _Charts(state: state, picked: picked),
+            child: _WithTestPicker(
+              child: _Charts(state: state, picked: picked),
+            ),
           ),
         ],
         const SizedBox(height: 30),
@@ -175,7 +183,34 @@ class CompareView extends StatelessWidget {
           runSpacing: 10,
           children: [
             if (picked.isNotEmpty)
-              CalmButton(label: 'Clear all', onTap: state.clearCompare),
+              CalmButton(
+                label: 'Clear all',
+                onTap: () {
+                  final was = [...state.compareKeys];
+                  state.clearCompare();
+                  ScaffoldMessenger.maybeOf(context)
+                    ?..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Cleared ${numberWord(was.length)} '
+                          '${was.length == 1 ? 'framework' : 'frameworks'}.',
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                        action: SnackBarAction(
+                          label: 'Undo',
+                          onPressed: () {
+                            for (final k in was) {
+                              if (!state.compareKeys.contains(k)) {
+                                state.toggleCompare(k);
+                              }
+                            }
+                          },
+                        ),
+                      ),
+                    );
+                },
+              ),
             if (picked.length >= 2)
               TextLink(
                 label: 'Copy a link',
@@ -229,7 +264,7 @@ class _Picked extends StatelessWidget {
                 semanticLabel: 'Remove ${b.name}',
                 builder: (context, hovered) => Container(
                   constraints: const BoxConstraints(minHeight: 44),
-                  padding: const EdgeInsets.fromLTRB(13, 0, 8, 0),
+                  padding: const EdgeInsets.fromLTRB(7, 0, 8, 0),
                   decoration: BoxDecoration(
                     color: p.accentSoft,
                     borderRadius: BorderRadius.circular(999),
@@ -241,6 +276,8 @@ class _Picked extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        LangBadge.of(b.key, b.language),
+                        const SizedBox(width: 8),
                         Text(
                           b.name,
                           style: t.body.copyWith(fontSize: 15.5, height: 1.2),
@@ -265,7 +302,13 @@ class _Picked extends StatelessWidget {
                   for (final b in others)
                     PopupMenuItem(
                       value: b.key,
-                      child: Text(b.name, style: t.body),
+                      child: Row(
+                        children: [
+                          LangBadge.of(b.key, b.language),
+                          const SizedBox(width: 10),
+                          Flexible(child: Text(b.name, style: t.body)),
+                        ],
+                      ),
                     ),
                 ],
                 child: ExcludeFocus(
@@ -300,6 +343,9 @@ class _Picked extends StatelessWidget {
 class _TestBlock extends StatelessWidget {
   final String test;
   final List<Result> results;
+
+  /// Every framework's result in the test, for the boxes under the bars.
+  final List<Result> all;
   final List<String> missing;
   final String unit;
   final void Function(String key) onOpen;
@@ -307,6 +353,7 @@ class _TestBlock extends StatelessWidget {
   const _TestBlock({
     required this.test,
     required this.results,
+    required this.all,
     required this.missing,
     required this.unit,
     required this.onOpen,
@@ -317,9 +364,6 @@ class _TestBlock extends StatelessWidget {
     final p = context.palette;
     final t = Txt(p);
     final info = testInfo(test);
-    final max = results.isEmpty
-        ? 0.0
-        : results.map((r) => r.value).reduce((a, b) => a > b ? a : b);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
@@ -328,59 +372,29 @@ class _TestBlock extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Semantics(header: true, child: Text(info.title, style: t.h3)),
+          Semantics(
+            header: true,
+            child: Row(
+              children: [
+                Icon(testIcon(test), size: 20, color: p.accent),
+                const SizedBox(width: 6),
+                Flexible(child: Text(info.title, style: t.h3)),
+              ],
+            ),
+          ),
           Text(info.what, style: t.small),
           const SizedBox(height: 10),
-          for (final r in results)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: MergeSemantics(
-                child: LayoutBuilder(
-                  builder: (context, c) {
-                    final nameW = c.maxWidth < 480 ? 120.0 : 170.0;
-                    return Row(
-                      children: [
-                        SizedBox(
-                          width: nameW,
-                          child: Text(
-                            r.name,
-                            style: t.body.copyWith(fontSize: 15.5),
-                          ),
-                        ),
-                        Expanded(
-                          child: ExcludeSemantics(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: SizedBox(
-                                height: 10,
-                                child: FractionallySizedBox(
-                                  alignment: Alignment.centerLeft,
-                                  widthFactor: max <= 0
-                                      ? 0
-                                      : (r.value / max).clamp(0.02, 1.0),
-                                  child: ColoredBox(color: p.accent),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          width: 112,
-                          child: Text(
-                            numberText(r),
-                            textAlign: TextAlign.right,
-                            style: t.num(15.5),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-          const SizedBox(height: 8),
-          Text(compareTestSentence(results), style: t.smallText),
+          Text(compareTestSentence(results), style: t.body),
+          const SizedBox(height: 10),
+          SpeedBars(
+            test: test,
+            results: results,
+            all: all,
+            unit: unit,
+            mine: null,
+            onOpen: onOpen,
+            legend: false,
+          ),
           if (missing.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -390,12 +404,6 @@ class _TestBlock extends StatelessWidget {
                 style: t.small,
               ),
             ),
-          ExcludeSemantics(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text('Numbers are $unit.', style: t.small),
-            ),
-          ),
         ],
       ),
     );
@@ -502,7 +510,19 @@ class _Shared extends StatelessWidget {
                   border: Border(top: BorderSide(color: p.line)),
                 ),
                 children: [
-                  c(b.name, left: true),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 4,
+                    ),
+                    child: Row(
+                      children: [
+                        LangBadge.of(b.key, b.language, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(b.name, style: cell)),
+                      ],
+                    ),
+                  ),
                   for (final r in rows) c(r.$2(shared.steps[b.key]!)),
                 ],
               ),
@@ -595,7 +615,7 @@ class _ChartsState extends State<_Charts> {
           title: 'All numbers side by side',
           subtitle:
               'Each one at its own result, so only the first rows are a '
-              'race. Hover a name for what it means.',
+              'race. Hover over or press and hold a name for what it means.',
           child: _SideBySide(state: state, picked: here, test: s),
         ),
       ],
@@ -706,6 +726,8 @@ class _SideBySide extends StatelessWidget {
       return switch (m.unit) {
         Unit.rps || Unit.ratio => whole(v),
         Unit.ms => msText(v),
+        // The app's share of its own cores, as in every other table.
+        Unit.cpu when m.id == 'app_cpu' => cpuText(v, appCoreCount(state.run!)),
         Unit.cpu => '${whole(v)}%',
         Unit.mb => memText(v),
         Unit.percent => formatMetricShort(m, v),
@@ -737,10 +759,19 @@ class _SideBySide extends StatelessWidget {
             const SizedBox.shrink(),
             for (final b in picked)
               c(
-                Text(
-                  b.name,
-                  textAlign: TextAlign.right,
-                  style: cell.copyWith(fontWeight: FontWeight.w700),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    LangBadge.of(b.key, b.language, size: 20),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        b.name,
+                        textAlign: TextAlign.right,
+                        style: cell.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
                 ),
               ),
           ],
@@ -807,4 +838,22 @@ class _SideBySide extends StatelessWidget {
       child: table,
     );
   }
+}
+
+/// A fold's content with the test picker on top, right next to what it
+/// changes.
+class _WithTestPicker extends StatelessWidget {
+  final Widget child;
+
+  const _WithTestPicker({required this.child});
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const TestPicker(label: 'Which test'),
+      const SizedBox(height: 14),
+      child,
+    ],
+  );
 }

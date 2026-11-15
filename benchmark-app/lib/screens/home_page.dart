@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../models/plain.dart';
+import '../models/results.dart';
 import '../state/dashboard_state.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/calm.dart';
@@ -74,9 +75,15 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  HomeView? _shown;
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardState>();
+    // A view changed from elsewhere (the logo, the footer, a link) starts
+    // at the switch, not wherever the last view was scrolled to.
+    if (_shown != null && _shown != state.view) _toTop();
+    _shown = state.view;
     final run = state.run!;
     final p = context.palette;
     final t = Txt(p);
@@ -116,7 +123,10 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 12),
                   _RunLine(state: state),
-                  if (run.isLegacy) _LegacyNote(state: state),
+                  if (state.entry != null &&
+                      state.index.isNotEmpty &&
+                      state.entry != state.index.first)
+                    _LegacyNote(state: state),
                   const SizedBox(height: 26),
                   SizedBox(key: _switchKey),
                   SegmentSwitch<HomeView>(
@@ -194,10 +204,13 @@ class _RunLine extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Text(
-          'Results from ${longDate(entry?.date ?? run.date)}'
-          '${run.isLegacy ? ' (old method)' : ''} · ',
+          // The latest view combines each framework's newest run.
+          '${entry?.kind == RunKind.latest ? 'Latest results, up to' : 'Results from'} '
+          '${longDate(entry?.date ?? run.date)}'
+          '${run.isLegacy ? ' (old method)' : ''}',
           style: t.small,
         ),
+        const SizedBox(width: 10),
         ChangeRunButton(state: state),
         if (state.loading)
           const Padding(
@@ -220,7 +233,7 @@ class _LegacyNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final latest = state.index.where((e) => !e.isLegacy).firstOrNull;
+    final latest = state.index.firstOrNull;
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Wrap(

@@ -2,10 +2,10 @@
 // type, hairlines, pill chips, outlined buttons, folds that open in place,
 // and a visible focus ring for keyboard users.
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../utils/colors.dart';
 import '../utils/theme_constants.dart';
 
 // ------------------------------------------------------------------- type
@@ -159,6 +159,9 @@ class NameChip extends StatelessWidget {
   final bool? expanded;
   final String? semanticLabel;
 
+  /// Shown before the name, usually the framework's [LangBadge].
+  final Widget? leading;
+
   const NameChip({
     super.key,
     required this.label,
@@ -166,6 +169,7 @@ class NameChip extends StatelessWidget {
     this.mine = false,
     this.expanded,
     this.semanticLabel,
+    this.leading,
   });
 
   @override
@@ -182,7 +186,12 @@ class NameChip extends StatelessWidget {
       builder: (context, hovered) => AnimatedContainer(
         duration: motion(context, 120),
         constraints: const BoxConstraints(minHeight: 44),
-        padding: EdgeInsets.symmetric(horizontal: mine ? 12 : 13),
+        padding: EdgeInsets.fromLTRB(
+          leading != null ? (mine ? 6 : 7) : (mine ? 12 : 13),
+          0,
+          mine ? 12 : 13,
+          0,
+        ),
         decoration: BoxDecoration(
           color: open ? p.accent : p.surface,
           borderRadius: BorderRadius.circular(999),
@@ -194,6 +203,7 @@ class NameChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (leading != null) ...[leading!, const SizedBox(width: 8)],
             Flexible(
               child: ExcludeSemantics(
                 child: Text(
@@ -329,6 +339,33 @@ class TextLink extends StatelessWidget {
   }
 }
 
+// ------------------------------------------------------------- scrolling
+
+/// After this frame, scrolls so the start of [key]'s widget is on screen,
+/// if it is not already: used when a tap opens something that may land
+/// below the fold.
+void bringIntoView(GlobalKey key) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final ctx = key.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    final box = ctx.findRenderObject() as RenderBox?;
+    final scrollable = Scrollable.maybeOf(ctx);
+    if (box == null || !box.attached || scrollable == null) return;
+    final view = scrollable.context.findRenderObject() as RenderBox?;
+    if (view == null || !view.attached) return;
+    final top = box.localToGlobal(Offset.zero, ancestor: view).dy;
+    final vh = view.size.height;
+    final need = box.size.height < vh * 0.6 ? box.size.height : vh * 0.6;
+    if (top >= 0 && top + need <= vh) return;
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: box.size.height < vh * 0.7 ? 0.5 : 0.1,
+      duration: motion(ctx, 300),
+      curve: Curves.easeOutCubic,
+    );
+  });
+}
+
 // ------------------------------------------------------------------ folds
 
 /// A fold like HTML's details/summary: a bold title (and an optional muted
@@ -365,10 +402,14 @@ class Fold extends StatefulWidget {
 
 class _FoldState extends State<Fold> {
   late bool _open = widget.initiallyOpen;
+  final _content = GlobalKey(debugLabel: 'fold content');
 
   void _toggle() {
     setState(() => _open = !_open);
     widget.onChanged?.call(_open);
+    // What opened must be seen: a fold near the bottom of the screen
+    // scrolls up so its content shows, not just its triangle.
+    if (_open) bringIntoView(_content);
   }
 
   @override
@@ -457,6 +498,7 @@ class _FoldState extends State<Fold> {
           ),
           if (_open)
             Padding(
+              key: _content,
               padding: const EdgeInsets.only(bottom: 16),
               child: widget.child,
             ),
@@ -705,104 +747,6 @@ class Bullets extends StatelessWidget {
   }
 }
 
-/// One framework among all of them on a line: small dots for the others,
-/// a shaded band for its lowest-to-highest run, a large dot for it. Further
-/// right is more. Decorative: the sentences under it say the same.
-class DotStrip extends StatelessWidget {
-  final double value;
-  final double low;
-  final double high;
-  final List<double> others;
-  final double max;
-
-  const DotStrip({
-    super.key,
-    required this.value,
-    required this.low,
-    required this.high,
-    required this.others,
-    required this.max,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    return ExcludeSemantics(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 12),
-        child: SizedBox(
-          height: 22,
-          width: double.infinity,
-          child: CustomPaint(
-            painter: _StripPainter(
-              value: value,
-              low: low,
-              high: high,
-              others: others,
-              max: max,
-              line: p.line,
-              dot: p.dot,
-              accent: p.accent,
-              bg: p.bg,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StripPainter extends CustomPainter {
-  final double value, low, high, max;
-  final List<double> others;
-  final Color line, dot, accent, bg;
-
-  _StripPainter({
-    required this.value,
-    required this.low,
-    required this.high,
-    required this.others,
-    required this.max,
-    required this.line,
-    required this.dot,
-    required this.accent,
-    required this.bg,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const inset = 8.0;
-    final w = size.width - inset * 2;
-    double x(double v) => inset + (max <= 0 ? 0 : (v / max).clamp(0, 1) * w);
-    canvas.drawRect(Rect.fromLTWH(0, 10, size.width, 2), Paint()..color = line);
-    for (final o in others) {
-      canvas.drawCircle(Offset(x(o), 11), 4, Paint()..color = dot);
-    }
-    final l = x(low), h = x(high);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTRB(l, 7, (h - l) < 2 ? l + 2 : h, 15),
-        const Radius.circular(4),
-      ),
-      Paint()..color = accent.withValues(alpha: 0.3),
-    );
-    canvas.drawCircle(Offset(x(value), 11), 8, Paint()..color = bg);
-    canvas.drawCircle(Offset(x(value), 11), 6, Paint()..color = accent);
-  }
-
-  @override
-  bool shouldRepaint(_StripPainter o) =>
-      o.value != value ||
-      o.low != low ||
-      o.high != high ||
-      o.max != max ||
-      !listEquals(o.others, others) ||
-      o.line != line ||
-      o.accent != accent ||
-      o.dot != dot ||
-      o.bg != bg;
-}
-
 /// Copies [text] and confirms it.
 void copyToClipboard(BuildContext context, String text, String done) {
   Clipboard.setData(ClipboardData(text: text));
@@ -813,6 +757,104 @@ void copyToClipboard(BuildContext context, String text, String done) {
       duration: const Duration(seconds: 2),
     ),
   );
+}
+
+// -------------------------------------------------------------------- bar
+
+/// A rounded bar on a faint track; a capped result gets a striped end that
+/// says "possibly longer".
+class SpeedBar extends StatelessWidget {
+  final double share;
+  final Color color;
+  final bool capped;
+  final double height;
+
+  const SpeedBar({
+    super.key,
+    required this.share,
+    required this.color,
+    required this.capped,
+    this.height = 16,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    const stripe = 18.0;
+    return LayoutBuilder(
+      builder: (context, c) {
+        final track = c.maxWidth - stripe - 2;
+        final w = (track * share).clamp(4.0, track);
+        final edge = Color.lerp(color, const Color(0xFF000000), 0.22)!;
+        return SizedBox(
+          height: height,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: track,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: p.line.withValues(alpha: p.isDark ? 0.9 : 0.6),
+                    borderRadius: BorderRadius.circular(height / 2),
+                  ),
+                ),
+              ),
+              AnimatedPositioned(
+                duration: motion(context, 400),
+                curve: Curves.easeOutCubic,
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: w,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(height / 2),
+                    border: p.isDark ? null : Border.all(color: edge, width: 1),
+                  ),
+                ),
+              ),
+              if (capped)
+                Positioned(
+                  left: w + 2,
+                  top: 3,
+                  bottom: 3,
+                  width: stripe - 2,
+                  child: CustomPaint(painter: _BarStripes(color)),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _BarStripes extends CustomPainter {
+  final Color color;
+
+  _BarStripes(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color.withValues(alpha: 0.7);
+    for (var x = 0.0; x < size.width; x += 5) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, 0, 2.5, size.height),
+          const Radius.circular(1),
+        ),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BarStripes old) => old.color != color;
 }
 
 // ------------------------------------------------------------------ badge
@@ -830,6 +872,15 @@ class LangBadge extends StatelessWidget {
     required this.tag,
     this.size = 22,
   });
+
+  /// The badge of the framework [key], written in [language].
+  LangBadge.of(String key, String language, {Key? k, double size = 22})
+    : this(
+        key: k,
+        color: BackendColors.of(key),
+        tag: monogramOf(language),
+        size: size,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -859,9 +910,9 @@ class LangBadge extends StatelessWidget {
 /// The icon for a test: both ways for the typical app, down for reading,
 /// up for saving, a bolt for no database.
 IconData testIcon(String id) => switch (id) {
-  'db_mixed' => Icons.swap_vert,
+  'db_mixed' || 'db_test' => Icons.swap_vert,
   'db_read' => Icons.download_outlined,
   'db_write' => Icons.upload_outlined,
-  'no_db' => Icons.bolt_outlined,
+  'no_db' || 'no_db_test' => Icons.bolt_outlined,
   _ => Icons.science_outlined,
 };

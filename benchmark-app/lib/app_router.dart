@@ -14,11 +14,23 @@ import 'state/dashboard_state.dart';
 ///     /history?s=TEST            history
 ///     /method                    how it's measured
 ///
+/// Any of these takes ?run=ID when the run shown is not the newest, so a
+/// copied link opens the same numbers; no run means the newest.
+///
 /// Older links still land: /f/KEY (the details page) opens KEY in One
 /// framework, and /compare/… opens Compare. The Every number sort and
 /// measure stay out of the URL, so clicking around does not flood the
 /// browser history.
 Uri locationOf(DashboardState s) {
+  final base = _place(s);
+  final entry = s.entry;
+  if (entry == null || s.index.isEmpty || entry == s.index.first) return base;
+  return base.replace(
+    queryParameters: {...base.queryParameters, 'run': entry.id},
+  );
+}
+
+Uri _place(DashboardState s) {
   final scenario = s.scenario;
   Uri at(String path, {bool withScenario = true}) => Uri(
     path: path,
@@ -99,7 +111,9 @@ class DashRouterDelegate extends RouterDelegate<Uri> with ChangeNotifier {
   }
 
   void _onState() {
-    if (_applying || state.run == null) return;
+    // While a run loads, the old one is still on screen: a link waiting for
+    // the new run must not be applied to the old one.
+    if (_applying || state.run == null || state.loading) return;
     final pending = _pending;
     if (pending != null) {
       _pending = null;
@@ -113,6 +127,16 @@ class DashRouterDelegate extends RouterDelegate<Uri> with ChangeNotifier {
   }
 
   void _apply(Uri uri) {
+    // The run first: load it, and apply the rest once it is in.
+    final want = uri.queryParameters['run'];
+    final target = want == null
+        ? state.index.firstOrNull
+        : state.index.where((e) => e.id == want).firstOrNull;
+    if (target != null && target != state.entry) {
+      _pending = uri;
+      state.selectRun(target);
+      return;
+    }
     _applying = true;
     try {
       applyLocation(state, uri);

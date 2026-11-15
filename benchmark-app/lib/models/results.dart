@@ -304,8 +304,8 @@ class Implementation {
   List<(String, String)> get facts => [
     if (server != null) ('Server', server!),
     if (concurrency != null) ('Concurrency', concurrency!),
-    if (dbAccess != null) ('DB access', dbAccess!),
-    if (pool != null) ('DB pool', pool!),
+    if (dbAccess != null) ('Database access', dbAccess!),
+    if (pool != null) ('Database connections', pool!),
   ];
 
   /// One line for dense lists: "server · db access".

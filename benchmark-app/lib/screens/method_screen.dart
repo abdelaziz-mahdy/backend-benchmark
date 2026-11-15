@@ -5,20 +5,22 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../models/metrics.dart';
-import '../models/plain.dart' show resultsFor;
+import '../models/plain.dart';
 import '../models/results.dart';
 import '../state/dashboard_state.dart';
-import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
+import '../widgets/calm.dart';
 import '../widgets/common.dart';
+import '../widgets/implementation.dart' show SourceLink;
+import '../widgets/prose.dart';
 import '../widgets/race_replay.dart' show Slo;
-import '../widgets/implementation.dart';
 import '../widgets/run_switcher.dart';
+import '../widgets/site_frame.dart' show SiteFooter, SiteWidth, kSiteWidth;
 
-/// How the numbers are made. Four key facts up front; every section shows a
-/// one-line summary and opens its details on tap, so the page reads in
-/// seconds and the rest is there for the curious. Also where the run shown
-/// in the dashboard is changed.
+/// How the numbers are made. Four key facts up front, one real run drawn
+/// step by step, then numbered sections that open on tap. Every section is
+/// a one-line lead and short bullets, so it reads in pieces. Also where
+/// the run shown on the site is changed.
 class MethodScreen extends StatefulWidget {
   const MethodScreen({super.key});
 
@@ -30,6 +32,7 @@ class _Section {
   final String id;
   final String title;
   final String summary;
+  final IconData icon;
   final Widget body;
 
   /// One key per section id for the life of the page, so a rebuild keeps
@@ -37,27 +40,32 @@ class _Section {
   static final _keys = Expando<Map<String, GlobalKey>>();
   final GlobalKey key;
 
-  _Section._(this.id, this.title, this.summary, this.body, this.key);
+  _Section._(this.id, this.title, this.summary, this.icon, this.body, this.key);
 
-  static _Section Function(String, String, String, Widget) forPage(
+  static _Section Function(String, String, String, IconData, Widget) forPage(
     Object page,
   ) {
     final keys = _keys[page] ??= {};
-    return (id, title, summary, body) => _Section._(
+    return (id, title, summary, icon, body) => _Section._(
       id,
       title,
       summary,
+      icon,
       body,
       keys.putIfAbsent(id, () => GlobalKey(debugLabel: 'method-$id')),
     );
   }
 }
 
+/// Width of the contents rail beside the page on wide screens.
+const _railWidth = 220.0;
+const _railGap = 28.0;
+
 class _MethodScreenState extends State<MethodScreen> {
   bool _contentsOpen = false;
 
-  /// The definition and the scenarios are what most visitors came for, so
-  /// they start open; the rest opens on demand.
+  /// What the result means and the tests are what most visitors came for,
+  /// so they start open; the rest opens on demand.
   final Set<String> _open = {'sustainable', 'scenarios'};
   final _scroll = ScrollController();
   String? _active;
@@ -76,9 +84,9 @@ class _MethodScreenState extends State<MethodScreen> {
     super.dispose();
   }
 
-  /// Highlights the section at the top of the view in the contents rail.
+  /// Highlights the section at the top of the view in the contents list.
   void _track() {
-    if (!_scroll.hasClients) return;
+    if (!_scroll.hasClients || !mounted) return;
     String? active;
     for (final s in _current) {
       final ro = s.key.currentContext?.findRenderObject();
@@ -98,45 +106,55 @@ class _MethodScreenState extends State<MethodScreen> {
     if (run == null) return const SizedBox.shrink();
     final sections = _sections(state, run);
     _current = sections;
+    // A run switch can drop the section that was active (the old method
+    // has other sections); fall back to the first.
+    final active = sections.any((s) => s.id == _active)
+        ? _active
+        : sections.firstOrNull?.id;
     return LayoutBuilder(
       builder: (context, c) {
-        final narrow = c.maxWidth < 900;
-        final pad = c.maxWidth < kNarrow ? 16.0 : 28.0;
-        final title = PageTitle(
-          eyebrow: 'Method',
-          title: "How it's measured",
-          subtitle: run.isLegacy
-              ? 'An old run with the previous (v1) method'
-              : 'The short version first; open any section for the details.',
-          onBack: state.goHome,
-        );
+        // The rail sits in the margin beside the site column, so the
+        // content lines up with the header; without room it goes inline.
+        final rail =
+            c.maxWidth >= kSiteWidth + 40 + 2 * (_railWidth + _railGap);
         final content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            title,
-            const SizedBox(height: 18),
+            PageHead(
+              icon: Icons.science_outlined,
+              title: "How it's measured",
+              lead: run.isLegacy
+                  ? 'This is an old run, made with an older method. Its '
+                        'numbers cannot be compared with newer runs.'
+                  : 'The short version first. Open any section below for '
+                        'the details.',
+              onBack: () => state.setPage(DashboardPage.home),
+            ),
             if (!run.isLegacy) ...[
+              const SizedBox(height: kSectionGap),
               _keyFacts(run),
-              const SizedBox(height: 14),
+              const SizedBox(height: kSectionGap),
               _RunStaircase(state: state),
             ],
-            if (narrow) ...[
-              const SizedBox(height: 12),
+            if (!rail) ...[
+              const SizedBox(height: kSectionGap),
               _ContentsList(
                 sections: sections,
                 collapsible: true,
                 open: _contentsOpen,
-                active: _active ?? sections.firstOrNull?.id,
+                active: active,
                 onToggle: () => setState(() => _contentsOpen = !_contentsOpen),
                 onJump: _jump,
               ),
             ],
+            const SizedBox(height: kSectionGap),
             for (var i = 0; i < sections.length; i++) ...[
-              const SizedBox(height: 10),
+              if (i > 0) const SizedBox(height: 16),
               KeyedSubtree(
                 key: sections[i].key,
                 child: _Collapsible(
                   number: i + 1,
+                  icon: sections[i].icon,
                   title: sections[i].title,
                   summary: sections[i].summary,
                   open: _open.contains(sections[i].id),
@@ -151,39 +169,40 @@ class _MethodScreenState extends State<MethodScreen> {
             ],
           ],
         );
-        final scroll = SingleChildScrollView(
+        final page = SingleChildScrollView(
           controller: _scroll,
-          padding: EdgeInsets.fromLTRB(pad, 20, narrow ? pad : 12, 32),
-          child: content,
-        );
-        return Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: kMaxContentWidth + pad * 2),
-            child: narrow
-                ? scroll
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: scroll),
-                      // Outside the scroll view, so it stays put.
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(12, 20, pad, 20),
-                        child: SizedBox(
-                          width: 220,
-                          child: _ContentsList(
-                            sections: sections,
-                            collapsible: false,
-                            open: true,
-                            active: _active ?? sections.firstOrNull?.id,
-                            onToggle: () {},
-                            onJump: _jump,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SiteWidth(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 28),
+                  child: content,
+                ),
+              ),
+              const SiteFooter(),
+            ],
           ),
+        );
+        if (!rail) return page;
+        return Stack(
+          children: [
+            Positioned.fill(child: page),
+            // Outside the scroll view, so it stays put.
+            Positioned(
+              top: 28,
+              left: c.maxWidth / 2 + kSiteWidth / 2 + _railGap,
+              width: _railWidth,
+              child: _ContentsList(
+                sections: sections,
+                collapsible: false,
+                open: true,
+                active: active,
+                onToggle: () {},
+                onJump: _jump,
+              ),
+            ),
+          ],
         );
       },
     );
@@ -192,7 +211,9 @@ class _MethodScreenState extends State<MethodScreen> {
   /// Opens the section, then scrolls to it.
   void _jump(_Section s) {
     setState(() => _open.add(s.id));
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollTo(s));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollTo(s);
+    });
   }
 
   void _scrollTo(_Section s) {
@@ -212,93 +233,123 @@ class _MethodScreenState extends State<MethodScreen> {
         section(
           'overview',
           'Overview',
-          'Old method, kept for history; not comparable with current runs.',
+          'An old method, kept for history. Not comparable with newer runs.',
+          Icons.history,
           _overview(run),
         ),
       if (!run.isLegacy)
         section(
           'load',
-          'How load is applied',
-          'k6 raises the request rate step by step until the app falls behind.',
+          'How the traffic is sent',
+          'Our testing tool sends more and more requests until the app falls '
+              'behind.',
+          Icons.stairs_outlined,
           _load(run),
         ),
       section(
         'sustainable',
+        run.isLegacy ? 'What the old numbers are' : 'What the result means',
         run.isLegacy
-            ? 'What the v1 numbers are'
-            : 'What "sustainable load" means',
-        run.isLegacy
-            ? 'Average requests per second during a user ramp.'
-            : 'The highest rate held while staying fast and error-free.',
+            ? 'The average requests a second while users were added.'
+            : 'The busiest step it handled while staying fast and '
+                  'error-free.',
+        Icons.flag_outlined,
         _sustainable(run),
       ),
       section(
         'scenarios',
-        'Scenarios',
-        'Static JSON, database reads, inserts, and an 80/20 mix.',
+        'The tests',
+        capFirst(
+          joinAnd([for (final s in run.scenarios) testInfo(s).inSentence]),
+        ),
+        Icons.checklist,
         _scenarios(run),
       ),
       if (!run.isLegacy)
         section(
           'fairness',
           'Fairness rules',
-          'Same cores, memory, seed data and pool size for every framework.',
+          'Same processor, memory, data and database connections for every '
+              'framework.',
+          Icons.balance,
           _fairness(run),
         ),
       section(
         'run',
-        'Hardware and this run',
-        '${run.machine.cpu} · ${run.date ?? 'undated'} · change the run here.',
+        'This run and the computer',
+        '${run.machine.cpu} · ${longDate(run.date)} · change the run here.',
+        Icons.computer,
         _thisRun(state, run),
       ),
       section(
         'flags',
-        'Flags and marks',
-        'What the capped, noisy and restarted markers mean.',
+        'Marks next to results',
+        'What the limit, noisy, restarted and other marks mean.',
+        Icons.label_outline,
         _flags(),
       ),
       section(
         'glossary',
-        'Glossary',
-        'Every metric in one line.',
+        'Words we use',
+        'Every number explained in one line.',
+        Icons.menu_book_outlined,
         _glossary(run),
       ),
       section(
         'limits',
-        'Known limitations',
-        'What these numbers cannot tell you.',
+        "What these numbers can't tell you",
+        'Where to be careful when reading them.',
+        Icons.warning_amber_outlined,
         _limits(run),
       ),
     ];
   }
 
+  int _reps(RunSummary run) =>
+      (run.params['reps'] is num) ? (run.params['reps'] as num).toInt() : 3;
+
   /// Four facts that answer "how was this measured?" at a glance.
   Widget _keyFacts(RunSummary run) {
-    final slo = (run.params['slo'] as Map?) ?? const {};
-    final reps = run.params['reps'] ?? 3;
+    final slo = Slo.of(run.params);
+    final reps = _reps(run);
+    final cores = appCoreCount(run);
     final steps = (run.params['steps'] as List?)?.whereType<num>().toList();
     final range = steps == null || steps.isEmpty
-        ? 'from 250 req/s'
-        : '${_k(steps.first)} to ${_k(steps.last)} req/s';
+        ? 'from 250 requests a second'
+        : 'from ${whole(steps.first)} to ${whole(steps.last)} requests a '
+              'second';
     return TileGrid(
-      minTileWidth: 165,
+      minTileWidth: 190,
       children: [
-        StatTile(
+        FactCard(
+          icon: Icons.memory,
           label: 'Each app gets',
-          value: '${run.appCores} cores',
-          detail: 'pinned, nothing else on them',
-        ),
-        StatTile(
-          label: 'Passing means',
-          value: 'p99 < ${_num(slo['p99_ms'] ?? 100)} ms',
+          value: capFirst(
+            '${numberWord(cores)} ${cores == 1 ? 'core' : 'cores'}',
+          ),
           detail:
-              'and < ${_num(((slo['error_rate'] ?? 0.01) as num) * 100)}% errors',
+              'Processor cores kept for it alone. Nothing else runs on '
+              'them.',
         ),
-        StatTile(label: 'Load', value: 'stepped up', detail: range),
-        StatTile(
+        FactCard(
+          icon: Icons.check_circle_outline,
+          label: 'To pass a step',
+          value: 'Fast and error-free',
+          detail:
+              '99 of every 100 replies within ${msText(slo.p99Ms)}, and fewer '
+              'than ${_pct(slo.errorRate)} errors.',
+        ),
+        FactCard(
+          icon: Icons.stairs_outlined,
+          label: 'The traffic',
+          value: 'Steps up',
+          detail: '${capFirst(range)}.',
+        ),
+        FactCard(
+          icon: Icons.repeat,
           label: 'Every result is',
-          value: 'median of $reps',
-          detail: 'repetitions per scenario',
+          value: 'Middle of $reps runs',
+          detail: 'Every test runs ${numberWord(reps)} times.',
         ),
       ],
     );
@@ -306,315 +357,590 @@ class _MethodScreenState extends State<MethodScreen> {
 
   // ------------------------------------------------------------ sections
 
-  Widget _overview(RunSummary run) => _Para([
-    if (run.isLegacy)
-      'This is an old run with the v1 method: Locust ramped up to 10,000 '
-          'simulated users and the average requests per second was '
-          'recorded. There was no latency limit. These numbers are kept for '
-          'history and are not comparable with the current method.'
-    else ...[
-      'Every framework serves the same four scenarios from a container '
-          'pinned to ${run.appCores} CPU cores, with Postgres and the load '
-          'generator on their own cores.',
-      'The load generator raises the request rate step by step. The '
-          'headline number, sustainable load, is the highest rate a '
-          'framework held while staying fast and error-free.',
-      'Each scenario is repeated ${run.params['reps'] ?? 3} times; the '
-          'dashboard shows the median and keeps the min–max.',
-    ],
-  ]);
+  Widget _overview(RunSummary run) {
+    final users = run.params['users'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Lead('This run used our first, simpler method.'),
+        const SizedBox(height: 14),
+        Points([
+          Point(
+            'How:',
+            'an older testing tool (Locust) added simulated users, up to '
+                '${users is num ? whole(users) : '10,000'}, and recorded the '
+                'average requests a second.',
+          ),
+          const Point('No limit', 'on how slow replies could get.'),
+          const Point(
+            'Kept for history.',
+            'These numbers cannot be compared with the current method.',
+          ),
+        ]),
+      ],
+    );
+  }
 
   Widget _load(RunSummary run) {
     final refine = run.params['refine_steps'];
+    final tolerance = ((run.params['refine_tolerance'] as num? ?? 0.06) * 100)
+        .round();
     final refineText = switch (refine) {
       null || 1 =>
-        'tests the midpoint between the last passing and the first failing '
-            'step',
-      0 => 'stops there',
+        'it tries one extra step halfway between the last pass and the first '
+            'fail.',
+      0 => 'it stops there.',
       _ =>
-        'halves the gap between the last passing and the first failing '
-            'step up to $refine times, stopping once it is within '
-            '${((run.params['refine_tolerance'] as num? ?? 0.06) * 100).round()}%',
+        'it tries extra steps between the last pass and the first fail, '
+            'halving the gap up to $refine times, until the two are within '
+            '$tolerance% of each other.',
     };
-    return _Facts([
-      ('Load generator', 'k6, fixed request rate per step (open model)'),
-      ('Steps', _steps(run)),
-      ('Step length', '${run.params['step_seconds'] ?? 30} s'),
-      (
-        'Warmup',
-        '${run.params['warmup_seconds'] ?? 30} s before the first step, '
-            'discarded',
-      ),
-      (
-        'Stop rule',
-        'The run stops at the first step that misses the limits, then '
-            '$refineText. After every failing step it waits until the app '
-            'answers quickly again, so a backlog from the overload does not '
-            'spoil the next step.',
-      ),
-    ]);
+    final seconds = run.params['step_seconds'] ?? 30;
+    final warmup = run.params['warmup_seconds'] ?? 30;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Lead(
+          'Our testing tool sends a fixed number of requests a second, then '
+          'steps up.',
+        ),
+        const SizedBox(height: 14),
+        Points([
+          Point('Steps:', '${_steps(run)}.'),
+          Point('Each step lasts', '$seconds seconds.'),
+          Point(
+            'Warm-up:',
+            '$warmup seconds before the first step. Not counted.',
+          ),
+          const Point(
+            'Steady rate:',
+            'the tool keeps sending at the set rate even when replies are '
+                'slow, the way real visitors keep arriving.',
+          ),
+          const Point(
+            'Stop rule:',
+            'the test stops at the first step that fails a limit.',
+          ),
+          Point('Extra steps:', 'after that, $refineText'),
+          const Point(
+            'Cool-down:',
+            'after every failed step it waits until the app answers quickly '
+                'again, so the backlog does not spoil the next step.',
+          ),
+        ]),
+      ],
+    );
   }
 
   Widget _sustainable(RunSummary run) {
     if (run.isLegacy) {
-      return _Para(const [
-        'Average throughput: mean requests per second during the ramp.',
-        'Latency, CPU and memory are averages over the whole run.',
-        'One run, one CPU per app, no latency or error limit.',
-      ]);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: const [
+          Lead('The old method measured an average, with no limits.'),
+          SizedBox(height: 14),
+          Points([
+            Point(
+              'The result:',
+              'the average requests a second while simulated users were '
+                  'added.',
+            ),
+            Point(
+              'Reply times, processor and memory',
+              'are averages over the whole test.',
+            ),
+            Point(
+              'One run,',
+              'one processor core per app, and no limit on reply time or '
+                  'errors.',
+            ),
+          ]),
+        ],
+      );
     }
-    final slo = run.params['slo'] as Map? ?? const {};
-    final p99 = slo['p99_ms'] ?? 100;
-    final err = ((slo['error_rate'] ?? 0.01) as num) * 100;
-    final served = ((slo['achieved_ratio'] ?? 0.95) as num) * 100;
+    final slo = Slo.of(run.params);
+    final p = context.palette;
+    Widget tick() => Icon(Icons.check, size: 18, color: p.accent);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Para(const [
-          'A step passes when all three limits hold. Sustainable load is '
-              'the highest passing step.',
+        const Lead(
+          'A step passes when all three limits hold. The result is the '
+          'busiest step that passed.',
+        ),
+        const SizedBox(height: 14),
+        Points([
+          Point(
+            'Slow reply:',
+            '99 of every 100 replies came back within ${msText(slo.p99Ms)}.',
+            leading: tick(),
+          ),
+          Point(
+            'Errors:',
+            'fewer than ${_pct(slo.errorRate)} of requests failed.',
+            leading: tick(),
+          ),
+          Point(
+            'Kept up:',
+            'the app answered at least ${_pct(slo.servedRatio)} of the '
+                'requests we sent.',
+            leading: tick(),
+          ),
         ]),
-        const SizedBox(height: 8),
-        _Facts([
-          ('p99 latency', 'under ${_num(p99)} ms'),
-          ('Errors', 'fewer than ${_num(err)}% of requests'),
-          ('Served', 'at least ${_num(served)}% of the requested rate'),
-          (
-            'Also reported',
-            'Peak throughput (most requests per second at any step, whatever '
-                'the latency); latency percentiles, CPU and memory at the '
-                'sustainable step.',
+        const SizedBox(height: 24),
+        const SubHead(Icons.add_chart, 'Also reported', size: 16),
+        const SizedBox(height: 10),
+        const Points([
+          Point(
+            'Most requests a second at any step,',
+            'however slow the replies were.',
+          ),
+          Point(
+            'Reply times, processor and memory',
+            'at the busiest step that passed.',
           ),
         ]),
       ],
     );
   }
 
-  Widget _scenarios(RunSummary run) => _Facts([
-    for (final s in run.scenarios) (scenarioLabel(s), scenarioHelp(s)),
-  ]);
+  Widget _scenarios(RunSummary run) {
+    final p = context.palette;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Lead(
+          'Every framework ran the same '
+          '${numberWord(run.scenarios.length)} '
+          '${run.scenarios.length == 1 ? 'test' : 'tests'}.',
+        ),
+        const SizedBox(height: 14),
+        Points(lead: 30, [
+          for (final s in run.scenarios)
+            Point(
+              '${testInfo(s).title}:',
+              testInfo(s).what,
+              leading: Icon(testIcon(s), size: 20, color: p.accent),
+            ),
+        ]),
+      ],
+    );
+  }
 
   Widget _fairness(RunSummary run) {
     final cpusets = run.params['cpusets'] as Map? ?? const {};
     final mem = run.params['memory'] as Map? ?? const {};
-    return _Facts([
-      (
-        'CPU',
-        '${run.appCores} pinned cores per app'
-            '${mem['app'] != null ? ', ${mem['app']} memory limit' : ''}; '
-            'Postgres on cores ${cpusets['db'] ?? 'of its own'}, k6 on '
-            '${cpusets['k6'] ?? 'its own'}.',
-      ),
-      (
-        'Configuration',
-        'Production mode, release builds, one worker per core where the '
-            'runtime is single-threaded, about 20 database connections in '
-            'total.',
-      ),
-      (
-        'Data',
-        'Before DB scenarios the table is emptied and seeded with '
-            '${_num(run.params['seed_rows'] ?? 10000)} rows through the '
-            'app\'s own API. Reads use small offsets so Postgres is not the '
-            'bottleneck.',
-      ),
-      (
-        'RPC backends',
-        'Serverpod and FOAM are called through their native API with the '
-            'same four operations.',
-      ),
-      (
-        'Repetitions',
-        '${run.params['reps'] ?? 3} per scenario; median shown, min–max '
-            'kept and marked noisy when they differ by more than 10%.',
-      ),
-    ]);
-  }
-
-  Widget _thisRun(DashboardState state, RunSummary run) {
-    final images = run.params['images'] as Map? ?? const {};
-    final facts = <(String, Widget)>[
-      ('Run', factText(run.id)),
-      if (run.date != null) ('Date', factText(run.date!)),
-      ('Machine', factText(run.machine.label)),
-      if (run.docker['cpus'] != null)
-        (
-          'Docker VM',
-          factText(
-            '${run.docker['cpus']} CPUs · ${run.docker['mem_gb'] ?? '?'} GB'
-            '${run.docker['version'] != null ? ' · Docker ${run.docker['version']}' : ''}',
-          ),
-        ),
-      ('Method', factText(run.isLegacy ? 'v1 (Locust)' : run.methodology)),
-      if (run.contributor != null) ('Contributor', factText(run.contributor!)),
-      for (final e in images.entries) (e.key, factText('${e.value}')),
-      if (run.gitSha != null)
-        (
-          'Code',
-          run.dirty
-              ? factText(
-                  '${run.gitSha} with uncommitted changes (see the '
-                  '"modified code" flag)',
-                )
-              : SourceLink(
-                  url: '$kRepoUrl/tree/${run.gitSha}',
-                  label: 'commit ${run.gitSha}',
-                ),
-        ),
-    ];
+    final cores = appCoreCount(run);
+    final reps = _reps(run);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Results are only comparable within one machine and one method. '
-          'Pick which run the dashboard shows:',
-          style: TextStyle(color: context.palette.text, fontSize: 14.5),
-        ),
-        const SizedBox(height: 8),
-        RunPicker(state: state),
+        const Lead('Every framework gets the same conditions.'),
         const SizedBox(height: 14),
-        FactList(facts: facts, labelWidth: 110),
+        Points([
+          Point(
+            'Processor:',
+            '${numberWord(cores)} cores per app, kept for it alone. The '
+                'database runs on '
+                '${cpusets['db'] != null ? 'cores ${cpusets['db']}' : 'cores of its own'}'
+                ', our testing tool on '
+                '${cpusets['k6'] != null ? 'cores ${cpusets['k6']}' : 'cores of its own'}.',
+          ),
+          if (mem['app'] != null)
+            Point('Memory:', 'each app may use up to ${_size(mem['app'])}.'),
+          const Point(
+            'Settings:',
+            'production mode and release builds. One worker per core where '
+                'the language runs on one thread. About 20 database '
+                'connections in total.',
+          ),
+          Point(
+            'Data:',
+            'before each database test the table is emptied and filled with '
+                '${whole(run.params['seed_rows'] as num? ?? 10000)} rows '
+                "through the app's own API.",
+          ),
+          const Point(
+            'Reads',
+            'ask for rows near the start of the table, so the database is '
+                'not what slows things down.',
+          ),
+          const Point(
+            'Serverpod and FOAM',
+            'have their own way of calling the server (RPC) instead of plain '
+                'web addresses. We call them that way, with the same four '
+                'operations.',
+          ),
+          Point(
+            'Repeats:',
+            'every test runs ${numberWord(reps)} times. We show the middle '
+                'run and keep the lowest and highest. If they differ by more '
+                'than 10%, the result is marked as noisy.',
+          ),
+        ]),
       ],
     );
   }
 
-  Widget _flags() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      _flagRow(
-        const MarkerIcon(Marker.capped, size: 16),
-        'Capped by the load generator: k6 used most of its own CPU at the '
-        'top steps, so the real limit may be higher than measured on this '
-        'machine. Several frameworks tie at this cap in No DB.',
-      ),
-      _flagRow(
-        const MarkerIcon(Marker.noisy, size: 16),
-        'Noisy repetitions: they differed by more than 10% on the headline '
-        'number. Treat small differences with care.',
-      ),
-      _flagRow(
-        const MarkerIcon(Marker.restarted, size: 16),
-        'Restarted under overload: the app stopped responding and did not '
-        'recover by itself; the runner restarted it (keeping its data) and '
-        'kept measuring. Says something about resilience, not just speed.',
-      ),
-      _flagRow(
-        Text('—', style: mono(14, color: context.palette.muted)),
-        'Not measured in that scenario.',
-      ),
-      _flagRow(
-        const Flag(text: 'capped', icon: Icons.speed, tooltip: ''),
-        'The same load-generator cap, as a label. On the home page it reads "or more" or a plus sign (+).',
-      ),
-      _flagRow(
-        const Flag(text: '±15%', icon: Icons.waves, tooltip: ''),
-        'The same spread warning, with the measured spread.',
-      ),
-      _flagRow(
-        Flag(text: 'note', tooltip: '', color: context.palette.muted),
-        'The backend has a remark from its author; it is printed in full '
-        'in its profile and when its name is opened.',
-      ),
-      _flagRow(
-        const Flag(text: 'modified', tooltip: ''),
-        'The run was made from a working copy with uncommitted changes, so '
-        'the linked commit is not exactly what ran.',
-      ),
-      _flagRow(
-        const Flag(text: 'v1 method', tooltip: ''),
-        'An old run with the previous method. Not comparable with v2.',
-      ),
-    ],
-  );
-
-  Widget _flagRow(Widget flag, String text) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 5),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _thisRun(DashboardState state, RunSummary run) {
+    final images = run.params['images'] as Map? ?? const {};
+    final current = state.index.isEmpty ? null : state.index.first.methodology;
+    final method = run.isLegacy
+        ? 'the old method (version 1)'
+        : 'version ${run.methodology.replaceFirst(RegExp('^v'), '')}'
+              '${current == null
+                  ? ''
+                  : run.methodology == current
+                  ? ' (the current one)'
+                  : ' (an older one)'}';
+    final docker = run.docker;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          width: 120,
-          child: Align(alignment: Alignment.centerLeft, child: flag),
+        const Lead(
+          'Results can only be compared on the same computer with the same '
+          'method.',
         ),
-        Expanded(child: factText(text)),
+        const SizedBox(height: 16),
+        Text(
+          'Pick which run the site shows:',
+          style: proseStyle(context).copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        RunPicker(state: state),
+        const SizedBox(height: 24),
+        Points([
+          if (run.date != null) Point('Date:', longDate(run.date)),
+          Point('Computer:', '${run.machine.label} memory.'),
+          if (docker['cpus'] != null)
+            Point(
+              'Docker setup:',
+              '${docker['cpus']} processor cores and '
+                  '${docker['mem_gb'] ?? '?'} GB of memory for everything'
+                  '${docker['version'] != null ? ', Docker ${docker['version']}' : ''}.',
+            ),
+          Point('Method:', '$method.'),
+          if (run.contributor != null) Point('Run by:', run.contributor!),
+          for (final e in images.entries)
+            Point(
+              '${_image('${e.key}', '${e.value}').$1}:',
+              _image('${e.key}', '${e.value}').$2,
+            ),
+        ]),
+        if (run.gitSha != null) ...[
+          const SizedBox(height: 16),
+          if (run.dirty)
+            Points([
+              Point(
+                'Code:',
+                'made from code with changes not yet saved, so there is no '
+                    'link to the exact code (see the "modified" mark).',
+              ),
+            ])
+          else
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SourceLink(
+                url: '$kRepoUrl/tree/${run.gitSha}',
+                label: 'See the exact code used for this run',
+                fontSize: 16,
+              ),
+            ),
+        ],
       ],
-    ),
-  );
+    );
+  }
+
+  Widget _flags() {
+    final p = context.palette;
+    Widget row(Widget mark, String term, String text) => Padding(
+      padding: EdgeInsets.only(
+        top: MediaQuery.sizeOf(context).width < 560 ? 22 : 14,
+      ),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final text0 = Points(lead: 0, [
+            Point(term, text, leading: const SizedBox()),
+          ]);
+          // Phones: the mark above its meaning, so the text keeps its width.
+          if (c.maxWidth < 480) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                mark,
+                const SizedBox(height: 6),
+                Points(lead: 0, [Point(term, text, leading: const SizedBox())]),
+              ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 120,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Align(alignment: Alignment.centerLeft, child: mark),
+                ),
+              ),
+              Expanded(child: text0),
+            ],
+          );
+        },
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Lead('Some results carry a mark. Here is what each one means.'),
+        const SizedBox(height: 4),
+        row(
+          const MarkerIcon(Marker.capped, size: 18),
+          "Hit our testing tool's limit:",
+          'our testing tool used most of its own processor at the top steps, '
+              'so the app may be faster than measured. Several frameworks tie '
+              'at this limit in No database.',
+        ),
+        row(
+          const MarkerIcon(Marker.noisy, size: 18),
+          'Noisy runs:',
+          'the runs differed by more than 10% on the main number. Treat small '
+              'differences with care.',
+        ),
+        row(
+          const MarkerIcon(Marker.restarted, size: 18),
+          'Restarted when overloaded:',
+          'the app stopped answering and did not recover by itself. We '
+              'restarted it (keeping its data) and kept measuring. This says '
+              'something about how it copes, not just its speed.',
+        ),
+        row(
+          Text('—', style: Txt(p).body.copyWith(color: p.muted)),
+          'Not measured',
+          'in that test.',
+        ),
+        row(
+          const Flag(text: 'capped', icon: Icons.speed, tooltip: ''),
+          "The tool's limit, as a label.",
+          'On the results page it reads "or more", or a plus sign (+).',
+        ),
+        row(
+          const Flag(text: '±15%', icon: Icons.waves, tooltip: ''),
+          'The noisy-runs warning,',
+          'with how far apart the runs were.',
+        ),
+        row(
+          Flag(text: 'note', tooltip: '', color: p.muted),
+          'A note from its author.',
+          "It is printed in full in the framework's own page and when its "
+              'name is opened.',
+        ),
+        row(
+          const Flag(text: 'modified', tooltip: ''),
+          'Unsaved code changes:',
+          'the run was made from code with changes not yet saved, so the '
+              'linked code is not exactly what ran.',
+        ),
+        row(
+          const Flag(text: 'v1 method', tooltip: ''),
+          'Old method:',
+          'a run made with the older method. Cannot be compared with newer '
+              'runs.',
+        ),
+      ],
+    );
+  }
 
   Widget _glossary(RunSummary run) {
     final results = [for (final b in run.backends) ...b.scenarios.values];
     final metrics = Metrics.available(results, Metrics.all);
-    return _Facts([
-      for (final m in metrics) (m.label, m.help),
-      (
-        'Requested vs served',
-        'k6 asks for a fixed rate; "served" is what the app actually '
-            'answered. Where the step chart leaves the dashed diagonal, the '
-            'app stopped keeping up.',
-      ),
-      (
-        'SLO',
-        'Service level objective: the latency and error limits a step must '
-            'meet to count as sustained.',
-      ),
-      (
-        'Rank, share of the best',
-        'Position among every framework measured in that scenario; equal '
-            'values share a position. The share is this value divided by the '
-            'best one.',
-      ),
-    ]);
+    final slo = Slo.of(run.params);
+    final cores = appCoreCount(run);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Lead('Every number on this site, in plain words.'),
+        const SizedBox(height: 14),
+        Points([
+          for (final m in metrics)
+            Point('${_label(m)}:', _meaning(m, slo, cores, run)),
+          const Point(
+            'Asked for and answered:',
+            'our testing tool asks for a fixed number of requests a second. '
+                '"Answered" is what the app really replied to. Where the step '
+                'chart leaves the dashed diagonal, the app stopped keeping up.',
+          ),
+          const Point(
+            'Limits:',
+            'the reply-time and error limits a step must meet to pass. '
+                'Engineers call these an SLO (service level objective).',
+          ),
+          const Point(
+            'Place and share of the best:',
+            'the position among every framework in that test. Equal numbers '
+                'share a place. The share is this number divided by the best '
+                'one.',
+          ),
+        ]),
+      ],
+    );
   }
 
-  Widget _limits(RunSummary run) => _Para([
-    if (!run.isLegacy)
-      'The load generator caps out around 48k requests per second on this '
-          'machine, so the fastest frameworks tie in No DB (marked capped). '
-          'Their real limit is higher.',
-    'One machine, one Docker VM: absolute numbers are specific to it. Only '
-        'runs on the same machine with the same method are comparable, which '
-        'is why History never mixes them.',
-    'Storage variants of one framework (such as FOAM3 embedded vs '
-        'Postgres) only separate where storage is the bottleneck; where the '
-        "framework's request handling is the limit they show similar numbers.",
-    'p99 is taken at each framework\'s own sustainable load: a slower '
-        'framework can show a lower p99 simply by serving less traffic.',
-    'Implementation details for runs made before the field existed come '
-        'from the current source, not from the run; the dashboard says so '
-        'where it applies.',
-  ]);
+  /// A number's short name in the glossary.
+  static String _label(Metric m) => switch (m.id) {
+    'sustainable_rps' => 'Requests a second (the result)',
+    'peak_rps' => 'Most at any step',
+    'avg_rps' => 'Average requests a second',
+    'p50_ms' => 'Typical reply',
+    'p90_ms' => '9 in 10 replies',
+    'p99_ms' => 'Slow reply',
+    'p999_ms' => '999 in 1,000 replies',
+    'error_rate' => 'Errors',
+    'app_cpu' => 'Processor',
+    'app_mem_mb' => 'Memory',
+    'db_cpu' => 'Database processor',
+    'rps_per_core' => 'Per processor core',
+    'rps_per_100mb' => 'Per 100 MB of memory',
+    _ => plainMetricLabel(m),
+  };
+
+  /// What a number means, in plain words.
+  String _meaning(Metric m, Slo slo, int cores, RunSummary run) =>
+      capFirst(_meaningText(m, slo, cores, run));
+
+  String _meaningText(Metric m, Slo slo, int cores, RunSummary run) =>
+      switch (m.id) {
+        'sustainable_rps' =>
+          'the busiest step it passed: 99 of every 100 replies within '
+              '${msText(slo.p99Ms)}, fewer than ${_pct(slo.errorRate)} '
+              'errors, and at least ${_pct(slo.servedRatio)} of requests '
+              'answered. The middle of the ${numberWord(_reps(run))} runs.',
+        'peak_rps' =>
+          'the most requests a second it answered at any step, '
+              'however slow the replies were.',
+        'avg_rps' =>
+          'old method: the average requests a second while '
+              'simulated users were added.',
+        'p50_ms' =>
+          'half of all replies came back faster than this, at the '
+              'busiest step it passed.',
+        'p90_ms' => '9 in 10 replies came back faster than this.',
+        'p99_ms' =>
+          '99 of every 100 replies came back within this. Lower is '
+              'better.',
+        'p999_ms' => '999 of every 1,000 replies came back within this.',
+        'error_rate' =>
+          'the share of requests that failed, at the busiest '
+              'step it passed.',
+        'app_cpu' =>
+          'how much processor the app used. 100% is one full '
+              'core; each app had ${numberWord(cores)}.',
+        'app_mem_mb' => 'how much memory the app used, on average.',
+        'db_cpu' =>
+          'how much processor the database used while serving this '
+              'framework. 100% is one full core.',
+        'rps_per_core' =>
+          'requests a second divided by the processor cores '
+              'it really used.',
+        'rps_per_100mb' =>
+          'requests a second for every 100 MB of memory it '
+              'used.',
+        _ => m.help,
+      };
+
+  Widget _limits(RunSummary run) {
+    final limit = toolLimit(run);
+    final around = limit == null
+        ? '48,000'
+        : whole(limit < 1000 ? limit : (limit / 1000).round() * 1000);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Lead('Read the numbers with these limits in mind.'),
+        const SizedBox(height: 14),
+        Points([
+          if (!run.isLegacy)
+            Point(
+              "Our testing tool's limit:",
+              'it tops out around $around requests a second on this computer, '
+                  'so the fastest frameworks tie in No database (marked with '
+                  "the tool's limit). Their real limit is higher.",
+            ),
+          const Point(
+            'One computer:',
+            'the numbers belong to this computer and its Docker setup. Only '
+                'runs on the same computer with the same method can be '
+                'compared, which is why History never mixes them.',
+          ),
+          const Point(
+            'Storage options',
+            'of one framework (such as FOAM3 with its own built-in store, or '
+                'with PostgreSQL) only differ where storage is what slows '
+                'things down. Where handling requests is the limit, they show '
+                'similar numbers.',
+          ),
+          const Point(
+            'The slow reply',
+            "is measured at each framework's own result. A slower framework "
+                'can show a quicker slow reply simply because it served less '
+                'traffic.',
+          ),
+          const Point(
+            'Older runs:',
+            'how-it-is-built details for runs made before we recorded them '
+                "come from today's code, not from the run. The site says so "
+                'where it applies.',
+          ),
+        ]),
+      ],
+    );
+  }
 
   // -------------------------------------------------------------- helpers
 
   String _steps(RunSummary run) {
     final steps = run.params['steps'];
-    if (steps is! List || steps.isEmpty) return '250 to 64,000 req/s';
-    return '${steps.length} steps, ${_num(steps.first)} to '
-        '${_num(steps.last)} req/s, doubling each time';
+    if (steps is! List || steps.isEmpty) {
+      return 'from 250 to 64,000 requests a second';
+    }
+    return '${numberWord(steps.length)} steps, from ${whole(steps.first as num)} '
+        'to ${whole(steps.last as num)} requests a second, doubling each time';
   }
 
-  /// 64000 -> "64k", 250 -> "250".
-  static String _k(num v) => v >= 1000
-      ? '${(v / 1000).toStringAsFixed(v % 1000 == 0 ? 0 : 1)}k'
-      : '${v.toInt()}';
+  /// "2g" -> "2 GB".
+  static String _size(Object? v) => '$v'.replaceAllMapped(
+    RegExp(r'^(\d+)\s*([gm])b?$', caseSensitive: false),
+    (m) => '${m[1]} ${m[2]!.toUpperCase()}B',
+  );
 
-  static String _num(Object? v) {
-    if (v is! num) return '$v';
-    if (v == v.roundToDouble()) {
-      final s = v.toInt().toString();
-      return s.replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+$)'),
-        (m) => '${m[1]},',
-      );
-    }
-    return v.toString();
+  /// What an image in the run's settings is for.
+  /// ("db", "postgres:18.6") -> ("Database", "PostgreSQL 18.6").
+  static (String, String) _image(String key, String image) {
+    final version = image.contains(':') ? image.split(':').last : image;
+    return switch (key) {
+      'db' => ('Database', 'PostgreSQL $version'),
+      'k6' => ('Testing tool version', version),
+      'pgbouncer' => (
+        'Database connection sharer',
+        'PgBouncer $version (it lets many requests share a few database '
+            'connections)',
+      ),
+      _ => (capFirst(key), image),
+    };
   }
 }
 
-/// Card with a big section number, a title and one-line summary; the
+/// 0.01 -> "1%", 0.95 -> "95%".
+String _pct(double share) {
+  final v = share * 100;
+  return '${v == v.roundToDouble() ? v.round() : v.toStringAsFixed(1)}%';
+}
+
+/// A section card: its number, icon, title and one-line summary; the
 /// details open on tap.
 class _Collapsible extends StatelessWidget {
   final int number;
+  final IconData icon;
   final String title;
   final String summary;
   final bool open;
@@ -623,6 +949,7 @@ class _Collapsible extends StatelessWidget {
 
   const _Collapsible({
     required this.number,
+    required this.icon,
     required this.title,
     required this.summary,
     required this.open,
@@ -632,85 +959,94 @@ class _Collapsible extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = Txt(p);
     return AnimatedContainer(
       duration: motion(context, 200),
       decoration: BoxDecoration(
-        color: open ? context.palette.surface : context.palette.surface,
+        color: p.surface,
         borderRadius: BorderRadius.circular(kRadius),
         border: Border.all(
-          color: open
-              ? context.palette.accent.withValues(alpha: 0.35)
-              : context.palette.line,
+          color: open ? p.accent.withValues(alpha: 0.45) : p.line,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            button: true,
-            expanded: open,
-            child: InkWell(
-              onTap: onToggle,
-              borderRadius: BorderRadius.circular(kRadius),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 44,
-                      child: Text(
-                        number.toString().padLeft(2, '0'),
-                        style: mono(
-                          24,
-                          weight: FontWeight.w700,
-                          color: open
-                              ? context.palette.accent
-                              : context.palette.muted,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(title, style: display(17)),
-                          const SizedBox(height: 2),
-                          Text(
-                            summary,
-                            style: body(12.5, color: context.palette.muted),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final narrow = c.maxWidth < 560;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Pressable(
+                onTap: onToggle,
+                radius: kRadius,
+                expanded: open,
+                semanticLabel: '$number. $title. $summary',
+                builder: (context, hovered) => Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+                  child: ExcludeSemantics(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: open ? p.accent : p.accentSoft,
+                            shape: BoxShape.circle,
                           ),
-                        ],
-                      ),
+                          child: Icon(
+                            icon,
+                            size: 19,
+                            color: open ? p.accentInk : p.accent,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$number. $title',
+                                style: t.h3.copyWith(
+                                  fontSize: 18,
+                                  decoration: hovered
+                                      ? TextDecoration.underline
+                                      : null,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(summary, style: t.small),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        AnimatedRotation(
+                          turns: open ? 0.5 : 0,
+                          duration: motion(context, 200),
+                          child: Icon(Icons.expand_more, color: p.muted),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    AnimatedRotation(
-                      turns: open ? 0.5 : 0,
-                      duration: motion(context, 200),
-                      child: Icon(
-                        Icons.expand_more,
-                        color: context.palette.muted,
-                        semanticLabel: open ? 'Hide details' : 'Show details',
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-          if (open)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(60, 0, 16, 18),
-              child: child,
-            ),
-        ],
+              if (open)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(narrow ? 18 : 64, 4, 18, 24),
+                  child: child,
+                ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-/// Table of contents: a rail beside the page (desktop) that marks the
-/// section in view, or a collapsible list at the top (phone). Entries open
-/// their section and scroll to it.
+/// Table of contents: a rail beside the page (wide screens) that marks the
+/// section in view, or a collapsible list on the page (narrower). Entries
+/// open their section and scroll to it.
 class _ContentsList extends StatelessWidget {
   final List<_Section> sections;
   final bool collapsible;
@@ -730,90 +1066,78 @@ class _ContentsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final header = collapsible
-        ? InkWell(
-            onTap: onToggle,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  Text(
-                    'CONTENTS',
-                    style: caps(11, color: context.palette.text),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    open ? Icons.expand_less : Icons.expand_more,
-                    size: 18,
-                    color: context.palette.muted,
-                  ),
-                ],
-              ),
-            ),
-          )
-        : Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              'CONTENTS',
-              style: caps(11, color: context.palette.text),
-            ),
-          );
+    final p = context.palette;
+    final t = Txt(p);
+    final title = Row(
+      children: [
+        Icon(Icons.toc, size: 20, color: p.accent),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text('On this page', style: t.h3.copyWith(fontSize: 16)),
+        ),
+        if (collapsible)
+          Icon(open ? Icons.expand_less : Icons.expand_more, color: p.muted),
+      ],
+    );
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
       decoration: BoxDecoration(
-        color: context.palette.surface,
+        color: p.surface,
         borderRadius: BorderRadius.circular(kRadius),
-        border: Border.all(color: context.palette.line),
+        border: Border.all(color: p.line),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          header,
+          if (collapsible)
+            Pressable(
+              onTap: onToggle,
+              radius: 6,
+              expanded: open,
+              semanticLabel: 'On this page',
+              builder: (context, hovered) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: ExcludeSemantics(child: title),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+              child: title,
+            ),
           if (open)
             for (var i = 0; i < sections.length; i++)
-              InkWell(
+              Pressable(
                 onTap: () => onJump(sections[i]),
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(8, 6, 4, 6),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      left: BorderSide(
-                        color: active == sections[i].id
-                            ? context.palette.accent
-                            : context.palette.line,
-                        width: 2,
+                radius: 6,
+                minHeight: 36,
+                selected: active == sections[i].id,
+                semanticLabel: sections[i].title,
+                builder: (context, hovered) {
+                  final on = active == sections[i].id;
+                  return Container(
+                    padding: const EdgeInsets.fromLTRB(10, 7, 4, 7),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(
+                          color: on ? p.accent : p.line,
+                          width: on ? 3 : 2,
+                        ),
                       ),
                     ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 24,
-                        child: Text(
-                          (i + 1).toString().padLeft(2, '0'),
-                          style: mono(11.5, color: context.palette.muted),
-                        ),
+                    child: Text(
+                      '${i + 1}. ${sections[i].title}',
+                      style: t.small.copyWith(
+                        fontSize: 14.5,
+                        height: 1.35,
+                        color: on ? p.text : p.muted,
+                        fontWeight: on ? FontWeight.w700 : FontWeight.w400,
+                        decoration: hovered ? TextDecoration.underline : null,
                       ),
-                      Expanded(
-                        child: Text(
-                          sections[i].title,
-                          style: body(
-                            12.5,
-                            color: active == sections[i].id
-                                ? context.palette.accent
-                                : context.palette.text,
-                            weight: active == sections[i].id
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
         ],
       ),
@@ -821,12 +1145,45 @@ class _ContentsList extends StatelessWidget {
   }
 }
 
+/// Why a step failed, in a few plain words; "passed" when it held.
+String _why(LoadStep s, Slo slo) {
+  if (s.pass) return 'passed';
+  if (s.k6Bound) return 'tool limit';
+  final parts = [
+    if (s.p99 >= slo.p99Ms) 'slow: ${msText(s.p99)}',
+    if (s.errorRate >= slo.errorRate)
+      '${(s.errorRate * 100).toStringAsFixed(1)}% errors',
+    if (s.targetRps > 0 && s.achievedRps / s.targetRps < slo.servedRatio)
+      'answered ${(s.achievedRps / s.targetRps * 100).round()}%',
+  ];
+  return parts.isEmpty ? 'failed a limit' : parts.join(', ');
+}
+
+/// The same in a full sentence, for the lines under the chart.
+String _whySentence(LoadStep s, Slo slo) {
+  if (s.k6Bound) {
+    return "our testing tool could not send more, so the app wasn't the "
+        'limit here';
+  }
+  final parts = [
+    if (s.p99 >= slo.p99Ms)
+      'the slow reply took ${msText(s.p99)}, over the '
+          '${msText(slo.p99Ms)} limit',
+    if (s.errorRate >= slo.errorRate)
+      '${(s.errorRate * 100).toStringAsFixed(1)}% of requests failed',
+    if (s.targetRps > 0 && s.achievedRps / s.targetRps < slo.servedRatio)
+      'it answered only ${(s.achievedRps / s.targetRps * 100).round()}% of '
+          'the requests',
+  ];
+  return parts.isEmpty ? 'it failed a limit' : joinAnd(parts);
+}
+
 /// "How a run works", drawn from one real result: every load step the
-/// best framework of the ranked scenario ran (one the load generator did
-/// not cap, when there is one), in order of rate. Each bar is what was
-/// served on a log scale, under an outline of what was asked; lime steps
-/// held the limits, red ones broke one, amber ones failed because the load
-/// generator itself was the limit. The flag marks the sustainable step.
+/// best framework of the chosen test ran (one our testing tool did not
+/// limit, when there is one), in order of rate. Each bar is what was
+/// answered under an outline of what was asked; teal steps passed, red
+/// ones broke a limit, amber ones failed because the testing tool itself
+/// was the limit. The flag marks the result.
 class _RunStaircase extends StatelessWidget {
   final DashboardState state;
 
@@ -841,8 +1198,8 @@ class _RunStaircase extends StatelessWidget {
       for (final r in resultsFor(run, s, Metrics.sustainable)) r.backend,
     ].where((b) => (b.scenarios[s]?.steps.length ?? 0) > 1).toList();
     if (ranked.isEmpty) return const SizedBox.shrink();
-    // An example the load generator capped would show its failures as the
-    // app's; prefer the best uncapped one.
+    // An example our testing tool limited would show its failures as the
+    // app's; prefer the best one it did not.
     final b = ranked.firstWhere(
       (x) => !x.scenarios[s]!.loadgenBound,
       orElse: () => ranked.first,
@@ -850,12 +1207,12 @@ class _RunStaircase extends StatelessWidget {
     final r = b.scenarios[s]!;
     final steps = [...r.steps]
       ..sort((a, c) => a.targetRps.compareTo(c.targetRps));
-    final slo = Slo.of(state.run!.params);
+    final slo = Slo.of(run.params);
     final base = steps.first.targetRps;
     final top = steps
         .map((x) => math.max(x.targetRps, x.achievedRps))
         .reduce(math.max);
-    double h(double rps) => rps <= 0
+    double h(double rps) => rps <= 0 || top <= base
         ? 0
         : (math.log(math.max(rps, base) / base) / math.log(top / base)).clamp(
             0.0,
@@ -864,67 +1221,91 @@ class _RunStaircase extends StatelessWidget {
     final lastPass = steps.lastIndexWhere((x) => x.pass);
     final firstFail = steps.indexWhere((x) => !x.pass);
     final sustainable = Metrics.sustainable.value(r);
+    final reps = run.params['reps'] is num
+        ? (run.params['reps'] as num).toInt()
+        : 3;
+    final p = context.palette;
+    final t = Txt(p);
     final pick = b == ranked.first
-        ? 'the leader'
-        : 'the best framework the load generator did not cap';
+        ? 'the fastest framework in this test'
+        : "the fastest framework that did not hit our testing tool's limit";
     final ticks = [
-      for (var p = 1000.0; p <= top; p *= 10)
-        if (p > base) p,
+      for (var v = 1000.0; v <= top; v *= 10)
+        if (v > base) v,
     ];
+    final anyToolLimit = steps.any((x) => !x.pass && x.k6Bound);
+    final anyFail = steps.any((x) => !x.pass && !x.k6Bound);
+    final anyExtra = steps.any((x) => x.refine);
     const barArea = 150.0;
     Color tone(LoadStep x) => x.pass
-        ? context.palette.accent
+        ? p.accent
         : x.k6Bound
-        ? context.palette.warn
-        : context.palette.danger;
-    return SectionCard(
-      eyebrow: 'How a run works',
-      title: 'One real run, step by step',
-      subtitle:
-          'Every load step ${b.name} ($pick) ran in ${scenarioLabel(s)}, '
-          'from its median repetition, in order of rate. A bar is what was '
-          'served (log scale); the outline is what was asked. Lime steps '
-          'held p99 < ${formatMs(slo.p99Ms)} with < '
-          '${(slo.errorRate * 100).toStringAsFixed(0)}% errors; red ones '
-          'broke a limit; amber ones failed because the load generator was '
-          'the limit. Narrow bars are probes between the last pass and the '
-          'first fail. The flag is the sustainable load'
-          '${sustainable == null ? '' : ' (median of the repetitions: ${formatMetric(Metrics.sustainable, sustainable)})'}.',
-      child: LayoutBuilder(
-        builder: (context, c) {
-          const axis = 38.0;
-          final width = c.maxWidth - axis;
-          final gap = width < 500 ? 3.0 : 6.0;
-          final barW = (width - gap * (steps.length - 1)) / steps.length;
-          final labelEvery = barW < 30 ? 2 : 1;
-          final wide = barW >= 64;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                height: barArea + 24 + (wide ? 30 : 0) + 20,
+        ? p.warn
+        : p.danger;
+    final test = testInfo(s);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(kRadius),
+        border: Border.all(color: p.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('How a run works', style: t.small),
+          const SizedBox(height: 4),
+          const SubHead(Icons.stairs_outlined, 'One real run, step by step'),
+          const SizedBox(height: 12),
+          Lead(
+            'This is what our testing tool did to ${b.name} in the '
+            '"${test.title}" test. ${b.name} is $pick.',
+          ),
+          const SizedBox(height: 20),
+          Text('Requests a second', style: t.small.copyWith(fontSize: 13.5)),
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, c) {
+              const axis = 48.0;
+              final width = c.maxWidth - axis;
+              final gap = width < 500 ? 3.0 : 6.0;
+              final barW = (width - gap * (steps.length - 1)) / steps.length;
+              final wide = barW >= 64;
+              // Rate labels need about 46 px each; the result's label
+              // always shows, the others where they do not collide.
+              final stride = math.max(1, (46 / (barW + gap)).ceil());
+              final labelled = <int>{if (lastPass >= 0) lastPass};
+              for (var i = 0; i < steps.length; i++) {
+                if (labelled.every((j) => (i - j).abs() >= stride)) {
+                  labelled.add(i);
+                }
+              }
+              return SizedBox(
+                height: barArea + 26 + (wide ? 30 : 0) + 20,
                 child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    // Log gridlines with their rates.
-                    for (final t in ticks)
+                    // Gridlines with their rates; each is ten times the
+                    // one below.
+                    for (final v in ticks)
                       Positioned(
                         left: 0,
                         right: 0,
-                        bottom: 26 + (wide ? 30 : 0) + barArea * h(t) - 7,
+                        bottom: 26 + (wide ? 30 : 0) + barArea * h(v) - 7,
                         child: Row(
                           children: [
                             SizedBox(
                               width: axis,
                               child: Text(
-                                compactRps(t),
-                                style: mono(10.5, color: context.palette.muted),
+                                whole(v),
+                                style: t.small.copyWith(
+                                  fontSize: 11.5,
+                                  height: 1.2,
+                                ),
                               ),
                             ),
                             Expanded(
-                              child: Container(
-                                height: 1,
-                                color: context.palette.line,
-                              ),
+                              child: Container(height: 1, color: p.line),
                             ),
                           ],
                         ),
@@ -947,10 +1328,10 @@ class _RunStaircase extends StatelessWidget {
                                 color: tone(steps[i]),
                                 reason: wide
                                     ? (i == lastPass
-                                          ? 'p99 ${formatMs(steps[i].p99)} · held'
-                                          : slo.reason(steps[i]))
+                                          ? 'passed: ${msText(steps[i].p99)}'
+                                          : _why(steps[i], slo))
                                     : null,
-                                showRate: i % labelEvery == 0 || i == lastPass,
+                                showRate: labelled.contains(i),
                                 slo: slo,
                               ),
                             ),
@@ -960,37 +1341,81 @@ class _RunStaircase extends StatelessWidget {
                     ),
                   ],
                 ),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+          Points(lead: 28, [
+            if (lastPass >= 0)
+              Point(
+                'Passed ${whole(steps[lastPass].targetRps)} requests a '
+                    'second.',
+                '99 of every 100 replies came back within '
+                    '${msText(steps[lastPass].p99)}.',
+                leading: Icon(Icons.check_circle, size: 20, color: p.accent),
               ),
-              const SizedBox(height: 10),
-              Text.rich(
-                TextSpan(
-                  children: [
-                    if (lastPass >= 0)
-                      TextSpan(
-                        text:
-                            'Held ${compactRps(steps[lastPass].targetRps)} '
-                            'with p99 ${formatMs(steps[lastPass].p99)}. ',
-                        style: body(12.5, color: context.palette.accent),
-                      ),
-                    if (firstFail >= 0)
-                      TextSpan(
-                        text:
-                            'First failure at '
-                            '${compactRps(steps[firstFail].targetRps)}: '
-                            '${slo.reason(steps[firstFail])}.',
-                        style: body(
-                          12.5,
-                          color: steps[firstFail].k6Bound
-                              ? context.palette.warn
-                              : context.palette.danger,
-                        ),
-                      ),
-                  ],
+            if (firstFail >= 0)
+              Point(
+                'Failed at ${whole(steps[firstFail].targetRps)}:',
+                '${_whySentence(steps[firstFail], slo)}.',
+                leading: Icon(
+                  Icons.cancel,
+                  size: 20,
+                  color: steps[firstFail].k6Bound ? p.warn : p.danger,
                 ),
               ),
-            ],
-          );
-        },
+            if (sustainable != null)
+              Point(
+                'The result: ${whole(sustainable)} requests a second.',
+                'That is the middle of the ${numberWord(reps)} runs, so it '
+                    'can differ a little from this one.',
+                leading: Icon(Icons.flag, size: 20, color: p.accent),
+              ),
+          ]),
+          const SizedBox(height: 24),
+          const SubHead(Icons.palette_outlined, 'How to read it', size: 16),
+          const SizedBox(height: 12),
+          Points(lead: 28, [
+            Point(
+              'Teal: passed.',
+              'Fast enough, with few enough errors.',
+              leading: Swatch(p.accent, fill: 0.45),
+            ),
+            if (anyFail || !anyToolLimit)
+              Point(
+                'Red: failed.',
+                'Too slow, too many errors, or it could not keep up.',
+                leading: Swatch(p.danger, fill: 0.4),
+              ),
+            if (anyToolLimit)
+              Point(
+                "Amber: hit our testing tool's limit.",
+                'The tool could not send more, so the app was not the limit.',
+                leading: Swatch(p.warn, fill: 0.4),
+              ),
+            Point(
+              'Flag:',
+              'the busiest step it passed. Its bar is the darkest.',
+              leading: Icon(Icons.flag, size: 18, color: p.accent),
+            ),
+            const Point(
+              'Filled part',
+              'is what the app answered. The outline is what we asked for.',
+            ),
+            const Point(
+              'Left to right,',
+              'each step sends more requests. Bars are squeezed so small and '
+                  'large numbers both fit: each gridline is ten times the one '
+                  'below.',
+            ),
+            if (anyExtra)
+              const Point(
+                'Thin bars',
+                'are extra steps tried between the last pass and the first '
+                    'fail, to find the limit more exactly.',
+              ),
+          ]),
+        ],
       ),
     );
   }
@@ -1021,16 +1446,18 @@ class _StepBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = Txt(p);
     final i = index;
-    final probe = step.refine;
-    final why = slo.reason(step);
+    final extra = step.refine;
+    final why = _why(step, slo);
     return Tooltip(
       message:
-          '${formatRps(step.targetRps)} req/s asked · served '
-          '${formatRps(step.achievedRps)} · p99 ${formatMs(step.p99)} · '
-          'errors ${(step.errorRate * 100).toStringAsFixed(2)}%'
-          '${probe ? ' · probe step' : ''}'
-          '${why.isEmpty ? ' · held' : ' · failed: $why'}',
+          '${whole(step.targetRps)} requests a second asked · '
+          '${whole(step.achievedRps)} answered · slow reply '
+          '${msText(step.p99)} · '
+          '${(step.errorRate * 100).toStringAsFixed(2)}% errors'
+          '${extra ? ' · extra step' : ''} · $why',
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
@@ -1040,12 +1467,12 @@ class _StepBar extends StatelessWidget {
               child: Icon(
                 Icons.flag,
                 size: 16,
-                color: context.palette.accent,
-                semanticLabel: 'Highest step held',
+                color: p.accent,
+                semanticLabel: 'Busiest step it passed',
               ),
             ),
           FractionallySizedBox(
-            widthFactor: probe ? 0.62 : 1,
+            widthFactor: extra ? 0.62 : 1,
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: 1),
               duration: motion(context, 360 + i * 45),
@@ -1054,11 +1481,11 @@ class _StepBar extends StatelessWidget {
                 1,
                 curve: Curves.easeOutCubic,
               ),
-              builder: (context, t, _) => SizedBox(
-                height: 6 + asked * t,
+              builder: (context, f, _) => SizedBox(
+                height: 6 + asked * f,
                 child: Stack(
                   children: [
-                    // What was asked: an outline cap.
+                    // What was asked: an outline.
                     Positioned.fill(
                       child: Container(
                         decoration: BoxDecoration(
@@ -1071,12 +1498,12 @@ class _StepBar extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // What was served.
+                    // What was answered.
                     Positioned(
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      height: (6 + served * t).clamp(0, 6 + asked * t),
+                      height: (6 + served * f).clamp(0, 6 + asked * f),
                       child: Container(
                         decoration: BoxDecoration(
                           color: color.withValues(
@@ -1097,16 +1524,19 @@ class _StepBar extends StatelessWidget {
           SizedBox(
             height: 14,
             child: showRate
-                ? FittedBox(
+                // May spill past a narrow bar into its unlabelled
+                // neighbours' room.
+                ? OverflowBox(
+                    maxWidth: 64,
                     child: Text(
-                      compactRps(step.targetRps),
-                      style: mono(
-                        10.5,
-                        color: held
-                            ? context.palette.accent
-                            : context.palette.muted,
+                      whole(step.targetRps),
+                      maxLines: 1,
+                      softWrap: false,
+                      textAlign: TextAlign.center,
+                      style: t.num(
+                        11,
                         weight: held ? FontWeight.w700 : FontWeight.w400,
-                      ),
+                      ).copyWith(color: held ? p.text : p.muted),
                     ),
                   )
                 : null,
@@ -1119,7 +1549,11 @@ class _StepBar extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: mono(10, color: color, height: 1.25),
+                style: t.small.copyWith(
+                  fontSize: 11,
+                  height: 1.25,
+                  color: step.pass ? p.accent : color,
+                ),
               ),
             ),
         ],
@@ -1128,82 +1562,7 @@ class _StepBar extends StatelessWidget {
   }
 }
 
-/// Short paragraphs, one per item.
-class _Para extends StatelessWidget {
-  final List<String> items;
-
-  const _Para(this.items);
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      for (var i = 0; i < items.length; i++)
-        Padding(
-          padding: EdgeInsets.only(top: i == 0 ? 0 : 6),
-          child: Text(
-            items[i],
-            style: TextStyle(
-              color: context.palette.text,
-              fontSize: 15,
-              height: 1.45,
-            ),
-          ),
-        ),
-    ],
-  );
-}
-
-/// Small label/value table.
-class _Facts extends StatelessWidget {
-  final List<(String, String)> rows;
-
-  const _Facts(this.rows);
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, c) {
-      final stacked = c.maxWidth < 480;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final (label, text) in rows)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: context.palette.line)),
-              ),
-              child: stacked
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [_label(label), factText(text)],
-                    )
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 150, child: _label(label)),
-                        Expanded(child: factText(text)),
-                      ],
-                    ),
-            ),
-        ],
-      );
-    },
-  );
-
-  Widget _label(String s) => Builder(
-    builder: (context) => Text(
-      s,
-      style: TextStyle(
-        color: context.palette.text,
-        fontSize: 14.5,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-  );
-}
-
-/// Which run the dashboard shows. Lives on the Method page.
+/// Which run the site shows. Lives on the Method page.
 class RunPicker extends StatelessWidget {
   final DashboardState state;
 
@@ -1211,60 +1570,63 @@ class RunPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final selected = state.entry;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: context.palette.bg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: context.palette.line),
+        color: p.bg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: p.text),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selected?.id,
-          isExpanded: true,
-          isDense: true,
-          dropdownColor: context.palette.surface,
-          icon: Icon(Icons.expand_more, color: context.palette.muted, size: 20),
-          style: labelStyle(context, 15, color: context.palette.text),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          items: [
-            for (final e in state.index)
-              DropdownMenuItem(
-                value: e.id,
-                child: Row(
-                  children: [
-                    Icon(
-                      switch (e.kind) {
-                        RunKind.latest => Icons.auto_awesome,
-                        RunKind.legacy => Icons.history,
-                        RunKind.run => Icons.play_circle_outline,
-                      },
-                      size: 15,
-                      color: e.kind == RunKind.latest
-                          ? context.palette.accent
-                          : context.palette.muted,
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(runLabel(e), overflow: TextOverflow.ellipsis),
-                    ),
-                    if (e.dirty) ...[
-                      const SizedBox(width: 6),
-                      const Flag(
-                        text: 'modified code',
-                        tooltip:
-                            'Run from a working copy with uncommitted changes.',
+      child: Semantics(
+        label: 'Run shown on the site',
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: selected?.id,
+            isExpanded: true,
+            dropdownColor: p.surface,
+            icon: Icon(Icons.expand_more, color: p.text, size: 22),
+            style: Txt(p).body.copyWith(fontSize: 15.5),
+            itemHeight: 48,
+            items: [
+              for (final e in state.index)
+                DropdownMenuItem(
+                  value: e.id,
+                  child: Row(
+                    children: [
+                      Icon(
+                        switch (e.kind) {
+                          RunKind.latest => Icons.auto_awesome,
+                          RunKind.legacy => Icons.history,
+                          RunKind.run => Icons.play_circle_outline,
+                        },
+                        size: 17,
+                        color: e.kind == RunKind.latest ? p.accent : p.muted,
                       ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          runLabel(e),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (e.dirty) ...[
+                        const SizedBox(width: 6),
+                        const Flag(
+                          text: 'modified',
+                          tooltip: 'Made from code with changes not yet saved.',
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-          ],
-          onChanged: (id) {
-            final e = state.index.firstWhere((x) => x.id == id);
-            state.selectRun(e);
-          },
+            ],
+            onChanged: (id) {
+              final e = state.index.where((x) => x.id == id).firstOrNull;
+              if (e != null) state.selectRun(e);
+            },
+          ),
         ),
       ),
     );

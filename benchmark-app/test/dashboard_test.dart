@@ -1,8 +1,10 @@
 import 'dart:convert';
 
+import 'package:benchmark_app/app_router.dart';
 import 'package:benchmark_app/main.dart';
 import 'package:benchmark_app/models/plain.dart';
 import 'package:benchmark_app/models/results.dart';
+import 'package:benchmark_app/screens/views/short_answer.dart';
 import 'package:benchmark_app/services/results_service.dart';
 import 'package:benchmark_app/state/dashboard_state.dart';
 import 'package:flutter_test/flutter_test.dart' hide closeTo;
@@ -377,6 +379,22 @@ void main() {
       expect(answer, isNot(contains('9,000')));
       expect(answerFor([]), contains('No framework'));
     });
+
+    test('runs that overlap at the top are about the same, as in Compare', () {
+      final answer = answerFor([
+        res('zeta', 9000, low: 8000, high: 9500),
+        res('alpha', 8800, low: 8600, high: 9100),
+        res('beta', 3000),
+      ]);
+      expect(
+        answer,
+        'Zeta and alpha are about the same, the fastest. '
+        'Next is beta, about a third as fast.',
+      );
+      final compare = compareTestSentence([res('a', 900), res('b', 450)]);
+      expect(compare, 'A is the fastest. Next is b, about half as fast.');
+      expect(compare, isNot(contains('900')));
+    });
   });
 
   group('home page', () {
@@ -402,16 +420,37 @@ void main() {
       await pumpApp(t, realisticBundle());
       await t.tap(find.byKey(const ValueKey('bar-db_mixed-go-mux')));
       await settle(t);
-      expect(find.text('All results for go-mux'), findsOneWidget);
+      expect(find.text('More about go-mux'), findsOneWidget);
       expect(find.textContaining('16,000'), findsWidgets);
+      // It opens right under the tapped bar, before the bars below it.
+      final tapped = t.getRect(
+        find.byKey(const ValueKey('bar-db_mixed-go-mux')),
+      );
+      final reveal = t.getRect(find.byType(Reveal));
+      expect(reveal.top, greaterThanOrEqualTo(tapped.bottom));
+      expect(reveal.top - tapped.bottom, lessThan(20));
+      final below = find.byWidgetPredicate(
+        (w) =>
+            w.key is ValueKey<String> &&
+            (w.key! as ValueKey<String>).value.startsWith('bar-db_mixed-'),
+      );
+      var after = 0;
+      for (final e in below.evaluate()) {
+        final r = t.getRect(find.byWidget(e.widget));
+        if (r.top > tapped.top) {
+          after++;
+          expect(r.top, greaterThanOrEqualTo(reveal.bottom));
+        }
+      }
+      expect(after, greaterThan(0), reason: 'go-mux should not be last');
     });
 
-    testWidgets('All results opens One framework on that name', (t) async {
+    testWidgets('the box under a bar opens One framework', (t) async {
       final state = await pumpApp(t, realisticBundle());
       await t.tap(find.text('go-mux').first);
       await settle(t);
-      await t.ensureVisible(find.text('All results for go-mux'));
-      await t.tap(find.text('All results for go-mux'));
+      await t.ensureVisible(find.text('More about go-mux'));
+      await t.tap(find.text('More about go-mux'));
       await settle(t);
       expect(state.view, HomeView.one);
       expect(state.selectedKey, 'go-mux');
@@ -446,6 +485,15 @@ void main() {
       expect(state.sortDesc, isFalse);
       state.sortBy(DashboardState.sortByName);
       expect(state.sortTest, DashboardState.sortByName);
+    });
+
+    testWidgets('lower-is-better measures sort best first', (t) async {
+      final state = await pumpApp(t, realisticBundle());
+      state.sortBy('db_read');
+      state.setMeasure(Measure.typical);
+      expect(state.sortDesc, isFalse);
+      state.setMeasure(Measure.load);
+      expect(state.sortDesc, isTrue);
     });
 
     testWidgets('the measure can switch away from requests a second', (
@@ -497,6 +545,28 @@ void main() {
       await settle(t);
       expect(state.selectedKey, 'foam3');
       expect(state.compareKeys, contains('foam3'));
+    });
+
+    testWidgets('a copied link keeps an older run', (t) async {
+      final state = await pumpApp(t, twoRunBundle());
+      expect(locationOf(state).queryParameters, isNot(contains('run')));
+      await t.runAsync(() => state.selectRun(state.index[1]));
+      await settle(t);
+      expect(locationOf(state).queryParameters['run'], state.index[1].id);
+    });
+
+    testWidgets('opening a link with a run loads that run first', (t) async {
+      final state = await pumpApp(t, twoRunBundle());
+      final router = DashRouterDelegate(state);
+      final old = state.index[1].id;
+      await t.runAsync(
+        () => router.setNewRoutePath(Uri.parse('/all?run=$old')),
+      );
+      await t.runAsync(() => Future<void>.delayed(Duration.zero));
+      await settle(t);
+      expect(state.entry?.id, old);
+      expect(state.view, HomeView.all);
+      router.dispose();
     });
   });
 }

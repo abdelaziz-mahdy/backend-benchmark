@@ -86,11 +86,13 @@ String languageLabel(String l) => switch (l) {
   _ => l.isEmpty ? l : l[0].toUpperCase() + l.substring(1),
 };
 
-/// A framework's identity colour for [p]: as is on dark, darkened on light
-/// so the paler hues stay visible on the light surface.
+/// A framework's identity colour for [p]: as is on dark; on light, darkened
+/// in proportion so the paler hues stay visible on the light surface while
+/// siblings in one language (told apart by lightness) stay apart, and the
+/// colour still reads as the one on the bars.
 Color identityColor(Palette p, String key) {
   final c = BackendColors.of(key);
   if (p.isDark) return c;
   final hsl = HSLColor.fromColor(c);
-  return hsl.withLightness(math.min(hsl.lightness, 0.40)).toColor();
+  return hsl.withLightness(math.min(hsl.lightness * 0.74, 0.62)).toColor();
 }

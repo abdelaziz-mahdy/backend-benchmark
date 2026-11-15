@@ -128,6 +128,13 @@ class SpeedBars extends StatefulWidget {
   final String? mine;
   final void Function(String key) onOpen;
 
+  /// Every result in the test, for the close calls and place in a bar's
+  /// box when [results] shows only some of them; defaults to [results].
+  final List<Result>? all;
+
+  /// Shows the "Longer bar = …" note under the bars.
+  final bool legend;
+
   const SpeedBars({
     super.key,
     required this.test,
@@ -135,6 +142,8 @@ class SpeedBars extends StatefulWidget {
     required this.unit,
     required this.mine,
     required this.onOpen,
+    this.all,
+    this.legend = true,
   });
 
   @override
@@ -143,6 +152,13 @@ class SpeedBars extends StatefulWidget {
 
 class _SpeedBarsState extends State<SpeedBars> {
   String? _open;
+  final _reveal = GlobalKey(debugLabel: 'reveal');
+
+  void _toggle(String key) {
+    setState(() => _open = _open == key ? null : key);
+    // Closing one box can move the tapped row up; keep its box in view.
+    if (_open != null) bringIntoView(_reveal);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -160,46 +176,34 @@ class _SpeedBarsState extends State<SpeedBars> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final r in rs)
+            for (final r in rs) ...[
               Padding(
                 padding: const EdgeInsets.only(bottom: 2),
                 child: _row(r, max, nameWidth, t, p),
               ),
-            Semantics(
-              liveRegion: true,
-              child: open == null
-                  ? const SizedBox.shrink()
-                  : Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Reveal(
-                        result: open,
-                        all: widget.results,
-                        test: widget.test,
-                        unit: widget.unit,
-                        onOpen: widget.onOpen,
-                      ),
+              // The number opens right under the bar that was tapped.
+              if (r.key == open?.key)
+                Semantics(
+                  liveRegion: true,
+                  child: Padding(
+                    key: _reveal,
+                    padding: const EdgeInsets.fromLTRB(0, 4, 0, 10),
+                    child: Reveal(
+                      result: r,
+                      all: widget.all ?? widget.results,
+                      test: widget.test,
+                      unit: widget.unit,
+                      onOpen: widget.onOpen,
                     ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 1),
-                  child: Icon(Icons.straighten, size: 18, color: p.muted),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Longer bar = more traffic handled. Tap a bar for its '
-                    'number.'
-                    "${anyCapped ? " Striped end = hit our testing tool's limit, so it may be faster." : ''}"
-                    '${widget.mine != null && rs.any((r) => r.key == widget.mine) ? ' The outlined row is the one you looked up.' : ''}',
-                    style: t.small,
                   ),
                 ),
-              ],
-            ),
+            ],
+            if (widget.legend)
+              BarsNote(
+                capped: anyCapped,
+                mine:
+                    widget.mine != null && rs.any((r) => r.key == widget.mine),
+              ),
           ],
         );
       },
@@ -213,7 +217,7 @@ class _SpeedBarsState extends State<SpeedBars> {
     final mine = r.key == widget.mine;
     return Pressable(
       key: ValueKey('bar-${widget.test}-${r.key}'),
-      onTap: () => setState(() => _open = isOpen ? null : r.key),
+      onTap: () => _toggle(r.key),
       expanded: isOpen,
       radius: 10,
       semanticLabel:
@@ -250,7 +254,7 @@ class _SpeedBarsState extends State<SpeedBars> {
                 ),
               ],
             );
-            final bar = _Bar(share: share, color: color, capped: r.capped);
+            final bar = SpeedBar(share: share, color: color, capped: r.capped);
             if (nameWidth == null) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -269,95 +273,6 @@ class _SpeedBarsState extends State<SpeedBars> {
       ),
     );
   }
-}
-
-/// A rounded bar on a faint track; a capped result gets a striped end that
-/// says "possibly longer".
-class _Bar extends StatelessWidget {
-  final double share;
-  final Color color;
-  final bool capped;
-
-  const _Bar({required this.share, required this.color, required this.capped});
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    const stripe = 18.0;
-    return LayoutBuilder(
-      builder: (context, c) {
-        final track = c.maxWidth - stripe - 2;
-        final w = (track * share).clamp(4.0, track);
-        final edge = Color.lerp(color, const Color(0xFF000000), 0.22)!;
-        return SizedBox(
-          height: 16,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: track,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: p.line.withValues(alpha: p.isDark ? 0.9 : 0.6),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-              AnimatedPositioned(
-                duration: motion(context, 400),
-                curve: Curves.easeOutCubic,
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: w,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(8),
-                    border: p.isDark ? null : Border.all(color: edge, width: 1),
-                  ),
-                ),
-              ),
-              if (capped)
-                Positioned(
-                  left: w + 2,
-                  top: 3,
-                  bottom: 3,
-                  width: stripe - 2,
-                  child: CustomPaint(painter: _Stripes(color)),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _Stripes extends CustomPainter {
-  final Color color;
-
-  _Stripes(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color.withValues(alpha: 0.7);
-    for (var x = 0.0; x < size.width; x += 5) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, 0, 2.5, size.height),
-          const Radius.circular(1),
-        ),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_Stripes old) => old.color != color;
 }
 
 /// What a chip opens: the number, the run range, the close call or the
@@ -422,9 +337,43 @@ class Reveal extends StatelessWidget {
           Text(sentences.join(' '), style: t.smallText),
           const SizedBox(height: 12),
           CalmButton(
-            label: 'All results for ${result.name}',
+            label: 'More about ${result.name}',
             accent: true,
             onTap: () => onOpen(result.key),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The note under a set of bars: how to read them and how to get a number.
+class BarsNote extends StatelessWidget {
+  final bool capped;
+  final bool mine;
+
+  const BarsNote({super.key, this.capped = true, this.mine = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(Icons.straighten, size: 18, color: p.muted),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Longer bar = more traffic handled. Tap a bar for its number.'
+              "${capped ? " Striped end = hit our testing tool's limit, so it may be faster." : ''}"
+              '${mine ? ' The outlined row is the one you looked up.' : ''}',
+              style: Txt(p).small,
+            ),
           ),
         ],
       ),
