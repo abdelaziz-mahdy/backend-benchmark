@@ -1291,21 +1291,32 @@ class _RunStaircase extends StatelessWidget {
               // Rate labels need about 46 px each; the result's label
               // always shows, the others where they do not collide.
               final stride = math.max(1, (46 / (barW + gap)).ceil());
-              // The first failed step is named in the text under the chart,
-              // so its bar is always labelled; the last passed one carries
-              // the flag and gets a label when there is room.
-              final labelled = <int>{if (firstFail >= 0) firstFail};
-              if (lastPass >= 0 &&
-                  labelled.every((j) => (lastPass - j).abs() >= stride)) {
-                labelled.add(lastPass);
-              }
+              // The result (last passed) and the first failed step are both
+              // named in the text under the chart, so both bars are always
+              // labelled. Side by side on a phone they would collide, so
+              // the failed one's label drops to a second line.
+              final labelled = <int>{
+                if (lastPass >= 0) lastPass,
+                if (firstFail >= 0) firstFail,
+              };
+              final secondRow =
+                  lastPass >= 0 &&
+                      firstFail >= 0 &&
+                      (firstFail - lastPass).abs() < stride
+                  ? firstFail
+                  : -1;
               for (var i = 0; i < steps.length; i++) {
                 if (labelled.every((j) => (i - j).abs() >= stride)) {
                   labelled.add(i);
                 }
               }
               return SizedBox(
-                height: barArea + 26 + (wide ? 30 : 0) + 20,
+                height:
+                    barArea +
+                    26 +
+                    (wide ? 30 : 0) +
+                    20 +
+                    (secondRow >= 0 ? 14 : 0),
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -1356,6 +1367,8 @@ class _RunStaircase extends StatelessWidget {
                                           : _why(steps[i], slo))
                                     : null,
                                 showRate: labelled.contains(i),
+                                rateRows: secondRow >= 0 ? 2 : 1,
+                                rateOnSecondRow: i == secondRow,
                                 slo: slo,
                               ),
                             ),
@@ -1461,6 +1474,11 @@ class _StepBar extends StatelessWidget {
   final bool showRate;
   final Slo slo;
 
+  /// Lines kept under every bar for rate labels (2 when two labels would
+  /// collide), and whether this bar's label sits on the second one.
+  final int rateRows;
+  final bool rateOnSecondRow;
+
   const _StepBar({
     required this.step,
     required this.index,
@@ -1470,6 +1488,8 @@ class _StepBar extends StatelessWidget {
     required this.color,
     required this.reason,
     required this.showRate,
+    this.rateRows = 1,
+    this.rateOnSecondRow = false,
     required this.slo,
   });
 
@@ -1551,21 +1571,29 @@ class _StepBar extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           SizedBox(
-            height: 14,
+            height: 14.0 * rateRows,
             child: showRate
                 // May spill past a narrow bar into its unlabelled
                 // neighbours' room.
-                ? OverflowBox(
-                    maxWidth: 64,
-                    child: Text(
-                      whole(step.targetRps),
-                      maxLines: 1,
-                      softWrap: false,
-                      textAlign: TextAlign.center,
-                      style: t.num(
-                        11,
-                        weight: held ? FontWeight.w700 : FontWeight.w400,
-                      ).copyWith(color: held ? p.text : p.muted),
+                ? Align(
+                    alignment: rateOnSecondRow
+                        ? Alignment.bottomCenter
+                        : Alignment.topCenter,
+                    child: SizedBox(
+                      height: 14,
+                      child: OverflowBox(
+                        maxWidth: 64,
+                        child: Text(
+                          whole(step.targetRps),
+                          maxLines: 1,
+                          softWrap: false,
+                          textAlign: TextAlign.center,
+                          style: t.num(
+                            11,
+                            weight: held ? FontWeight.w700 : FontWeight.w400,
+                          ).copyWith(color: held ? p.text : p.muted),
+                        ),
+                      ),
                     ),
                   )
                 : null,

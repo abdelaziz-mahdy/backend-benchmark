@@ -471,8 +471,10 @@ List<List<Result>> followerBlocks(List<Result> results, {List<Result>? all}) {
   final top = {for (final r in topGroup(sorted, all: all)) r.key};
   final blocks = <List<Result>>[];
   for (final r in sorted.where((r) => !top.contains(r.key))) {
+    // Joins only when it is about the same as every one already in the
+    // block, so a chain (A≈B, B≈C) never stretches one speed word over C.
     if (blocks.isNotEmpty &&
-        (blocks.last.first.value == r.value || blocks.last.first.overlaps(r))) {
+        blocks.last.every((m) => m.value == r.value || m.overlaps(r))) {
       blocks.last.add(r);
     } else {
       blocks.add([r]);

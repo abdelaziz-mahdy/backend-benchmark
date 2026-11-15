@@ -485,6 +485,20 @@ void main() {
       );
     });
 
+    test('a chain of close calls never stretches one speed word', () {
+      final blocks = followerBlocks([
+        res('bun', 24000),
+        res('go', 16000, low: 16000, high: 16000),
+        res('asp', 16000, low: 12000, high: 16000),
+        res('node', 12000, low: 12000, high: 16000),
+      ]);
+      // node is about the same as asp but not go, so it starts its own.
+      expect(blocks.map((b) => b.map((r) => r.key).toList()), [
+        ['asp', 'go'],
+        ['node'],
+      ]);
+    });
+
     test('every capped framework in a tie gets the limit caveat', () {
       final answer = answerFor([
         res('bun', 24000, low: 24000, high: 32000),
