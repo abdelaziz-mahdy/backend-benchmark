@@ -263,6 +263,7 @@ class _RaceReplayState extends State<RaceReplay>
                     rate: rate,
                     slo: widget.slo,
                     scale: scale,
+                    last: _step == _rates.length - 1,
                   ),
                 ),
             ],
@@ -319,11 +320,16 @@ class _ReplayLane extends StatelessWidget {
   final Slo slo;
   final double Function(double) scale;
 
+  /// The final frame: every lane shows its result, so the one that went
+  /// furthest is not left reading "failed".
+  final bool last;
+
   const _ReplayLane({
     required this.lane,
     required this.rate,
     required this.slo,
     required this.scale,
+    required this.last,
   });
 
   @override
@@ -331,7 +337,7 @@ class _ReplayLane extends StatelessWidget {
     final b = lane.backend;
     final step = lane.at(rate);
     final held = lane.heldUpTo(rate);
-    final done = rate > lane.top; // stopped climbing earlier
+    final done = rate > lane.top || last; // stopped climbing, or the end
     final failed = step != null && !step.pass;
     final exact = step != null && step.targetRps == rate;
     final status = step == null

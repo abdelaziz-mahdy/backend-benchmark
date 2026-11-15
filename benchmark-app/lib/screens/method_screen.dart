@@ -789,23 +789,8 @@ class _MethodScreenState extends State<MethodScreen> {
     );
   }
 
-  /// A number's short name in the glossary.
-  static String _label(Metric m) => switch (m.id) {
-    'sustainable_rps' => 'Requests a second (the result)',
-    'peak_rps' => 'Most at any step',
-    'avg_rps' => 'Average requests a second',
-    'p50_ms' => 'Typical reply',
-    'p90_ms' => '9 in 10 replies',
-    'p99_ms' => 'Slow reply',
-    'p999_ms' => '999 in 1,000 replies',
-    'error_rate' => 'Errors',
-    'app_cpu' => 'Processor',
-    'app_mem_mb' => 'Memory',
-    'db_cpu' => 'Database processor',
-    'rps_per_core' => 'Per processor core',
-    'rps_per_100mb' => 'Per 100 MB of memory',
-    _ => plainMetricLabel(m),
-  };
+  /// A number's name in the glossary: the same one the tables use.
+  static String _label(Metric m) => plainMetricLabel(m);
 
   /// What a number means, in plain words.
   String _meaning(Metric m, Slo slo, int cores, RunSummary run) =>

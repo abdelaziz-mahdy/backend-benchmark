@@ -443,7 +443,7 @@ void main() {
           res('c', 5),
           res('d', 1),
         ], res('b', 5)),
-        'One of the other 3 was faster, and one had the same number.',
+        'One of the other 3 was faster, and one was about the same.',
       );
     });
 
@@ -459,6 +459,18 @@ void main() {
       expect(
         compareTestSentence([rust, bun], all: all),
         startsWith('Rust is the fastest.'),
+      );
+    });
+
+    test('a close call is never counted as faster', () {
+      final all = [
+        res('top', 40000),
+        res('foam', 16000, low: 7750, high: 16000),
+        res('spring', 15500, low: 15500, high: 22000),
+      ];
+      expect(
+        placeSentence(all, all[2]),
+        'One of the other 2 was faster, and one was about the same.',
       );
     });
 

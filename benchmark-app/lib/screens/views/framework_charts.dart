@@ -297,10 +297,11 @@ class _Percentiles extends StatelessWidget {
     final p = context.palette;
     final t = Txt(p);
     final rows = [
-      (Metrics.p50, 'Half'),
-      (Metrics.p90, '9 in 10'),
-      (Metrics.p99, '99 in 100'),
-      (Metrics.p999, '999 in 1,000'),
+      // The same names as the table above and Method's "Words we use".
+      (Metrics.p50, 'Typical reply'),
+      (Metrics.p90, '9 in 10 replies'),
+      (Metrics.p99, 'Slow reply'),
+      (Metrics.p999, '999 in 1,000 replies'),
     ].where((e) => e.$1.value(result) != null).toList();
     if (rows.isEmpty) return const SizedBox.shrink();
     final top = rows
@@ -326,7 +327,7 @@ class _Percentiles extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 children: [
-                  SizedBox(width: 96, child: Text(label, style: t.small)),
+                  SizedBox(width: 132, child: Text(label, style: t.small)),
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, c) => Stack(

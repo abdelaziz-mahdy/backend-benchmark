@@ -224,13 +224,16 @@ String restartSentence(Result r) => switch (r.restarts) {
 /// Where [r] sits among [all]: "3 of the other 11 handled more."
 String placeSentence(List<Result> all, Result r) {
   final n = all.length;
+  // "About the same" (equal numbers, or a close call by the same rule as
+  // the bar's box) is never counted as faster.
+  final close = {for (final o in closeTo(all, r)) o.key};
   var more = 0, same = 0;
   for (final o in all) {
     if (o.key == r.key) continue;
-    if (o.value > r.value) {
-      more++;
-    } else if (o.value == r.value) {
+    if (o.value == r.value || close.contains(o.key)) {
       same++;
+    } else if (o.value > r.value) {
+      more++;
     }
   }
   if (n <= 1) return 'The only framework measured here.';
@@ -243,8 +246,8 @@ String placeSentence(List<Result> all, Result r) {
   final tie = same == 0
       ? ''
       : same == 1
-      ? ', and one had the same number'
-      : ', and ${numberWord(same)} had the same number';
+      ? ', and one was about the same'
+      : ', and ${numberWord(same)} were about the same';
   if (more == 1) return 'One of the other ${n - 1} was faster$tie.';
   return '${capFirst(numberWord(more))} of the other ${n - 1} were '
       'faster$tie.';
@@ -819,11 +822,8 @@ String metricMeaning(Metric m, RunSummary run) {
       "How much processor the database used while serving this framework. "
           '100% is one core.',
     'rps_per_core' =>
-      'Requests a second for each processor core it really used. Higher is '
-          'better.',
-    'rps_per_100mb' =>
-      'Requests a second for every 100 MB of memory it used. Higher is '
-          'better.',
+      'Requests a second for each processor core it really used.',
+    'rps_per_100mb' => 'Requests a second for every 100 MB of memory it used.',
     _ => plainMetricLabel(m),
   };
 }
