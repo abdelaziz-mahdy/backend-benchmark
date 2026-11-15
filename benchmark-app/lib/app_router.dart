@@ -126,6 +126,9 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
 
   /// The side state last reported, to notice changes the link misses.
   String? _lastSide;
+
+  /// The entry being applied needed a run change first.
+  bool _crossedRun = false;
   bool _applying = false;
 
   DashRouterDelegate(this.state) {
@@ -164,9 +167,12 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
         : state.index.where((e) => e.id == want).firstOrNull;
     if (target != null && target != state.entry) {
       _pending = info;
+      _crossedRun = true;
       state.selectRun(target);
       return;
     }
+    final crossed = _crossedRun;
+    _crossedRun = false;
     _applying = true;
     try {
       applyLocation(state, uri);
@@ -174,7 +180,10 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
       if (info.state != null) {
         state.restoreSide(
           info.state,
-          linkHasPicks: uri.pathSegments.firstOrNull == 'compare',
+          // Saved picks come back only across a run change (where the run
+          // switch set some aside); on the same run, Back never undoes an
+          // "Add to compare" made since.
+          linkHasPicks: uri.pathSegments.firstOrNull == 'compare' || !crossed,
           linkHasTest: uri.queryParameters.containsKey('s'),
         );
       }

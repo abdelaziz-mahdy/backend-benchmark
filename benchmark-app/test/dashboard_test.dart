@@ -852,7 +852,7 @@ void main() {
       router.dispose();
     });
 
-    testWidgets('an entry keeps its picks and test where its link cannot', (
+    testWidgets('Back restores the test but never undoes a pick on one run', (
       t,
     ) async {
       final state = await pumpApp(t, realisticBundle());
@@ -867,10 +867,34 @@ void main() {
       state.toggleCompare(keys.first);
       final test = state.scenario;
       state.setScenario(state.run!.scenarios.last);
-      // ...and Back to the /all entry brings back its three picks and test.
+      // ...and Back to the /all entry brings back its test, but on the same
+      // run never undoes a Compare change made since.
+      final now = [...state.compareKeys];
       await router.setNewRoutePath(saved);
-      expect(state.compareKeys, keys.take(3).toList());
+      expect(state.compareKeys, now);
       expect(state.scenario, test);
+      router.dispose();
+    });
+
+    testWidgets('Back across a run change brings back its picks', (t) async {
+      final state = await pumpApp(t, twoRunBundle());
+      final router = DashRouterDelegate(state);
+      final keys = [for (final b in state.run!.backends) b.key];
+      for (final k in keys.take(2)) {
+        state.toggleCompare(k);
+      }
+      state.setView(HomeView.all);
+      final saved = router.currentConfiguration!;
+      await t.runAsync(() => state.selectRun(state.index[1]));
+      await settle(t);
+      state.compareKeys.clear();
+      await t.runAsync(() async {
+        await router.setNewRoutePath(saved);
+        await Future<void>.delayed(Duration.zero);
+      });
+      await settle(t);
+      expect(state.entry, state.index.first);
+      expect(state.compareKeys, keys.take(2).toList());
       router.dispose();
     });
 
