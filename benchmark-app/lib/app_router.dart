@@ -201,6 +201,12 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     final target = want == null
         ? state.index.firstOrNull
         : state.index.where((e) => e.id == want).firstOrNull;
+    // That run is still loading (a Back moments ago started it): this newer
+    // entry waits in place of the older one, and is applied once it is in.
+    if (target != null && target == state.entry && state.loading) {
+      _pending = info;
+      return;
+    }
     if (target != null && target != state.entry) {
       _pending = info;
       _crossedRun = true;
