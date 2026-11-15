@@ -800,6 +800,21 @@ void main() {
       expect(state.failedRun, isNull);
     });
 
+    testWidgets('the could-not-load message goes away on its own', (t) async {
+      final files = twoRunBundle().files;
+      final state = await pumpApp(
+        t,
+        _FlakyBundle(files, 'assets/results/runs/r0.json', () => true),
+      );
+      await t.runAsync(() => state.selectRun(state.index[1], byRouter: true));
+      await settle(t);
+      expect(find.byType(SnackBar), findsOneWidget);
+      for (var i = 0; i < 12; i++) {
+        await t.pump(const Duration(seconds: 1));
+      }
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
     testWidgets('a test the loaded run lacks is never set', (t) async {
       final state = await pumpApp(t, realisticBundle());
       final before = state.scenario;

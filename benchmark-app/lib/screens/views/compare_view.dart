@@ -257,6 +257,9 @@ class CompareView extends StatelessWidget {
                           '${n == 1 ? 'framework' : 'frameworks'}.',
                         ),
                         behavior: SnackBarBehavior.floating,
+                        // Times out, so a stale Undo cannot replace newer
+                        // picks.
+                        persist: false,
                         action: SnackBarAction(
                           label: 'Undo',
                           onPressed: () => state.undoClear(was, aside, away),

@@ -25,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _picker = FocusNode(debugLabel: 'framework picker');
   DashboardState? _state;
   int _failuresSeen = 0;
+  bool _failureShown = false;
 
   @override
   void didChangeDependencies() {
@@ -41,10 +42,17 @@ class _HomeScreenState extends State<HomeScreen> {
   /// visitor is (any page, any scroll), with a way to try again.
   void _onState() {
     final s = _state;
-    if (s == null || s.runFailures == _failuresSeen) return;
+    if (s == null) return;
+    // Gone once another run is chosen or loads: its Try again would be stale.
+    if (_failureShown && s.failedRun == null) {
+      _failureShown = false;
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+    }
+    if (s.runFailures == _failuresSeen) return;
     _failuresSeen = s.runFailures;
     final failed = s.failedRun;
     if (failed == null || !mounted) return;
+    _failureShown = true;
     ScaffoldMessenger.maybeOf(context)
       ?..hideCurrentSnackBar()
       ..showSnackBar(
@@ -54,6 +62,8 @@ class _HomeScreenState extends State<HomeScreen> {
             '${runLabel(failed, newest: s.index.firstOrNull)}.',
           ),
           behavior: SnackBarBehavior.floating,
+          // A message with an action stays by default; this one times out.
+          persist: false,
           action: SnackBarAction(
             label: 'Try again',
             onPressed: () => s.selectRun(failed),
