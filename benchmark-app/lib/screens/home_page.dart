@@ -26,7 +26,33 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final _scroll = ScrollController();
+  /// The scroll of the view shown, replaced when the view changes. Back and
+  /// Forward start a view where it was left; any other change starts where
+  /// the page is (then moves to the switch), and a new page at the top.
+  ScrollController? _scroll;
+  HomeView? _scrollView;
+
+  ScrollController _scrollFor(DashboardState s) {
+    final now = _scroll;
+    if (now != null && _scrollView == s.view) return now;
+    final from = now != null && now.hasClients ? now.offset : 0.0;
+    final view = s.view;
+    final c = ScrollController(
+      initialScrollOffset: s.viaHistory ? s.viewScroll[view] ?? 0 : from,
+      keepScrollOffset: false,
+    );
+    c.addListener(() {
+      if (c.hasClients) s.viewScroll[view] = c.offset;
+    });
+    // The old one is still attached until this frame swaps the views.
+    if (now != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => now.dispose());
+    }
+    _scroll = c;
+    _scrollView = view;
+    return c;
+  }
+
   final _switchKey = GlobalKey(debugLabel: 'show-me');
   final _profileHeading = FocusNode(debugLabel: 'profile heading');
   final _switchFocus = {
@@ -35,7 +61,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    _scroll.dispose();
+    _scroll?.dispose();
     _profileHeading.dispose();
     for (final f in _switchFocus.values) {
       f.dispose();
@@ -100,10 +126,8 @@ class _HomePageState extends State<HomePage> {
       picker: widget.picker,
       profileHeading: _profileHeading,
       child: SingleChildScrollView(
-        // Each view keeps its own scroll (in the page's storage, which
-        // outlives this page), for Back and Forward.
-        key: PageStorageKey<String>('home-${state.view.name}'),
-        controller: _scroll,
+        key: ValueKey(state.view),
+        controller: _scrollFor(state),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

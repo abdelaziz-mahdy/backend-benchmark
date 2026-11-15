@@ -50,6 +50,13 @@ class DashboardState extends ChangeNotifier {
   /// and open boxes; any visitor action clears it.
   bool viaHistory = false;
 
+  /// Where each results view was scrolled, for Back and Forward only.
+  final viewScroll = <HomeView, double>{};
+
+  /// Counts Compare pick sets: Clear all starts a new one, whose boxes and
+  /// folds start closed even for the same frameworks.
+  int compareSet = 0;
+
   void _act() {
     actions++;
     viaHistory = false;
@@ -523,6 +530,7 @@ class DashboardState extends ChangeNotifier {
 
   void clearCompare() {
     _act();
+    compareSet++;
     comparePicked = true;
     compareKeys.clear();
     parkedCompare.clear();

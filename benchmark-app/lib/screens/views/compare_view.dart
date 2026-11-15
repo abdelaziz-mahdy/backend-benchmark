@@ -221,7 +221,7 @@ class CompareView extends StatelessWidget {
             ),
           ],
           Fold(
-            key: ValueKey('charts-${run.id}'),
+            key: ValueKey('charts-${run.id}-${state.compareSet}'),
             title: 'Charts and all numbers',
             subtitle: run.isLegacy
                 ? 'Processor and memory over time, every measured number '
@@ -442,9 +442,12 @@ class _TestBlock extends StatelessWidget {
           Text(compareTestSentence(results, all: all), style: t.body),
           const SizedBox(height: 10),
           SpeedBars(
-            // A new set of picks starts with every box closed.
+            // A new set of picks, or another run, starts with every box
+            // closed.
             key: ValueKey(
-              'compare-bars-$test-${[for (final r in results) r.key].join(',')}',
+              'compare-bars-${context.read<DashboardState>().run?.id}-'
+              '${context.read<DashboardState>().compareSet}-$test-'
+              '${[for (final r in results) r.key].join(',')}',
             ),
             test: test,
             results: results,
