@@ -25,7 +25,8 @@ import 'state/dashboard_state.dart';
 /// browser history.
 Uri locationOf(DashboardState s) {
   final base = _place(s);
-  final entry = s.entry;
+  // The run on screen: while another loads, links still mean this one.
+  final entry = s.shownEntry ?? s.entry;
   if (entry == null || s.index.isEmpty || entry == s.index.first) return base;
   return base.replace(
     queryParameters: {...base.queryParameters, 'run': entry.id},
@@ -228,8 +229,13 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     if (target != null && target != state.entry) {
       _pending = info;
       _pendingActions = state.actions;
-      _crossedRun = true;
-      _beforeCross = [...state.compareKeys, ...state.parkedCompare];
+      // A run change only counts as crossing if it leaves the run on screen
+      // (a second quick Back can land on the run still showing).
+      final crossing = target != (state.shownEntry ?? state.entry);
+      _crossedRun = crossing;
+      _beforeCross = crossing
+          ? [...state.compareKeys, ...state.parkedCompare]
+          : const [];
       state.selectRun(target, byRouter: true);
       return;
     }
