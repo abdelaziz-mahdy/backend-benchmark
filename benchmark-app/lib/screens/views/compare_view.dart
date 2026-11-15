@@ -310,7 +310,9 @@ class _Picked extends StatelessWidget {
                   ),
                 ),
               ),
-            if (!full && picked.isNotEmpty)
+            // Only when there is something left to add: an empty menu
+            // would be a button that does nothing.
+            if (!full && picked.isNotEmpty && others.isNotEmpty)
               PopupMenuButton<String>(
                 tooltip: 'Add a framework',
                 position: PopupMenuPosition.under,

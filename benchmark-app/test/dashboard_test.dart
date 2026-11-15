@@ -503,6 +503,24 @@ void main() {
       );
     });
 
+    test("a bar's box never names one the sentence grouped elsewhere", () {
+      final all = [
+        res('bun', 24000),
+        res('asp', 16000, low: 12000, high: 16000),
+        res('go', 16000, low: 16000, high: 16000),
+        res('node', 12000, low: 12000, high: 16000),
+      ];
+      // The sentence puts asp and go together and node after them, so
+      // asp's box does not call node about the same.
+      expect(closeTo(all, all[1]).map((r) => r.key), ['go']);
+      expect(closeTo(all, all[3]), isEmpty);
+      // Compare with a few picks keeps the same groups.
+      expect(
+        compareTestSentence([all[0], all[1], all[3]], all: all),
+        contains('Then node'),
+      );
+    });
+
     test('a chain of close calls never stretches one speed word', () {
       final blocks = followerBlocks([
         res('bun', 24000),

@@ -92,13 +92,21 @@ List<Result> sortResults(Iterable<Result> rs) => [...rs]
 ///
 /// Never across the top group's edge: if one is in the tie at the top and
 /// the other is not, the answer above the bars already told them apart.
+///
+/// Below the top, only the others in its own group of followers, so a
+/// bar's box never names a framework the sentence put in another group.
 List<Result> closeTo(List<Result> all, Result r) {
   final top = {for (final x in topGroup(all)) x.key};
-  final mine = top.contains(r.key);
+  if (top.contains(r.key)) {
+    return sortResults(
+      all.where((o) => o.key != r.key && r.overlaps(o) && top.contains(o.key)),
+    );
+  }
+  final block = followerBlocks(
+    all,
+  ).where((b) => b.any((x) => x.key == r.key)).firstOrNull;
   return sortResults(
-    all.where(
-      (o) => o.key != r.key && r.overlaps(o) && top.contains(o.key) == mine,
-    ),
+    (block ?? const <Result>[]).where((o) => o.key != r.key && r.overlaps(o)),
   );
 }
 
@@ -479,6 +487,33 @@ String answerFor(List<Result> results) {
 /// "Next are A and B, about half as fast" takes its word from the first.
 List<List<Result>> followerBlocks(List<Result> results, {List<Result>? all}) {
   final sorted = sortResults(results);
+  // A few picked from a whole test (Compare) keep the whole test's groups,
+  // so the sentence and each bar's box agree.
+  if (all != null && all.length > results.length) {
+    final top = {for (final r in topGroup(sorted, all: all)) r.key};
+    final byKey = {for (final r in sorted) r.key: r};
+    final place = {for (final (i, r) in sorted.indexed) r.key: i};
+    final blocks = <List<Result>>[
+      for (final b in followerBlocks(all))
+        [
+          for (final x in b)
+            if (byKey.containsKey(x.key) && !top.contains(x.key)) byKey[x.key]!,
+        ],
+    ].where((b) => b.isNotEmpty).toList();
+    final placed = {
+      ...top,
+      for (final b in blocks)
+        for (final x in b) x.key,
+    };
+    // Picks the whole test put in its top group, while the picks have
+    // another leader, stand on their own.
+    blocks.addAll([
+      for (final r in sorted)
+        if (!placed.contains(r.key)) [r],
+    ]);
+    blocks.sort((a, b) => place[a.first.key]!.compareTo(place[b.first.key]!));
+    return blocks;
+  }
   final top = {for (final r in topGroup(sorted, all: all)) r.key};
   final blocks = <List<Result>>[];
   for (final r in sorted.where((r) => !top.contains(r.key))) {
