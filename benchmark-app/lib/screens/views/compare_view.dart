@@ -512,40 +512,55 @@ class _Shared extends StatelessWidget {
           style: t.body,
         ),
         const SizedBox(height: 8),
-        Table(
-          columnWidths: {0: FlexColumnWidth(narrow ? 1.1 : 1.5)},
-          defaultVerticalAlignment: TableCellVerticalAlignment.bottom,
-          children: [
-            TableRow(
-              children: [
-                c('Framework', left: true, head: true),
-                for (final r in rows) c(r.$1, head: true),
-              ],
-            ),
-            for (final b in picked)
-              TableRow(
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: p.line)),
+        if (narrow)
+          ByMeasure(
+            blocks: [
+              for (final r in rows)
+                (
+                  r.$1,
+                  null,
+                  [
+                    for (final b in picked)
+                      (b, Text(r.$2(shared.steps[b.key]!), style: cell)),
+                  ],
                 ),
+            ],
+          )
+        else
+          Table(
+            columnWidths: {0: FlexColumnWidth(narrow ? 1.1 : 1.5)},
+            defaultVerticalAlignment: TableCellVerticalAlignment.bottom,
+            children: [
+              TableRow(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 4,
-                    ),
-                    child: Row(
-                      children: [
-                        LangBadge.of(b.key, b.language, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text(b.name, style: cell)),
-                      ],
-                    ),
-                  ),
-                  for (final r in rows) c(r.$2(shared.steps[b.key]!)),
+                  c('Framework', left: true, head: true),
+                  for (final r in rows) c(r.$1, head: true),
                 ],
               ),
-          ],
-        ),
+              for (final b in picked)
+                TableRow(
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: p.line)),
+                  ),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          LangBadge.of(b.key, b.language, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(b.name, style: cell)),
+                        ],
+                      ),
+                    ),
+                    for (final r in rows) c(r.$2(shared.steps[b.key]!)),
+                  ],
+                ),
+            ],
+          ),
         const SizedBox(height: 4),
         Bullets([
           'Unlike the main numbers, these are at the same rate for all of '
@@ -639,7 +654,9 @@ class _ChartsState extends State<_Charts> {
           title: 'All numbers side by side',
           subtitle:
               'Each one at its own result, so only the first rows are a '
-              'race. Hover over or press and hold a name for what it means.',
+              'race.'
+              // Phones show each number's meaning under its name.
+              '${MediaQuery.sizeOf(context).width < 480 ? '' : ' Hover over or press and hold a name for what it means.'}',
           child: _SideBySide(state: state, picked: here, test: s),
         ),
       ],
@@ -786,6 +803,63 @@ class _SideBySide extends StatelessWidget {
       for (final (i, (label, _)) in picked.first.builtFacts.indexed)
         (label, (b) => b.builtFacts[i].$2),
     ];
+    // A phone gets one block per number, one row per framework, instead
+    // of a table wider than the screen.
+    if (MediaQuery.sizeOf(context).width < 480) {
+      return ByMeasure(
+        blocks: [
+          for (final m in metrics)
+            (
+              plainMetricLabel(m),
+              metricMeaning(m, state.run!),
+              [
+                for (final b in picked)
+                  (
+                    b,
+                    Text(
+                      fmt(
+                        m,
+                        m.value(b.scenarios[test]!),
+                        capped: b.scenarios[test]!.loadgenBound,
+                      ),
+                      style: cell,
+                    ),
+                  ),
+              ],
+            ),
+          for (final (label, value) in impl)
+            if (picked.any((b) => value(b) != null))
+              (
+                label,
+                null,
+                [
+                  for (final b in picked)
+                    (
+                      b,
+                      Text(value(b) ?? '—', style: cell.copyWith(fontSize: 13)),
+                    ),
+                ],
+              ),
+          (
+            'Code',
+            null,
+            [
+              for (final b in picked)
+                (
+                  b,
+                  b.sourceUrl == null
+                      ? Text('—', style: cell)
+                      : SourceLink(
+                          url: b.sourceUrlAt(sha) ?? b.sourceUrl!,
+                          label: 'Code on GitHub',
+                          fontSize: 13,
+                        ),
+                ),
+            ],
+          ),
+        ],
+      );
+    }
     final table = Table(
       columnWidths: {
         0: const FixedColumnWidth(170),
@@ -899,4 +973,67 @@ class _WithTestPicker extends StatelessWidget {
       child,
     ],
   );
+}
+
+/// Numbers for a phone: one block per number (its name, and a line per
+/// framework with its badge, name and value), where a side-by-side table
+/// would run off the screen or break names mid-word.
+class ByMeasure extends StatelessWidget {
+  final List<(String, String?, List<(BackendResult, Widget)>)> blocks;
+
+  const ByMeasure({super.key, required this.blocks});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = Txt(p);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (label, help, rows) in blocks)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: p.line)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  label,
+                  style: t.small.copyWith(fontWeight: FontWeight.w700),
+                ),
+                if (help != null)
+                  Text(help, style: t.small.copyWith(fontSize: 13)),
+                const SizedBox(height: 6),
+                for (final (b, value) in rows)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        LangBadge.of(b.key, b.language, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            b.name,
+                            style: t.body.copyWith(fontSize: 14.5),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: value,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
 }

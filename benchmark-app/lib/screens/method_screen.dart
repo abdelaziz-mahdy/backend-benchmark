@@ -524,6 +524,7 @@ class _MethodScreenState extends State<MethodScreen> {
   }
 
   Widget _fairness(RunSummary run) {
+    bool has(String key) => run.backends.any((b) => b.key == key);
     final cpusets = run.params['cpusets'] as Map? ?? const {};
     final mem = run.params['memory'] as Map? ?? const {};
     final cores = appCoreCount(run);
@@ -544,19 +545,22 @@ class _MethodScreenState extends State<MethodScreen> {
           ),
           if (mem['app'] != null)
             Point('Memory:', 'each app may use up to ${_size(mem['app'])}.'),
-          const Point(
+          // Only the frameworks this run has are named.
+          Point(
             'Settings:',
             'each app runs the way it would for real visitors, not in a '
                 'test or debug mode. Most frameworks whose language uses one '
-                'processor core at a time start one copy per core; serverpod '
-                'runs a single copy (see its page).',
+                'processor core at a time start one copy per core'
+                '${has('dart-server-pod') ? '; serverpod runs a single copy (see its page)' : ''}.',
           ),
-          const Point(
+          Point(
             'Database connections:',
-            'about 20 kept open by each app. The two django apps instead go '
-                'through a connection sharer (PgBouncer) with 50, and foam3 '
-                '(embedded) has no database at all. Each one\'s page lists '
-                'its own.',
+            'about 20 kept open by each app.'
+                '${run.backends.any((b) => b.pgbouncer) ? ' ${capFirst(joinAnd([for (final b in run.backends)
+                        if (b.pgbouncer) b.name]))} instead ${run.backends.where((b) => b.pgbouncer).length == 1 ? 'goes' : 'go'} through a connection sharer (PgBouncer) with 50.' : ''}'
+                '${run.backends.any((b) => b.db == 'none') ? ' ${capFirst(joinAnd([for (final b in run.backends)
+                        if (b.db == 'none') b.name]))} ${run.backends.where((b) => b.db == 'none').length == 1 ? 'has' : 'have'} no database at all.' : ''}'
+                " Each one's page lists its own.",
           ),
           Point(
             'Data:',
@@ -569,12 +573,19 @@ class _MethodScreenState extends State<MethodScreen> {
             'ask for rows near the start of the table, so the database is '
                 'not what slows things down.',
           ),
-          const Point(
-            'serverpod and foam3',
-            'have their own way of calling the server (RPC) instead of plain '
-                'web addresses. We call them that way, with the same four '
-                'operations.',
-          ),
+          if (run.backends.any((b) => b.apiStyle != 'rest'))
+            Point(
+              joinAnd(
+                {
+                  for (final b in run.backends)
+                    if (b.apiStyle != 'rest') b.framework ?? b.name,
+                }.toList(),
+              ),
+              '${run.backends.where((b) => b.apiStyle != 'rest').map((b) => b.framework ?? b.name).toSet().length == 1 ? 'has its' : 'have their'} '
+              'own way of calling the server (RPC) instead of plain web '
+              'addresses. We call ${run.backends.where((b) => b.apiStyle != 'rest').map((b) => b.framework ?? b.name).toSet().length == 1 ? 'it' : 'them'} '
+              'that way, with the same four operations.',
+            ),
           Point(
             'Repeats:',
             'every test is tried ${numberWord(reps)} times. We show the '
@@ -853,7 +864,8 @@ class _MethodScreenState extends State<MethodScreen> {
         const Lead('Read the numbers with these limits in mind.'),
         const SizedBox(height: 14),
         Points([
-          if (!run.isLegacy)
+          // Only when something in this run hit it.
+          if (!run.isLegacy && limit != null)
             Point(
               "Our testing tool's limit:",
               'results stop at about $around requests a second on this '
@@ -869,13 +881,15 @@ class _MethodScreenState extends State<MethodScreen> {
                 'runs on the same computer with the same method can be '
                 'compared, which is why History never mixes them.',
           ),
-          const Point(
-            'Storage options',
-            'of one framework (such as foam3 with its own built-in store, or '
-                'with PostgreSQL) only differ where storage is what slows '
-                'things down. Where handling requests is the limit, they show '
-                'similar numbers.',
-          ),
+          // Only when this run has a framework in two storage options.
+          if (run.backends.any((b) => b.db == 'none'))
+            const Point(
+              'Storage options',
+              'of one framework (such as foam3 with its own built-in store, or '
+                  'with PostgreSQL) only differ where storage is what slows '
+                  'things down. Where handling requests is the limit, they show '
+                  'similar numbers.',
+            ),
           Point(
             'The slow reply',
             run.isLegacy
@@ -1156,7 +1170,8 @@ String _why(LoadStep s, Slo slo) {
     if (s.targetRps > 0 && s.achievedRps / s.targetRps < slo.servedRatio)
       'answered ${(s.achievedRps / s.targetRps * 100).floor()}%',
   ];
-  return parts.isEmpty ? 'failed a limit' : parts.join(', ');
+  // One reason per line, so each fits under its bar in full.
+  return parts.isEmpty ? 'failed a limit' : parts.join('\n');
 }
 
 /// The same in a full sentence, for the lines under the chart.
@@ -1314,7 +1329,7 @@ class _RunStaircase extends StatelessWidget {
                 height:
                     barArea +
                     26 +
-                    (wide ? 30 : 0) +
+                    (wide ? 44 : 0) +
                     20 +
                     (secondRow >= 0 ? 14 : 0),
                 child: Stack(
@@ -1326,7 +1341,7 @@ class _RunStaircase extends StatelessWidget {
                       Positioned(
                         left: 0,
                         right: 0,
-                        bottom: 26 + (wide ? 30 : 0) + barArea * h(v) - 7,
+                        bottom: 26 + (wide ? 44 : 0) + barArea * h(v) - 7,
                         child: Row(
                           children: [
                             SizedBox(
@@ -1600,11 +1615,11 @@ class _StepBar extends StatelessWidget {
           ),
           if (reason != null)
             SizedBox(
-              height: 30,
+              height: 44,
               child: Text(
                 reason!,
                 textAlign: TextAlign.center,
-                maxLines: 2,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: t.small.copyWith(
                   fontSize: 11,

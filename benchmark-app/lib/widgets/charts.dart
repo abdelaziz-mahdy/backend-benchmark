@@ -261,10 +261,17 @@ class StepLoadChart extends StatelessWidget {
                 showTitles: true,
                 interval: 1,
                 reservedSize: 22,
-                getTitlesWidget: (v, meta) => v != v.roundToDouble()
+                // A phone labels every other doubling, counted back from the
+                // last, so labels never run together and the last one shows.
+                getTitlesWidget: (v, meta) =>
+                    v != v.roundToDouble() ||
+                        (MediaQuery.sizeOf(context).width < 480 &&
+                            (maxX.round() - v.round()).isOdd)
                     ? const SizedBox.shrink()
                     : SideTitleWidget(
                         meta: meta,
+                        // The last label stays inside the chart.
+                        fitInside: SideTitleFitInsideData.fromTitleMeta(meta),
                         child: Text(fmtX(v), style: _axisStyle(p)),
                       ),
               ),
