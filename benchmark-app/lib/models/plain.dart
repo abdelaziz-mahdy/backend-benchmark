@@ -89,8 +89,18 @@ List<Result> sortResults(Iterable<Result> rs) => [...rs]
 
 /// The others in [all] whose run range overlaps [r]'s: too close to call.
 /// Highest first.
-List<Result> closeTo(List<Result> all, Result r) =>
-    sortResults(all.where((o) => o.key != r.key && r.overlaps(o)));
+///
+/// Never across the top group's edge: if one is in the tie at the top and
+/// the other is not, the answer above the bars already told them apart.
+List<Result> closeTo(List<Result> all, Result r) {
+  final top = {for (final x in topGroup(all)) x.key};
+  final mine = top.contains(r.key);
+  return sortResults(
+    all.where(
+      (o) => o.key != r.key && r.overlaps(o) && top.contains(o.key) == mine,
+    ),
+  );
+}
 
 // ---------------------------------------------------------------- numbers
 
@@ -341,7 +351,22 @@ String asFast(double f) {
 /// The frameworks at the top of [results] that cannot be told apart: the
 /// fastest, those whose runs overlap it, and, when it hit our testing
 /// tool's limit, every other one that hit the limit too. Fastest first.
-List<Result> topGroup(List<Result> results) {
+///
+/// With [all] (every framework in the test, when [results] is a few picked
+/// ones), the tie is the one the whole test has, so Compare never calls two
+/// frameworks "about the same" that Who's fastest tells apart.
+List<Result> topGroup(List<Result> results, {List<Result>? all}) {
+  final own = _topGroupOf(results);
+  if (all == null || own.isEmpty) return own;
+  final full = {for (final r in _topGroupOf(all)) r.key};
+  if (!full.contains(own.first.key)) return own;
+  return [
+    for (final r in sortResults(results))
+      if (full.contains(r.key)) r,
+  ];
+}
+
+List<Result> _topGroupOf(List<Result> results) {
   final sorted = sortResults(results);
   if (sorted.isEmpty) return const [];
   final leader = sorted.first;
@@ -387,7 +412,11 @@ String answerFor(List<Result> results) {
 /// rest as a share of the fastest: "Next is B, about half as fast. Then C,
 /// about a tenth as fast." The flag says whether it already named the
 /// testing tool's limit.
-(String, bool) _ranked(List<Result> results, {required int followers}) {
+(String, bool) _ranked(
+  List<Result> results, {
+  required int followers,
+  List<Result>? all,
+}) {
   if (results.isEmpty) {
     return ('No framework has a result in this test.', false);
   }
@@ -396,7 +425,7 @@ String answerFor(List<Result> results) {
   if (sorted.length == 1) {
     return ('${capFirst(leader.name)} is the only one.', false);
   }
-  final top = {for (final r in topGroup(sorted)) r.key};
+  final top = {for (final r in topGroup(sorted, all: all)) r.key};
   final tied = [
     for (final r in sorted)
       if (top.contains(r.key)) r,
@@ -476,7 +505,11 @@ String kindsOfWork(int n) => '${numberWord(n)} ${n == 1 ? 'test' : 'tests'}';
 /// The comparison's answer in one plain sentence (or two): who handled the
 /// most in how many kinds of work, and where it was too close to call.
 /// [byTest] holds the picked frameworks' results per test, in test order.
-String compareVerdict(Map<String, List<Result>> byTest) {
+/// [full] holds every framework's results per test, for the tie rule.
+String compareVerdict(
+  Map<String, List<Result>> byTest, {
+  Map<String, List<Result>>? full,
+}) {
   final wins = <String, List<String>>{};
   final names = <String, String>{};
   var contested = 0;
@@ -485,7 +518,7 @@ String compareVerdict(Map<String, List<Result>> byTest) {
     final rs = sortResults(e.value);
     if (rs.length < 2) continue;
     contested++;
-    final top = topGroup(rs);
+    final top = topGroup(rs, all: full?[e.key]);
     if (top.length > 1) {
       ties.add(top);
       continue;
@@ -537,12 +570,12 @@ String compareVerdict(Map<String, List<Result>> byTest) {
 
 /// One test of a comparison in words, with no numbers: who is at the top
 /// and how far behind each of the others is, as a share of the fastest.
-String compareTestSentence(List<Result> results) {
+String compareTestSentence(List<Result> results, {List<Result>? all}) {
   final rs = sortResults(results);
   if (rs.isEmpty) return 'None of them was measured here.';
   if (rs.length == 1) return 'Only ${rs.first.name} was measured here.';
   final capped = rs.where((r) => r.capped).toList();
-  final (words, limitSaid) = _ranked(rs, followers: rs.length);
+  final (words, limitSaid) = _ranked(rs, followers: rs.length, all: all);
   return [
     words,
     if (capped.isNotEmpty && !limitSaid)
@@ -772,23 +805,19 @@ String metricMeaning(Metric m, RunSummary run) {
       'Old method: the average requests a second while more and more '
           'visitors were added. Higher is better.',
     'p50_ms' =>
-      'Typical reply: half of all replies came back faster than this. Lower '
-          'is better.',
-    'p90_ms' => '9 in 10 replies came back faster than this. Lower is better.',
-    'p99_ms' =>
-      'Slow reply: 99 of every 100 replies came back within this. Lower is '
-          'better.',
-    'p999_ms' =>
-      '999 of every 1,000 replies came back within this. Lower is better.',
-    'error_rate' => 'The share of requests that failed. Lower is better.',
+      'Typical reply: half of all replies came back faster than this.',
+    'p90_ms' => '9 in 10 replies came back faster than this.',
+    'p99_ms' => 'Slow reply: 99 of every 100 replies came back within this.',
+    'p999_ms' => '999 of every 1,000 replies came back within this.',
+    'error_rate' => 'The share of requests that failed.',
     'app_cpu' =>
       'How much of its ${numberWord(cores)} processor '
           '${cores == 1 ? 'core' : 'cores'} the app used. 100% is '
-          '${cores == 1 ? 'that core' : 'all of them'}. Lower is better.',
-    'app_mem_mb' => 'How much memory the app used. Lower is better.',
+          '${cores == 1 ? 'that core' : 'all of them'}.',
+    'app_mem_mb' => 'How much memory the app used.',
     'db_cpu' =>
       "How much processor the database used while serving this framework. "
-          '100% is one core. Lower is better.',
+          '100% is one core.',
     'rps_per_core' =>
       'Requests a second for each processor core it really used. Higher is '
           'better.',

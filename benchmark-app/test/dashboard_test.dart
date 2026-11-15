@@ -447,6 +447,21 @@ void main() {
       );
     });
 
+    test('one tie rule for the answer, a bar box and Compare', () {
+      final rust = res('rust', 32000, low: 24000, high: 32000, capped: true);
+      final bun = res('bun', 24000, low: 24000, high: 32000);
+      final node = res('node', 24000, low: 16000, high: 24000);
+      final all = [rust, bun, node];
+      // The answer tells rust apart, so bun's box does not call them the
+      // same; bun and node, on the same side, still are.
+      expect(closeTo(all, bun).map((r) => r.key), ['node']);
+      // Compare with only rust and bun picked follows the whole test.
+      expect(
+        compareTestSentence([rust, bun], all: all),
+        startsWith('Rust is the fastest.'),
+      );
+    });
+
     test('frameworks with the same number are named together', () {
       expect(
         answerFor([res('a', 40000), res('b', 30000), res('c', 30000)]),

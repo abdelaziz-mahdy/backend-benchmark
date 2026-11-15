@@ -832,9 +832,7 @@ class _MethodScreenState extends State<MethodScreen> {
       'half of all replies came back faster than this, '
           '${run.isLegacy ? 'averaged over the whole test' : 'at the busiest step it passed'}.',
     'p90_ms' => '9 in 10 replies came back faster than this.',
-    'p99_ms' =>
-      '99 of every 100 replies came back within this. Lower is '
-          'better.',
+    'p99_ms' => '99 of every 100 replies came back within this.',
     'p999_ms' => '999 of every 1,000 replies came back within this.',
     'error_rate' =>
       'the share of requests that failed, '

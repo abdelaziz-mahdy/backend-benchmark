@@ -35,7 +35,7 @@ class Slo {
   String reason(LoadStep s) {
     if (s.pass) return '';
     final parts = [
-      if (s.p99 >= p99Ms) 'slow reply ${formatMs(s.p99)}',
+      if (s.p99 >= p99Ms) 'slow reply ${msText(s.p99)}',
       if (s.errorRate >= errorRate)
         '${(s.errorRate * 100).toStringAsFixed(1)}% errors',
       if (s.targetRps > 0 && s.achievedRps / s.targetRps < servedRatio)

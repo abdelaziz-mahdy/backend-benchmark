@@ -127,7 +127,13 @@ class CompareView extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 580),
             child: Semantics(
               liveRegion: true,
-              child: Text(compareVerdict(byTest), style: t.answer),
+              child: Text(
+                compareVerdict(
+                  byTest,
+                  full: {for (final s in tests) s: resultsFor(run, s)},
+                ),
+                style: t.answer,
+              ),
             ),
           ),
           const SizedBox(height: 18),
@@ -383,7 +389,7 @@ class _TestBlock extends StatelessWidget {
           ),
           Text(info.what, style: t.small),
           const SizedBox(height: 10),
-          Text(compareTestSentence(results), style: t.body),
+          Text(compareTestSentence(results, all: all), style: t.body),
           const SizedBox(height: 10),
           SpeedBars(
             // A new set of picks starts with every box closed.
@@ -432,7 +438,7 @@ class _Replay extends StatelessWidget {
         Text(
           'Each step asked for a fixed number of requests a second. A step '
           'failed when 99 in 100 replies were not back within '
-          '${formatMs(slo.p99Ms)}, when ${(slo.errorRate * 100).round()} in '
+          '${msText(slo.p99Ms)}, when ${(slo.errorRate * 100).round()} in '
           '100 or more failed, or when fewer than '
           '${(slo.servedRatio * 100).round()} in 100 were handled. Press play '
           'or drag the slider.',

@@ -6,7 +6,6 @@ import 'package:material_ui/material_ui.dart';
 import '../models/plain.dart';
 import '../models/results.dart';
 import '../utils/colors.dart';
-import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
 
 // Styling shared by every chart: no frame, faint horizontal rules, quiet
@@ -282,7 +281,7 @@ class StepLoadChart extends StatelessWidget {
             final name = series[s.barIndex - offset].backend.name;
             return '$name, asked for ${whole(st.targetRps)} a second\n'
                 'handled ${whole(st.achievedRps)} · slow reply '
-                '${formatMs(st.p99)}'
+                '${msText(st.p99)}'
                 '${st.errorRate > 0 ? ' · ${(st.errorRate * 100).toStringAsFixed(2)}% failed' : ''}'
                 '${st.pass
                     ? ''

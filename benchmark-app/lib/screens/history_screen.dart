@@ -35,13 +35,11 @@ String _metricMeaning(Metric m) => switch (m.id) {
   'peak_rps' =>
     'The most requests a second it answered at any step, however slow the '
         'replies were. Higher is better.',
-  'p99_ms' =>
-    'Slow reply: 99 of every 100 replies came back within this time. Lower '
-        'is better.',
+  'p99_ms' => 'Slow reply: 99 of every 100 replies came back within this time.',
   'app_cpu' =>
     'How much of its processor cores it used. 100% is all of them (in the '
-        'old method, 100% is one core). Lower is better.',
-  'app_mem_mb' => 'How much memory it used. Lower is better.',
+        'old method, 100% is one core).',
+  'app_mem_mb' => 'How much memory it used.',
   _ => m.help,
 };
 

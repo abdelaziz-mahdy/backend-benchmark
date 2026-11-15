@@ -227,7 +227,7 @@ class _SpeedBarsState extends State<SpeedBars> {
       radius: 10,
       semanticLabel:
           '${r.name}, '
-          '${topGroup(widget.results).any((x) => x.key == r.key) ? (topGroup(widget.results).length > 1 ? 'tied for fastest' : 'the fastest') : '${asFast(share)} as the fastest'}. '
+          '${topGroup(widget.results, all: widget.all).any((x) => x.key == r.key) ? (topGroup(widget.results, all: widget.all).length > 1 ? 'tied for fastest' : 'the fastest') : '${asFast(share)} as the fastest'}. '
           'Show its number.',
       builder: (context, hovered) => Container(
         constraints: const BoxConstraints(minHeight: 44),

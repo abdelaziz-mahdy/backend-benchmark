@@ -124,7 +124,7 @@ class EveryNumberView extends StatelessWidget {
               'A plus sign (+) means the framework reached the most our testing '
                   'tool could send. Its real figure may be higher.',
           ] else ...[
-            '${m.label}: ${m == Measure.processor ? 'how much of its ${numberWord(cores)} processor ${cores == 1 ? 'core' : 'cores'} the framework used' : m.meaning}. Lower is better.',
+            '${m.label}: ${m == Measure.processor ? 'how much of its ${numberWord(cores)} processor ${cores == 1 ? 'core' : 'cores'} the framework used' : m.meaning}.',
             if (legacy)
               'Each framework was measured during the old test, which sent '
                   'the same traffic to every framework.'
