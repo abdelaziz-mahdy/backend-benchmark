@@ -177,7 +177,8 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
           last != null &&
           last.pathSegments.firstOrNull == 'compare' &&
           now.pathSegments.firstOrNull == 'compare' &&
-          last.queryParameters['run'] == now.queryParameters['run'];
+          last.queryParameters['run'] == now.queryParameters['run'] &&
+          last.queryParameters['s'] == now.queryParameters['s'];
       _last = now;
       _lastSide = side;
       _report(replace: picksOnly);
@@ -212,10 +213,13 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     try {
       applyLocation(state, uri);
       if (fromHistory) {
-        if (!crossed) state.restoreCompare(picks, parked, away);
+        // Before any pick in this visit (a reload), the entry's picks are
+        // the only ones there are: bring them back.
+        final fresh = !state.comparePicked;
+        if (!crossed && !fresh) state.restoreCompare(picks, parked, away);
         state.restoreSide(
           info.state,
-          restorePicks: crossed,
+          restorePicks: crossed || fresh,
           keep: before,
           linkHasTest: uri.queryParameters.containsKey('s'),
         );

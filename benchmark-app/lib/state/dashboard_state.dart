@@ -230,6 +230,7 @@ class DashboardState extends ChangeNotifier {
   /// Adds or removes [key]. With [restore] (Compare's own remove, where the
   /// set-aside picks are explained), a freed place brings one back.
   void toggleCompare(String key, {bool restore = false}) {
+    comparePicked = true;
     parkedCompare.remove(key);
     if (!compareKeys.remove(key)) {
       if (compareKeys.length >= maxCompare) return;
@@ -250,6 +251,7 @@ class DashboardState extends ChangeNotifier {
   /// Brings set-aside picks this run has back into Compare, while there is
   /// room.
   void restoreParked() {
+    comparePicked = true;
     final r = run;
     for (final k
         in parkedCompare.where((k) => r?.backend(k) != null).toList()) {
@@ -278,6 +280,11 @@ class DashboardState extends ChangeNotifier {
       ..addAll(away);
     notifyListeners();
   }
+
+  /// The visitor has picked (or cleared) Compare frameworks in this visit.
+  /// Until then, as after a reload, Back may bring back a history entry's
+  /// saved picks: there is no choice of theirs to keep.
+  bool comparePicked = false;
 
   /// Which set-aside picks return by themselves on a run change.
   Set<String> get awayForRun => Set.unmodifiable(_awayForRun);
@@ -333,8 +340,15 @@ class DashboardState extends ChangeNotifier {
       _awayForRun
         ..clear()
         ..addAll(list(saved['away']));
+      // Nothing is lost: another pick stays picked while there is room,
+      // else it is set aside (and comes back by itself if this run lacks
+      // it).
       for (final k in keep) {
         if (compareKeys.contains(k) || parkedCompare.contains(k)) continue;
+        if (r?.backend(k) != null && compareKeys.length < maxCompare) {
+          compareKeys.add(k);
+          continue;
+        }
         parkedCompare.add(k);
         if (r?.backend(k) == null) _awayForRun.add(k);
       }
@@ -345,6 +359,7 @@ class DashboardState extends ChangeNotifier {
   }
 
   void clearCompare() {
+    comparePicked = true;
     compareKeys.clear();
     parkedCompare.clear();
     _awayForRun.clear();

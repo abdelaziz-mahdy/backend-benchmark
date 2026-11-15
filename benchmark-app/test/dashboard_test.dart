@@ -897,6 +897,29 @@ void main() {
       router.dispose();
     });
 
+    testWidgets('after a reload, Back brings back an entry\'s picks', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      final keys = [for (final b in state.run!.backends) b.key];
+      // An entry saved before the reload, with two picks.
+      final entry = RouteInformation(
+        uri: Uri(path: '/compare/${keys[0]},${keys[1]}'),
+        state: {
+          'picks': [keys[0], keys[1]],
+          'parked': <String>[],
+          'away': <String>[],
+          'missing': null,
+          'test': state.scenario,
+        },
+      );
+      // Fresh visit, nothing picked yet: Back restores them.
+      await router.setNewRoutePath(entry);
+      expect(state.compareKeys, [keys[0], keys[1]]);
+      router.dispose();
+    });
+
     testWidgets('a change the link does not show still updates the entry', (
       t,
     ) async {
