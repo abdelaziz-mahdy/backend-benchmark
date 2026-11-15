@@ -46,6 +46,10 @@ class DashboardState extends ChangeNotifier {
   bool failedInPlace = false;
   int runFailures = 0;
 
+  /// Tries the failed run again: the run choice again, or (set by the
+  /// router) the whole history entry or link that asked for it.
+  VoidCallback? retryFailed;
+
   DashboardPage page = DashboardPage.home;
   HomeView view = HomeView.short;
 
@@ -117,6 +121,7 @@ class DashboardState extends ChangeNotifier {
     entry = next;
     loading = true;
     failedRun = null;
+    retryFailed = null;
     notifyListeners();
     try {
       var loaded = await _service.loadRun(next);
@@ -211,6 +216,7 @@ class DashboardState extends ChangeNotifier {
         // The run on screen stays, and says so; the choice can be retried.
         failedRun = next;
         failedInPlace = inPlace;
+        retryFailed = () => selectRun(next, inPlace: inPlace);
         if (!inPlace) runFailures++;
         entry = shownEntry;
       }
@@ -478,6 +484,22 @@ class DashboardState extends ChangeNotifier {
     final missing = saved['missing'];
     missingKey = selectedKey == null && missing is String ? missing : null;
     notifyListeners();
+  }
+
+  /// Sets aside [keys] the run on screen lacks (and that are not picked or
+  /// set aside already), so they come back on a run that has them.
+  void setAsideMissing(Iterable<String> keys) {
+    final r = run;
+    if (r == null) return;
+    for (final k in keys) {
+      if (r.backend(k) != null ||
+          compareKeys.contains(k) ||
+          parkedCompare.contains(k)) {
+        continue;
+      }
+      parkedCompare.add(k);
+      _awayForRun.add(k);
+    }
   }
 
   void clearCompare() {

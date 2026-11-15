@@ -25,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _picker = FocusNode(debugLabel: 'framework picker');
   DashboardState? _state;
   int _failuresSeen = 0;
-  bool _failureShown = false;
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _failureSnack;
 
   @override
   void didChangeDependencies() {
@@ -44,32 +44,38 @@ class _HomeScreenState extends State<HomeScreen> {
     final s = _state;
     if (s == null) return;
     // Gone once another run is chosen or loads: its Try again would be stale.
-    if (_failureShown && s.failedRun == null) {
-      _failureShown = false;
-      if (mounted) ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+    // Only this message: an Undo shown since stays.
+    if (_failureSnack != null && s.failedRun == null) {
+      _failureSnack!.close();
+      _failureSnack = null;
     }
     if (s.runFailures == _failuresSeen) return;
     _failuresSeen = s.runFailures;
     final failed = s.failedRun;
     if (failed == null || !mounted) return;
-    _failureShown = true;
-    ScaffoldMessenger.maybeOf(context)
-      ?..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            'Could not load '
-            '${runLabel(failed, newest: s.index.firstOrNull)}.',
-          ),
-          behavior: SnackBarBehavior.floating,
-          // A message with an action stays by default; this one times out.
-          persist: false,
-          action: SnackBarAction(
-            label: 'Try again',
-            onPressed: () => s.selectRun(failed),
-          ),
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.hideCurrentSnackBar();
+    final snack = messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Could not load '
+          '${runLabel(failed, newest: s.index.firstOrNull)}.',
         ),
-      );
+        behavior: SnackBarBehavior.floating,
+        // A message with an action stays by default; this one times out
+        // (the note on the page stays).
+        persist: false,
+        action: SnackBarAction(
+          label: 'Try again',
+          onPressed: () => s.retryFailed?.call(),
+        ),
+      ),
+    );
+    _failureSnack = snack;
+    snack.closed.then((_) {
+      if (identical(_failureSnack, snack)) _failureSnack = null;
+    });
   }
 
   @override

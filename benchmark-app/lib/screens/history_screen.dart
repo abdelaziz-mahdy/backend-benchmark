@@ -13,6 +13,7 @@ import '../utils/theme_constants.dart';
 import '../widgets/calm.dart';
 import '../widgets/charts.dart' show HistoryChart;
 import '../widgets/prose.dart';
+import '../widgets/run_switcher.dart' show RunLoadFailedNote;
 import '../widgets/site_frame.dart' show SiteFooter, SiteWidth;
 
 /// Numbers History can plot (they are in index.json's headline data), with
@@ -242,6 +243,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     lead: 'How the results changed from run to run.',
                     onBack: () => state.setPage(DashboardPage.home),
                   ),
+                  RunLoadFailedNote(state: state, inPlace: false),
                   const SizedBox(height: 16),
                   const Points([
                     Point(

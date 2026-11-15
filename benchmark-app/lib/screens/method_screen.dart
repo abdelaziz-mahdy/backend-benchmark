@@ -130,6 +130,7 @@ class _MethodScreenState extends State<MethodScreen> {
                         'the details.',
               onBack: () => state.setPage(DashboardPage.home),
             ),
+            RunLoadFailedNote(state: state, inPlace: false),
             if (!run.isLegacy) ...[
               const SizedBox(height: kSectionGap),
               _keyFacts(run),
@@ -623,7 +624,7 @@ class _MethodScreenState extends State<MethodScreen> {
         ),
         const SizedBox(height: 8),
         RunPicker(state: state),
-        RunLoadFailedNote(state: state),
+        RunLoadFailedNote(state: state, inPlace: true),
         const SizedBox(height: 24),
         Points([
           if (run.date != null) Point('Date:', '${capFirst(_when(state))}.'),

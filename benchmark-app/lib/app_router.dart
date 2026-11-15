@@ -190,19 +190,35 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
         // Back's entry then holds what is shown, so Back from the next page
         // returns here; a pasted link stays in the address bar, so a reload
         // tries its run again.
-        _crossedRun = false;
-        _beforeCross = const [];
+        // Nothing is lost: the picks on screen stay, and the entry's picks
+        // and framework this run lacks are set aside, as on any run change.
+        _crossedRun = true;
+        _beforeCross = [...state.compareKeys, ...state.parkedCompare];
         final shown = state.shownEntry ?? state.entry;
         final query = {...pending.uri.queryParameters}..remove('run');
         if (shown != null && shown != state.index.firstOrNull) {
           query['run'] = shown.id;
         }
+        final parts = pending.uri.pathSegments;
         final test = query['s'];
         if (test != null) {
-          query['s'] = state.run?.isLegacy ?? false
+          // History always lists the current tests.
+          query['s'] =
+              (state.run?.isLegacy ?? false) && parts.firstOrNull != 'history'
               ? legacyScenario(test)
               : currentScenario(test);
         }
+        final saved = pending.state;
+        final wanted = [
+          if (parts.firstOrNull == 'compare' && parts.length > 1)
+            ...parts[1].split(','),
+          if (saved is Map && saved['picks'] is List)
+            ...(saved['picks'] as List).whereType<String>(),
+        ];
+        final framework =
+            const {'one', 'f'}.contains(parts.firstOrNull) && parts.length > 1
+            ? parts[1]
+            : null;
         final here = Uri(
           path: pending.uri.path,
           queryParameters: query.isEmpty ? null : query,
@@ -211,7 +227,15 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
           RouteInformation(uri: here, state: pending.state),
           openedAs: pending.state == null ? pending.uri : null,
           replace: pending.state != null,
+          after: () {
+            state.setAsideMissing(wanted);
+            if (framework != null && state.run?.backend(framework) == null) {
+              state.missingKey = framework;
+            }
+          },
         );
+        // Try again replays the whole entry, as a Back that worked would.
+        state.retryFailed = () => _apply(pending);
       } else {
         // The visitor acted while it waited: their action wins. The waiting
         // entry was never shown, so it is replaced by what is.
@@ -250,7 +274,12 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     }
   }
 
-  void _apply(RouteInformation info, {Uri? openedAs, bool replace = false}) {
+  void _apply(
+    RouteInformation info, {
+    Uri? openedAs,
+    bool replace = false,
+    VoidCallback? after,
+  }) {
     final uri = info.uri;
     // The run first: load it, and apply the rest once it is in.
     final want = uri.queryParameters['run'];
@@ -320,6 +349,7 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
         // later Forward to an entry saved without them keeps them.
         if (fresh && state.compareKeys.isNotEmpty) state.comparePicked = true;
       }
+      after?.call();
     } finally {
       _applying = false;
     }

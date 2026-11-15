@@ -763,10 +763,16 @@ void main() {
       expect(state.entry, shown);
       expect(state.failedRun, state.index[1]);
       expect(locationOf(state).queryParameters['run'], isNull);
-      expect(find.textContaining('Pick it again'), findsOneWidget);
+      expect(find.textContaining('Could not load'), findsOneWidget);
       expect(find.byType(SnackBar), findsNothing);
-      // Picking it again tries again.
-      await t.runAsync(() => state.selectRun(state.index[1], inPlace: true));
+      // Its Try again tries again.
+      await t.tap(find.text('Try again'));
+      await t.runAsync(() async {
+        for (var i = 0; i < 10; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await t.pump();
+        }
+      });
       await settle(t);
       expect(state.entry, state.index[1]);
       expect(state.failedRun, isNull);
@@ -787,8 +793,14 @@ void main() {
       await t.runAsync(() => state.selectRun(state.index[1], byRouter: true));
       await settle(t);
       expect(find.byType(SnackBar), findsOneWidget);
-      expect(find.textContaining('Pick it again'), findsNothing);
-      await t.tap(find.text('Try again'));
+      // The note on the page stays after the message times out.
+      expect(find.textContaining('Could not load'), findsNWidgets(2));
+      await t.tap(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.text('Try again'),
+        ),
+      );
       await t.runAsync(() async {
         for (var i = 0; i < 10; i++) {
           await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -813,6 +825,7 @@ void main() {
         await t.pump(const Duration(seconds: 1));
       }
       expect(find.byType(SnackBar), findsNothing);
+      expect(find.textContaining('Could not load'), findsOneWidget);
     });
 
     testWidgets('a test the loaded run lacks is never set', (t) async {

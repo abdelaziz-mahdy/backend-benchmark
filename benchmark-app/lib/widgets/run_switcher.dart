@@ -147,33 +147,60 @@ class ChangeRunButton extends StatelessWidget {
   }
 }
 
-/// Said next to a run choice when the run picked could not be loaded; the
-/// run on screen stays, and picking it again tries again.
+/// Said when a run could not be loaded: the run on screen stays, and Try
+/// again asks for it again. It stays until the next run choice.
+///
+/// [inPlace]: shown only for a run picked from a run choice (true), only
+/// for one Back or a link asked for (false), or for both (null).
 class RunLoadFailedNote extends StatelessWidget {
   final DashboardState state;
+  final bool? inPlace;
 
-  const RunLoadFailedNote({super.key, required this.state});
+  const RunLoadFailedNote({super.key, required this.state, this.inPlace});
 
   @override
   Widget build(BuildContext context) {
     final failed = state.failedRun;
-    if (failed == null || !state.failedInPlace) return const SizedBox.shrink();
+    if (failed == null || (inPlace != null && inPlace != state.failedInPlace)) {
+      return const SizedBox.shrink();
+    }
     final p = context.palette;
     return Padding(
       padding: const EdgeInsets.only(top: 6),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 10,
+        runSpacing: 4,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 2, right: 6),
-            child: Icon(Icons.error_outline, size: 16, color: p.danger),
+          Text.rich(
+            TextSpan(
+              children: [
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Icon(Icons.error_outline, size: 16, color: p.danger),
+                  ),
+                ),
+                TextSpan(
+                  text:
+                      'Could not load '
+                      '${runLabel(failed, newest: state.index.firstOrNull)}.',
+                ),
+              ],
+            ),
+            style: body(13.5, color: p.text),
           ),
-          Flexible(
+          TextButton(
+            onPressed: state.retryFailed,
+            style: TextButton.styleFrom(
+              foregroundColor: p.accent,
+              minimumSize: const Size(44, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
             child: Text(
-              'Could not load ${runLabel(failed, newest: state.index.firstOrNull)}. '
-              'Pick it again to try again.',
-              style: body(13.5, color: p.text),
+              'Try again',
+              style: body(13.5, color: p.accent, weight: FontWeight.w700),
             ),
           ),
         ],
