@@ -8,6 +8,7 @@ import '../../utils/colors.dart';
 import '../../utils/theme_constants.dart';
 import '../../widgets/calm.dart';
 import 'home_nav.dart';
+import 'short_answer.dart' show MeasurePicker;
 
 /// Rows of the Every number table for [state]: sorted by the chosen test
 /// column (or by name), missing values last, name order among equals.
@@ -73,31 +74,7 @@ class EveryNumberView extends StatelessWidget {
           runSpacing: 14,
           crossAxisAlignment: WrapCrossAlignment.end,
           children: [
-            CalmSelect<Measure>(
-              label: 'What to show',
-              value: m,
-              options: [
-                for (final x in Measure.values)
-                  (x, x == Measure.load ? '${x.label} (the result)' : x.label),
-              ],
-              onChanged: state.setMeasure,
-            ),
-            // What the number means, kept off the page until asked for.
-            InfoTip(
-              m == Measure.load
-                  ? (legacy
-                        ? 'The average requests a second during the old test. '
-                              'Higher is better.'
-                        : 'Requests a second: the busiest rate we sent that '
-                              'the framework kept up with, while 99 of every '
-                              '100 replies came back ${sloPhrase(run)}, '
-                              '${errorPhrase(run)}, and it kept up with at '
-                              'least ${keptUp(run)} of the requests sent. '
-                              'Higher is better.')
-                  : '${m.label}: ${m == Measure.processor ? 'how much of its ${numberWord(cores)} processor ${cores == 1 ? 'core' : 'cores'} the framework used' : m.meaning}. '
-                        '${legacy ? 'Measured during the old test, which sent the same traffic to every framework.' : 'Measured at each framework\'s own top load, so not a like-for-like race.'}'
-                        '${m == Measure.typical || m == Measure.slow ? ' 1,000 ms is one second.' : ''}',
-            ),
+            MeasurePicker(run: run),
             if (m == Measure.load && !legacy)
               _Check(
                 value: state.showRange,
@@ -426,7 +403,7 @@ class _Table extends StatelessWidget {
         ),
         // A thin bar in the framework's colour: its share of the column's
         // best, so the column can be read by length as well as number.
-        if (m == Measure.load && most > 0)
+        if (m.higherIsBetter && most > 0)
           Padding(
             padding: const EdgeInsets.only(top: 5),
             child: ExcludeSemantics(

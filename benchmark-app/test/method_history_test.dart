@@ -151,7 +151,7 @@ String _allText(WidgetTester t) => [
 void _expectPlain(WidgetTester t, String where) {
   final text = _allText(t);
   // The scan sees the page's real text.
-  expect(text.toLowerCase(), contains('requests a second'));
+  expect(text.toLowerCase(), contains('replies a second'));
   for (final p in _jargon) {
     final m = p.allMatches(text).firstOrNull;
     if (m == null) continue;
@@ -210,7 +210,7 @@ void main() {
         state.setScenario(test);
         await _settle(t);
         for (final name in const [
-          'Requests a second',
+          'Fast replies a second',
           'Most at any step',
           'Slow reply',
           'Processor',

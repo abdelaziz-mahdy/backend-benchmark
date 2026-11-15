@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/plain.dart';
+import '../../models/results.dart';
 import '../../state/dashboard_state.dart';
 import '../../utils/colors.dart';
 import '../../utils/theme_constants.dart';
@@ -25,21 +26,39 @@ class ShortAnswerView extends StatelessWidget {
       return Text('This run has no results.', style: t.body);
     }
     final main = testInfo(tests.first);
-    final mainResults = resultsFor(run, main.id);
-    final unit = unitFor(state.headline);
+    final m = state.measure;
+    final unit = m == Measure.load ? unitFor(state.headline) : m.label;
+    final cores = appCoreCount(run);
+    Widget bars(String id) {
+      final rs = measureResults(run, id, m);
+      if (rs.isEmpty) {
+        return Text('Not measured in this test.', style: t.muted);
+      }
+      return SpeedBars(
+        key: ValueKey('bars-${run.id}-$id'),
+        test: id,
+        results: rs,
+        unit: unit,
+        measure: m,
+        cores: cores,
+        // "What to show" above already names the numbers.
+        showUnit: false,
+        mine: state.selectedKey,
+        onOpen: nav.open,
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: MeasurePicker(run: run),
+        ),
+        const SizedBox(height: 22),
         TestHeading(id: main.id),
         const SizedBox(height: 12),
-        SpeedBars(
-          key: ValueKey('bars-${run.id}-${main.id}'),
-          test: main.id,
-          results: mainResults,
-          unit: unit,
-          mine: state.selectedKey,
-          onOpen: nav.open,
-        ),
+        bars(main.id),
         if (tests.length > 1) ...[
           const SizedBox(height: 34),
           Semantics(
@@ -54,14 +73,7 @@ class ShortAnswerView extends StatelessWidget {
               icon: testIcon(id),
               info: testInfo(id).what,
               topLine: i == 0,
-              child: SpeedBars(
-                key: ValueKey('bars-${run.id}-$id'),
-                test: id,
-                results: resultsFor(run, id),
-                unit: unit,
-                mine: state.selectedKey,
-                onOpen: nav.open,
-              ),
+              child: bars(id),
             ),
         ],
         const SizedBox(height: 30),
@@ -85,6 +97,43 @@ class ShortAnswerView extends StatelessWidget {
               onTap: () => nav.go(HomeView.compare),
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+/// "What to show": the result, or another measure, for the bars and the
+/// table of every number, with what it means behind an (i). Lists only
+/// what the run measured.
+class MeasurePicker extends StatelessWidget {
+  final RunSummary run;
+
+  const MeasurePicker({super.key, required this.run});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<DashboardState>();
+    final tests = testsOf(run);
+    final options = [
+      for (final x in Measure.values)
+        if (x == state.measure ||
+            tests.any((id) => measureResults(run, id, x).isNotEmpty))
+          (x, x == Measure.load ? '${x.label} (the result)' : x.label),
+    ];
+    return Wrap(
+      spacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.end,
+      children: [
+        CalmSelect<Measure>(
+          label: 'What to show',
+          value: state.measure,
+          options: options,
+          onChanged: state.setMeasure,
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: InfoTip(measureMeaning(state.measure, run)),
         ),
       ],
     );
@@ -161,6 +210,16 @@ class SpeedBars extends StatefulWidget {
   final String? mine;
   final void Function(String key) onOpen;
 
+  /// What the numbers are: the result unless picked otherwise. For the
+  /// others the lowest comes first and its number is formatted to match.
+  final Measure measure;
+
+  /// The app's processor cores, for the processor measure's share.
+  final int cores;
+
+  /// The unit's name above the numbers; off where a picker names it.
+  final bool showUnit;
+
   /// Every result in the test, for the close calls and place in a bar's
   /// box when [results] shows only some of them; defaults to [results].
   final List<Result>? all;
@@ -176,6 +235,9 @@ class SpeedBars extends StatefulWidget {
     required this.unit,
     required this.mine,
     required this.onOpen,
+    this.measure = Measure.load,
+    this.cores = 1,
+    this.showUnit = true,
     this.all,
     this.page,
   });
@@ -221,9 +283,15 @@ class _SpeedBarsState extends State<SpeedBars> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = Txt(p);
-    final rs = sortResults(widget.results);
+    final m = widget.measure;
+    final rs = m.higherIsBetter
+        ? sortResults(widget.results)
+        : ([...widget.results]..sort((a, b) {
+            final c = a.value.compareTo(b.value);
+            return c != 0 ? c : a.name.compareTo(b.name);
+          }));
     if (rs.isEmpty) return const SizedBox.shrink();
-    final max = rs.first.value;
+    final max = rs.map((r) => r.value).reduce((a, b) => a > b ? a : b);
     final open = rs.where((r) => r.key == _open).firstOrNull;
     return LayoutBuilder(
       builder: (context, c) {
@@ -232,14 +300,15 @@ class _SpeedBarsState extends State<SpeedBars> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(right: 36, bottom: 2),
-              child: Text(
-                capFirst(widget.unit),
-                textAlign: TextAlign.right,
-                style: t.small.copyWith(fontSize: 13),
+            if (widget.showUnit)
+              Padding(
+                padding: const EdgeInsets.only(right: 36, bottom: 2),
+                child: Text(
+                  capFirst(widget.unit),
+                  textAlign: TextAlign.right,
+                  style: t.small.copyWith(fontSize: 13),
+                ),
               ),
-            ),
             for (final r in rs) ...[
               Padding(
                 padding: const EdgeInsets.only(bottom: 2),
@@ -257,6 +326,8 @@ class _SpeedBarsState extends State<SpeedBars> {
                       all: widget.all ?? widget.results,
                       test: widget.test,
                       unit: widget.unit,
+                      measure: m,
+                      cores: widget.cores,
                       onOpen: r.key == widget.page ? null : widget.onOpen,
                     ),
                   ),
@@ -278,10 +349,12 @@ class _SpeedBarsState extends State<SpeedBars> {
       onTap: () => _toggle(r.key),
       expanded: isOpen,
       radius: 10,
-      semanticLabel:
-          '${r.name}, '
-          '${topGroup(widget.results, all: widget.all).any((x) => x.key == r.key) ? (topGroup(widget.results, all: widget.all).length > 1 ? 'tied for fastest' : 'the fastest') : '${asFast(share)} as the fastest'}. '
-          '${numberText(r)} ${widget.unit}. Show its tries and notes.',
+      semanticLabel: widget.measure != Measure.load
+          ? '${r.name}, ${widget.measure.format(r.value, widget.cores)} '
+                '${widget.unit.toLowerCase()}. Show its tries and notes.'
+          : '${r.name}, '
+                '${topGroup(widget.results, all: widget.all).any((x) => x.key == r.key) ? (topGroup(widget.results, all: widget.all).length > 1 ? 'tied for fastest' : 'the fastest') : '${asFast(share)} as the fastest'}. '
+                '${numberText(r)} ${widget.unit}. Show its tries and notes.',
       builder: (context, hovered) => Container(
         constraints: const BoxConstraints(minHeight: 44),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
@@ -314,16 +387,20 @@ class _SpeedBarsState extends State<SpeedBars> {
               ],
             );
             final bar = SpeedBar(share: share, color: color, capped: r.capped);
+            final numberStyle = t.body.copyWith(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            );
             final number = SizedBox(
               width: 76,
-              child: ResultNumber(
-                r,
-                style: t.body.copyWith(
-                  fontSize: 15.5,
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
+              child: widget.measure == Measure.load
+                  ? ResultNumber(r, style: numberStyle)
+                  : Text(
+                      widget.measure.format(r.value, widget.cores),
+                      textAlign: TextAlign.right,
+                      style: numberStyle,
+                    ),
             );
             // Says the row opens: down when closed, up when open.
             final more = Icon(
@@ -376,6 +453,8 @@ class Reveal extends StatelessWidget {
   final List<Result> all;
   final String test;
   final String unit;
+  final Measure measure;
+  final int cores;
 
   /// Opens the framework's page; null on that page itself.
   final void Function(String key)? onOpen;
@@ -387,6 +466,8 @@ class Reveal extends StatelessWidget {
     required this.test,
     required this.unit,
     required this.onOpen,
+    this.measure = Measure.load,
+    this.cores = 1,
   });
 
   @override
@@ -394,7 +475,15 @@ class Reveal extends StatelessWidget {
     final p = context.palette;
     final t = Txt(p);
     final notes = result.backend.notes;
-    final sentences = [...resultSentences(all, result), ?notes];
+    final isResult = measure == Measure.load;
+    String fmt(double v) => measure.format(v, cores);
+    final sentences = [
+      if (isResult)
+        ...resultSentences(all, result)
+      else
+        runsSentence(result, fmt),
+      ?notes,
+    ];
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
@@ -420,9 +509,11 @@ class Reveal extends StatelessWidget {
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: numberText(result)),
                 TextSpan(
-                  text: ' $unit',
+                  text: isResult ? numberText(result) : fmt(result.value),
+                ),
+                TextSpan(
+                  text: ' ${isResult ? unit : unit.toLowerCase()}',
                   style: t.smallText.copyWith(fontWeight: FontWeight.w400),
                 ),
               ],

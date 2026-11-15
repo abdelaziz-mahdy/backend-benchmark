@@ -492,7 +492,7 @@ class _MethodScreenState extends State<MethodScreen> {
         const SizedBox(height: 10),
         const Points([
           Point(
-            'Most requests a second at any step,',
+            'Most replies a second at any step,',
             'however slow the replies were.',
           ),
           Point(
@@ -825,9 +825,9 @@ class _MethodScreenState extends State<MethodScreen> {
           '${_pct(slo.servedRatio)} of requests '
           'answered. The middle of the ${numberWord(_reps(run))} tries.',
     'peak_rps' =>
-      'the most requests a second it really answered at any step, '
-          'however slow the replies were. The result counts the rate we '
-          'sent, so this can sit just below it.',
+      'the most replies a second it gave at any step, however slow they '
+          'were. The result only counts steps where replies stayed fast, so '
+          'the two can differ.',
     'avg_rps' =>
       'old method: the average requests a second while '
           'simulated users were added.',
@@ -1423,7 +1423,7 @@ class _RunStaircase extends StatelessWidget {
               ),
             if (sustainable != null)
               Point(
-                'The result: ${whole(sustainable)} requests a second.',
+                'The result: ${whole(sustainable)} fast replies a second.',
                 'That is the middle of the ${numberWord(reps)} tries, so it '
                     'can differ a little from this one.',
                 leading: Icon(Icons.flag, size: 20, color: p.accent),

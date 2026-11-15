@@ -619,6 +619,51 @@ void main() {
       expect(find.textContaining('DB mixed'), findsNothing);
     });
 
+    testWidgets('the bars can show another measure, best first', (t) async {
+      final state = await pumpApp(t, realisticBundle());
+      expect(find.text('What to show'), findsOneWidget);
+      expect(find.text('Fast replies a second (the result)'), findsWidgets);
+      for (final m in Measure.values) {
+        state.setMeasure(m);
+        await settle(t);
+        expect(t.takeException(), isNull);
+        final bars = find.byWidgetPredicate(
+          (w) =>
+              w.key is ValueKey<String> &&
+              (w.key! as ValueKey<String>).value.startsWith('bar-db_mixed-'),
+        );
+        if (measureResults(state.run!, 'db_mixed', m).isEmpty) continue;
+        expect(bars, findsWidgets, reason: m.name);
+        // Top to bottom is best to worst for every measure.
+        final order = [
+          for (final e in bars.evaluate())
+            (
+              (e.widget.key! as ValueKey<String>).value.substring(
+                'bar-db_mixed-'.length,
+              ),
+              t.getRect(find.byWidget(e.widget)).top,
+            ),
+        ]..sort((a, b) => a.$2.compareTo(b.$2));
+        final values = {
+          for (final r in measureResults(state.run!, 'db_mixed', m))
+            r.key: r.value,
+        };
+        final shown = [for (final (k, _) in order) values[k]!];
+        for (var i = 1; i < shown.length; i++) {
+          expect(
+            m.higherIsBetter
+                ? shown[i] <= shown[i - 1]
+                : shown[i] >= shown[i - 1],
+            isTrue,
+            reason: '${m.name} at $i: $shown',
+          );
+        }
+      }
+      state.setMeasure(Measure.slow);
+      await settle(t);
+      expect(find.textContaining(' ms'), findsWidgets);
+    });
+
     testWidgets('a bar opens its number in place', (t) async {
       await pumpApp(t, realisticBundle());
       await t.tap(find.byKey(const ValueKey('bar-db_mixed-go-mux')));

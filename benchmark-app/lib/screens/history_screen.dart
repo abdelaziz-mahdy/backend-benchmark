@@ -19,7 +19,7 @@ import '../widgets/site_frame.dart' show SiteFooter, SiteWidth;
 /// Numbers History can plot (they are in index.json's headline data), with
 /// their name on the switch and what they mean.
 final _historyMetrics = [
-  (Metrics.sustainable, 'Requests a second'),
+  (Metrics.sustainable, 'Fast replies a second'),
   (Metrics.peak, 'Most at any step'),
   (Metrics.p99, 'Slow reply'),
   (Metrics.cpu, 'Processor'),
@@ -32,9 +32,9 @@ String _metricMeaning(Metric m, RunSummary run) => switch (m.id) {
     'Old method: the average requests a second while users were added. '
         'Higher is better.',
   'peak_rps' =>
-    'The most requests a second it really answered at any step, however '
-        'slow the replies were. It can sit just below the result, which '
-        'counts the rate we sent.',
+    'The most replies a second it gave at any step, however slow they '
+        'were. The result only counts steps where replies stayed fast, so '
+        'the two can differ.',
   'p99_ms' => 'Slow reply: 99 of every 100 replies came back within this time.',
   'app_cpu' =>
     'How much of its processor cores it used. 100% is all of them (in the '
