@@ -356,7 +356,13 @@ class _TestRow extends StatelessWidget {
         : ' ${capFirst(numberWord(top.length))} frameworks tie for fastest'
               "${top.every((x) => x.capped) ? " at our testing tool's limit" : ''}"
               '${fastest ? '' : '; the top bar is one of them'}.';
-    final share = max <= 0 ? 0.0 : (r.value / max).clamp(0.0, 1.0);
+    // The speed word of its block, so frameworks that are about the same
+    // read the same as in Who's fastest ("Next are A and B, …").
+    final block = followerBlocks(
+      all,
+    ).where((bl) => bl.any((x) => x.key == r.key)).firstOrNull;
+    final ref = block?.first.value ?? r.value;
+    final share = max <= 0 ? 0.0 : (ref / max).clamp(0.0, 1.0);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
@@ -435,7 +441,14 @@ class _ExtraTable extends StatelessWidget {
       fontSize: 14.5,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
-    final head = cell.copyWith(color: p.muted, height: 1.2);
+    // Phones: a smaller header and a narrower first column, so a heading
+    // like "Processor" never breaks mid-word.
+    final narrow = MediaQuery.sizeOf(context).width < 480;
+    final head = cell.copyWith(
+      color: p.muted,
+      height: 1.2,
+      fontSize: narrow ? 12.5 : null,
+    );
     Widget c(String s, TextStyle st, {bool left = false}) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       child: Text(
@@ -454,7 +467,7 @@ class _ExtraTable extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Table(
-          columnWidths: const {0: FlexColumnWidth(1.4)},
+          columnWidths: {0: FlexColumnWidth(narrow ? 1.1 : 1.4)},
           defaultVerticalAlignment: TableCellVerticalAlignment.bottom,
           children: [
             TableRow(

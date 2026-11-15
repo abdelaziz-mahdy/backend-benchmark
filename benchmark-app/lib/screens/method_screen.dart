@@ -1422,10 +1422,15 @@ class _RunStaircase extends StatelessWidget {
               'the busiest step it passed. Its bar is solid and stands out.',
               leading: Icon(Icons.flag, size: 18, color: p.accent),
             ),
-            const Point(
-              'Filled part',
-              'is what the app answered. The outline is what we asked for.',
-            ),
+            // Only when a gap between asked and answered is big enough to
+            // see on the squeezed scale.
+            if (steps.any(
+              (x) => x.targetRps > 0 && x.achievedRps / x.targetRps < 0.8,
+            ))
+              const Point(
+                'Filled part',
+                'is what the app answered. The outline is what we asked for.',
+              ),
             const Point(
               'Left to right,',
               'each step sends more requests. Bars are squeezed so small and '

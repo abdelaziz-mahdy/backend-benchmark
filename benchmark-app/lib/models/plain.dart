@@ -401,12 +401,12 @@ List<Result> _topGroupOf(List<Result> results) {
 /// one compares. Numbers are one tap away on the bars, not in the sentence.
 String answerFor(List<Result> results) {
   final (words, limitSaid) = _ranked(results, followers: 1);
-  final rs = sortResults(results);
-  // The leader's number is a floor when it hit the tool's limit; say so,
-  // as Compare does, unless the tie sentence already did.
-  if (!limitSaid && rs.isNotEmpty && rs.first.capped) {
-    return "$words ${capFirst(rs.first.name)} hit our testing tool's limit, "
-        'so it may be faster.';
+  // A number at the top is a floor when it hit the tool's limit; name every
+  // one that did, as Compare does, unless the tie sentence already said so.
+  final capped = topGroup(results).where((r) => r.capped).toList();
+  if (!limitSaid && capped.isNotEmpty) {
+    return "$words ${capFirst(_names(capped))} hit our testing tool's "
+        "limit, so ${capped.length == 1 ? 'it' : 'they'} may be faster.";
   }
   return words;
 }
@@ -448,17 +448,7 @@ String answerFor(List<Result> results) {
   } else {
     out.add('${capFirst(leader.name)} is the fastest.');
   }
-  // The rest in blocks of equal numbers, so frameworks with the same
-  // number are named together: "Next are A and B, about half as fast."
-  final rest = sorted.where((r) => !top.contains(r.key)).toList();
-  final blocks = <List<Result>>[];
-  for (final r in rest) {
-    if (blocks.isNotEmpty && blocks.last.first.value == r.value) {
-      blocks.last.add(r);
-    } else {
-      blocks.add([r]);
-    }
-  }
+  final blocks = followerBlocks(sorted, all: all);
   for (final (i, block) in blocks.take(followers).indexed) {
     final v = block.first.value;
     final how = leader.value <= 0 ? '' : ', ${asFast(v / leader.value)}';
@@ -470,6 +460,25 @@ String answerFor(List<Result> results) {
     );
   }
   return (out.join(' '), limitSaid);
+}
+
+/// The frameworks below the top group, in blocks named together: a block
+/// is one framework plus the ones with the same number or about the same
+/// as it, so "about the same" pairs never get two different speed words.
+/// "Next are A and B, about half as fast" takes its word from the first.
+List<List<Result>> followerBlocks(List<Result> results, {List<Result>? all}) {
+  final sorted = sortResults(results);
+  final top = {for (final r in topGroup(sorted, all: all)) r.key};
+  final blocks = <List<Result>>[];
+  for (final r in sorted.where((r) => !top.contains(r.key))) {
+    if (blocks.isNotEmpty &&
+        (blocks.last.first.value == r.value || blocks.last.first.overlaps(r))) {
+      blocks.last.add(r);
+    } else {
+      blocks.add([r]);
+    }
+  }
+  return blocks;
 }
 
 /// Spearman's rank correlation of the frameworks both lists share; null
@@ -796,8 +805,8 @@ String metricMeaning(Metric m, RunSummary run) {
   return switch (m.id) {
     'sustainable_rps' =>
       'The main result: the busiest step it passed while 99 of every 100 '
-          'replies came back ${sloPhrase(run)}, fewer than 1 in 100 failed '
-          'and it kept up with at least ${keptUp(run)} of the requests. '
+          'replies came back ${sloPhrase(run)}, ${errorPhrase(run)} and it '
+          'kept up with at least ${keptUp(run)} of the requests. '
           'Higher is better.',
     'peak_rps' =>
       'The most requests a second it really answered at any step, however '

@@ -437,11 +437,10 @@ class _Replay extends StatelessWidget {
       children: [
         Text(
           'Each step asked for a fixed number of requests a second. A step '
-          'failed when 99 in 100 replies were not back within '
-          '${msText(slo.p99Ms)}, when ${(slo.errorRate * 100).round()} in '
-          '100 or more failed, or when fewer than '
-          '${(slo.servedRatio * 100).round()} in 100 were handled. Press play '
-          'or drag the slider.',
+          'passed only when 99 of every 100 replies came back '
+          '${sloPhrase(run)}, ${errorPhrase(run)}, and it answered at least '
+          '${keptUp(run)} of the requests sent. Press play or drag the '
+          'slider.',
           style: Txt.of(context).small,
         ),
         const SizedBox(height: 12),
@@ -485,12 +484,21 @@ class _Shared extends StatelessWidget {
       fontSize: 14.5,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
+    // Phones: a smaller header and a narrower first column, so a heading
+    // like "Processor" never breaks mid-word.
+    final narrow = MediaQuery.sizeOf(context).width < 480;
     Widget c(String text, {bool left = false, bool head = false}) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       child: Text(
         text,
         textAlign: left ? TextAlign.left : TextAlign.right,
-        style: head ? cell.copyWith(color: p.muted, height: 1.2) : cell,
+        style: head
+            ? cell.copyWith(
+                color: p.muted,
+                height: 1.2,
+                fontSize: narrow ? 12.5 : null,
+              )
+            : cell,
       ),
     );
     return Column(
@@ -505,7 +513,7 @@ class _Shared extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Table(
-          columnWidths: const {0: FlexColumnWidth(1.5)},
+          columnWidths: {0: FlexColumnWidth(narrow ? 1.1 : 1.5)},
           defaultVerticalAlignment: TableCellVerticalAlignment.bottom,
           children: [
             TableRow(

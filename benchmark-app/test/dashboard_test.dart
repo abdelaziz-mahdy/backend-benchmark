@@ -474,6 +474,26 @@ void main() {
       );
     });
 
+    test('about-the-same followers share one speed word', () {
+      expect(
+        answerFor([
+          res('rust', 29000),
+          res('spring', 18000, low: 15500, high: 18000),
+          res('asp', 17000, low: 17000, high: 19000),
+        ]),
+        'Rust is the fastest. Next are spring and asp, about two-thirds as fast.',
+      );
+    });
+
+    test('every capped framework in a tie gets the limit caveat', () {
+      final answer = answerFor([
+        res('bun', 24000, low: 24000, high: 32000),
+        res('rust', 32000, low: 24000, high: 32000, capped: true),
+        res('go', 8000),
+      ]);
+      expect(answer, contains("Rust hit our testing tool's limit"));
+    });
+
     test('frameworks with the same number are named together', () {
       expect(
         answerFor([res('a', 40000), res('b', 30000), res('c', 30000)]),

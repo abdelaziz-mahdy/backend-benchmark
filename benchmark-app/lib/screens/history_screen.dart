@@ -26,10 +26,7 @@ final _historyMetrics = [
 ];
 
 String _metricMeaning(Metric m, RunSummary run) => switch (m.id) {
-  'sustainable_rps' =>
-    'The main result: the busiest rate we sent that it kept up with, while '
-        'replies came back ${sloPhrase(run)} and ${errorPhrase(run)}. '
-        'Higher is better.',
+  'sustainable_rps' => metricMeaning(m, run),
   'avg_rps' =>
     'Old method: the average requests a second while users were added. '
         'Higher is better.',
