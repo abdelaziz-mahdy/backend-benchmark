@@ -334,10 +334,11 @@ class _MethodScreenState extends State<MethodScreen> {
         FactCard(
           icon: Icons.check_circle_outline,
           label: 'To pass a step',
-          value: 'Fast and error-free',
+          value: 'Fast, error-free, keeping up',
           detail:
-              '99 of every 100 replies within ${msText(slo.p99Ms)}, and fewer '
-              'than ${_pct(slo.errorRate)} errors.',
+              '99 of every 100 replies within ${msText(slo.p99Ms)}, fewer '
+              'than ${_pct(slo.errorRate)} errors, and at least '
+              '${_pct(slo.servedRatio)} of requests answered.',
         ),
         FactCard(
           icon: Icons.stairs_outlined,
@@ -552,7 +553,7 @@ class _MethodScreenState extends State<MethodScreen> {
             'Settings:',
             'each app runs the way it would for real visitors, not in a '
                 'test or debug mode. Most frameworks whose language uses one '
-                'processor core at a time start one copy per core; Serverpod '
+                'processor core at a time start one copy per core; serverpod '
                 'runs a single copy (see its page). About 20 database '
                 'connections in total.',
           ),
@@ -1252,9 +1253,9 @@ class _RunStaircase extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('How a run works', style: t.small),
+          Text('How one try works', style: t.small),
           const SizedBox(height: 4),
-          const SubHead(Icons.stairs_outlined, 'One real run, step by step'),
+          const SubHead(Icons.stairs_outlined, 'One real try, step by step'),
           const SizedBox(height: 12),
           Lead(
             'This is what our testing tool did to ${b.name} in the '

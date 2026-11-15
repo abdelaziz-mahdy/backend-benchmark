@@ -413,8 +413,8 @@ class BackendResult {
 
   /// How the test calls it, in plain words.
   String get apiLabel => switch (apiStyle) {
-    'serverpod_rpc' => "Serverpod's own calls (RPC)",
-    'foam_rpc' => "FOAM's own calls (RPC)",
+    'serverpod_rpc' => "serverpod's own calls (RPC)",
+    'foam_rpc' => "foam3's own calls (RPC)",
     'rest' => 'Plain web requests (JSON)',
     _ => apiStyle,
   };

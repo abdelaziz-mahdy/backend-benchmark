@@ -230,8 +230,14 @@ String placeSentence(List<Result> all, Result r) {
         '${same == 1 ? 'other' : 'others'}.';
   }
   if (more == n - 1) return 'The slowest of the $n.';
-  if (more == 1) return 'One of the other ${n - 1} was faster.';
-  return '${capFirst(numberWord(more))} of the other ${n - 1} were faster.';
+  final tie = same == 0
+      ? ''
+      : same == 1
+      ? ', and one had the same number'
+      : ', and ${numberWord(same)} had the same number';
+  if (more == 1) return 'One of the other ${n - 1} was faster$tie.';
+  return '${capFirst(numberWord(more))} of the other ${n - 1} were '
+      'faster$tie.';
 }
 
 /// What the inline reveal and the profile rows say after the number: the
@@ -352,7 +358,17 @@ List<Result> topGroup(List<Result> results) {
 /// The answer under a test, in words: who is fastest (or which ones are
 /// about the same at the top, the same rule Compare uses) and how the next
 /// one compares. Numbers are one tap away on the bars, not in the sentence.
-String answerFor(List<Result> results) => _ranked(results, followers: 1).$1;
+String answerFor(List<Result> results) {
+  final (words, limitSaid) = _ranked(results, followers: 1);
+  final rs = sortResults(results);
+  // The leader's number is a floor when it hit the tool's limit; say so,
+  // as Compare does, unless the tie sentence already did.
+  if (!limitSaid && rs.isNotEmpty && rs.first.capped) {
+    return "$words ${capFirst(rs.first.name)} hit our testing tool's limit, "
+        'so it may be faster.';
+  }
+  return words;
+}
 
 /// Who is at the top of [results] in words, then up to [followers] of the
 /// rest as a share of the fastest: "Next is B, about half as fast. Then C,
@@ -535,6 +551,15 @@ String sloPhrase(RunSummary run) {
   return 'under ${_msPhrase(p99)}';
 }
 
+/// "95%": the share of the requests sent that a step must answer to pass.
+String keptUp(RunSummary run) {
+  final slo = run.params['slo'];
+  final r = slo is Map && slo['achieved_ratio'] is num
+      ? (slo['achieved_ratio'] as num).toDouble()
+      : 0.95;
+  return '${(r * 100).round()}%';
+}
+
 /// The most the load tool sent in this run, from the results it capped;
 /// null when it never was the limit.
 double? toolLimit(RunSummary run) {
@@ -586,7 +611,7 @@ List<String> howWeTested(RunSummary run) {
       if (reps != null && reps > 1)
         'We ran every test ${numberWord(reps)} times.'
       else
-        'Every test ran once, so there is no range of runs.',
+        'Every test ran once, so there is no range of tries.',
       'Everything ran on one $cpu computer. On other machines the numbers '
           'will be different.',
     ];
@@ -615,12 +640,14 @@ List<String> howWeTested(RunSummary run) {
         'rate, and kept stepping up until replies got slow.',
     'The result is the highest rate at which 99 of every 100 replies still '
         'came back ${sloPhrase(run)}'
-        '${oneIn == null ? '' : ', and fewer than 1 in $oneIn failed'}.',
+        '${oneIn == null ? '' : ', fewer than 1 in $oneIn failed'}, and it '
+        'kept up with at least ${keptUp(run)} of the requests sent.',
     if (reps != null && reps > 1)
       'We tried every test ${numberWord(reps)} times. The number we show is '
           'the middle try. The lowest and highest tries are shown next to it '
           'wherever you see a range.',
-    "When two frameworks' runs overlap, we call them about the same.",
+    'We call two frameworks about the same when each one\'s middle try '
+        "falls inside the other's lowest-to-highest tries.",
     if (limit != null)
       "Our testing tool has its own limit: up to about "
           '${whole(limit < 1000 ? limit : (limit / 1000).round() * 1000)} '

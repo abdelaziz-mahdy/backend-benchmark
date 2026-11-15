@@ -70,12 +70,16 @@ class StepLoadChart extends StatelessWidget {
   final double height;
   final double? sustainable;
 
+  /// The result hit our testing tool's limit: its pin reads "40,000+".
+  final bool capped;
+
   const StepLoadChart({
     super.key,
     required this.series,
     required this.mode,
     this.height = 270,
     this.sustainable,
+    this.capped = false,
   });
 
   @override
@@ -225,7 +229,8 @@ class StepLoadChart extends StatelessWidget {
                         : Alignment.bottomLeft,
                     padding: const EdgeInsets.only(right: 4, top: 2),
                     style: mono(10.5, color: p.accent, weight: FontWeight.w700),
-                    labelResolver: (_) => 'result ${whole(sustainable!)}',
+                    labelResolver: (_) =>
+                        'result ${whole(sustainable!)}${capped ? '+' : ''}',
                   ),
                 ),
             ],
@@ -460,24 +465,6 @@ double _niceInterval(double max) {
     if (raw <= m * mag) return m * mag;
   }
   return 10 * mag;
-}
-
-/// X-axis labels for a list of runs: the date, plus the commit when two
-/// runs share a date ("2026-10-04 · 3ae75a8").
-List<String> runAxisLabels(List<RunIndexEntry> runs) {
-  final dates = [for (final r in runs) r.date ?? '?'];
-  return [
-    for (var i = 0; i < runs.length; i++)
-      dates.where((d) => d == dates[i]).length > 1
-          ? '${dates[i]} · ${_shortRun(runs[i].id)}'
-          : dates[i],
-  ];
-}
-
-/// "2026-10-04_m2pro-10c-32g_3ae75a8_cea6" → "3ae75a8".
-String _shortRun(String id) {
-  final parts = id.split('_');
-  return parts.length >= 3 ? parts[2] : id;
 }
 
 /// Metric value per run, one line per backend (History). Frameworks with a

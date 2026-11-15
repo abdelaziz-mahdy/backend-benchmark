@@ -430,6 +430,23 @@ void main() {
       );
     });
 
+    test('a leader at the tool limit carries the caveat; ties are counted', () {
+      expect(
+        answerFor([res('a', 40000, capped: true), res('b', 30000)]),
+        'A is the fastest. Next is b, about three-quarters as fast. '
+        "A hit our testing tool's limit, so it may be faster.",
+      );
+      expect(
+        placeSentence([
+          res('a', 9),
+          res('b', 5),
+          res('c', 5),
+          res('d', 1),
+        ], res('b', 5)),
+        'One of the other 3 was faster, and one had the same number.',
+      );
+    });
+
     test('everyone at the tool limit ties, and a fifth is a fifth', () {
       final answer = answerFor([
         res('a', 48000, capped: true),

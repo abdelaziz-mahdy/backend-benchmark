@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -49,7 +51,8 @@ String _fmt(Metric m, double? v) {
   return switch (m.unit) {
     Unit.rps || Unit.ratio => whole(v),
     Unit.ms => msText(v),
-    Unit.cpu => '${v.round()}%',
+    // Capped at 100%, as cpuText does everywhere else.
+    Unit.cpu => '${math.min(100, v.round())}%',
     Unit.mb => memText(v),
     Unit.percent => formatMetricShort(m, v),
   };

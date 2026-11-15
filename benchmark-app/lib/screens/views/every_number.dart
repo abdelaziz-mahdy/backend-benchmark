@@ -117,7 +117,9 @@ class EveryNumberView extends StatelessWidget {
             else
               'Each number is requests a second: the most the framework '
                   'handled while 99 of every 100 replies came back '
-                  '${sloPhrase(run)}. Higher is better.',
+                  '${sloPhrase(run)}, with few errors, and it kept up with at '
+                  'least ${keptUp(run)} of the requests sent. Higher is '
+                  'better.',
             if (anyCapped)
               'A plus sign (+) means the framework reached the most our testing '
                   'tool could send. Its real figure may be higher.',

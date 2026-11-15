@@ -13,6 +13,7 @@ import '../../widgets/charts.dart';
 import '../../widgets/common.dart';
 import '../../widgets/implementation.dart';
 import '../../widgets/race_replay.dart' show Slo;
+import '../history_screen.dart' show runDates;
 
 /// Picks the test the chart sections show (shared with History).
 class TestPicker extends StatelessWidget {
@@ -134,6 +135,7 @@ class FrameworkCharts extends StatelessWidget {
                 series: [StepSeries(b, r.steps)],
                 mode: StepChartMode.throughput,
                 sustainable: Metrics.sustainable.value(r),
+                capped: r.loadgenBound,
               ),
             ),
             ChartBlock(
@@ -146,6 +148,7 @@ class FrameworkCharts extends StatelessWidget {
                 series: [StepSeries(b, r.steps)],
                 mode: StepChartMode.p99,
                 sustainable: Metrics.sustainable.value(r),
+                capped: r.loadgenBound,
               ),
             ),
           ],
@@ -404,7 +407,7 @@ class _FrameworkHistory extends StatelessWidget {
           'Every run of ${backend.name} on ${entry.machine.cpu} with the same '
           'method, in ${unitFor(metric)}.',
       child: HistoryChart(
-        labels: runAxisLabels(runs),
+        labels: runDates(runs),
         lines: [
           (
             backend.key,
@@ -412,7 +415,11 @@ class _FrameworkHistory extends StatelessWidget {
             [for (final r in runs) r.headline[backend.key]![test]![metric.id]],
           ),
         ],
-        format: (v) => formatMetricShort(metric, v),
+        format: (v) => switch (metric.unit) {
+          Unit.rps || Unit.ratio => whole(v),
+          Unit.ms => msText(v),
+          _ => formatMetricShort(metric, v),
+        },
       ),
     );
   }
