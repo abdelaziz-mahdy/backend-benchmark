@@ -77,7 +77,8 @@ void applyLocation(DashboardState state, Uri uri) {
       state.applyRoute(
         page: DashboardPage.home,
         view: HomeView.compare,
-        compare: rest?.split(','),
+        // Plain /compare means no picks, so Back to it leaves Compare.
+        compare: rest?.split(',') ?? const [],
         scenario: scenario,
       );
     case 'history':
@@ -109,6 +110,13 @@ class DashRouterDelegate extends RouterDelegate<Uri> with ChangeNotifier {
   /// A link that arrived before the data did.
   Uri? _pending;
   Uri? _last;
+
+  /// The link last opened (pasted, Back, Forward) and the location it
+  /// came to mean. While the state still matches, that link is reported
+  /// as it was, so the app's tidier form of it never becomes a new history
+  /// entry that Back would only land on and rewrite again.
+  Uri? _openedAs;
+  Uri? _openedFor;
   bool _applying = false;
 
   DashRouterDelegate(this.state) {
@@ -149,12 +157,17 @@ class DashRouterDelegate extends RouterDelegate<Uri> with ChangeNotifier {
       _applying = false;
     }
     _last = locationOf(state);
+    _openedAs = uri;
+    _openedFor = _last;
     notifyListeners();
   }
 
   @override
-  Uri? get currentConfiguration =>
-      state.run == null || _pending != null ? null : locationOf(state);
+  Uri? get currentConfiguration {
+    if (state.run == null || _pending != null) return null;
+    final now = locationOf(state);
+    return _openedAs != null && now == _openedFor ? _openedAs : now;
+  }
 
   @override
   Future<void> setNewRoutePath(Uri configuration) async {

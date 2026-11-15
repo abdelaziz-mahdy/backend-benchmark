@@ -806,6 +806,44 @@ void main() {
       expect(state.missingKey, 'gone-framework');
     });
 
+    testWidgets('Back never gets stuck on a rewritten link or Compare', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      final key = state.run!.backends.first.key;
+      // An old-style link is reported as it was opened, so it adds no
+      // new history entry for Back to land on.
+      final old = Uri.parse('/f/$key');
+      await router.setNewRoutePath(old);
+      expect(router.currentConfiguration, old);
+      // A change the visitor makes is reported as itself.
+      state.setView(HomeView.all);
+      expect(router.currentConfiguration, Uri(path: '/all'));
+      // Back to plain /compare means no picks, so it can leave Compare.
+      state.toggleCompare(key);
+      await router.setNewRoutePath(Uri.parse('/compare'));
+      expect(state.compareKeys, isEmpty);
+      router.dispose();
+    });
+
+    testWidgets('a run change never swaps a pick for one set aside for room', (
+      t,
+    ) async {
+      final state = await pumpApp(t, twoRunBundle());
+      final keys = [for (final b in state.run!.backends) b.key];
+      // foam3 is missing from the other run; the rest fit.
+      state.toggleCompare('foam3');
+      state.parkedCompare.add(keys.firstWhere((k) => k != 'foam3'));
+      await t.runAsync(() => state.selectRun(state.index[1]));
+      await settle(t);
+      // The pick set aside for room did not fill foam3's place.
+      expect(state.compareKeys, isEmpty);
+      await t.runAsync(() => state.selectRun(state.index[0]));
+      await settle(t);
+      expect(state.compareKeys, ['foam3']);
+    });
+
     testWidgets('a copied link keeps an older run', (t) async {
       final state = await pumpApp(t, twoRunBundle());
       expect(locationOf(state).queryParameters, isNot(contains('run')));

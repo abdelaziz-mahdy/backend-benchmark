@@ -60,6 +60,12 @@ class DashboardState extends ChangeNotifier {
   /// run that has them is loaded again (see [selectRun]).
   final List<String> parkedCompare = [];
 
+  /// The set-aside picks that were set aside because a run lacked them:
+  /// only these come back by themselves on a run change (as Compare
+  /// promises). Picks set aside for lack of room wait for "Bring back", so
+  /// switching runs never swaps a pick the visitor made for another.
+  final Set<String> _awayForRun = {};
+
   /// Every number: what the cells show, which column sorts (a test, or
   /// [sortByName]), the direction, and whether run ranges are shown.
   Measure measure = Measure.load;
@@ -106,9 +112,14 @@ class DashboardState extends ChangeNotifier {
       for (final k in compareKeys.where((k) => !keys.contains(k)).toList()) {
         compareKeys.remove(k);
         if (!parkedCompare.contains(k)) parkedCompare.add(k);
+        _awayForRun.add(k);
       }
-      for (final k in parkedCompare.where(keys.contains).toList()) {
+      for (final k
+          in parkedCompare
+              .where((k) => keys.contains(k) && _awayForRun.contains(k))
+              .toList()) {
         if (compareKeys.length >= maxCompare) break;
+        _awayForRun.remove(k);
         parkedCompare.remove(k);
         if (!compareKeys.contains(k)) compareKeys.add(k);
       }
@@ -263,6 +274,7 @@ class DashboardState extends ChangeNotifier {
   void clearCompare() {
     compareKeys.clear();
     parkedCompare.clear();
+    _awayForRun.clear();
     notifyListeners();
   }
 
