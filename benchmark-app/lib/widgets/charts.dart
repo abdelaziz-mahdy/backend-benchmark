@@ -57,6 +57,16 @@ class StepSeries {
 
   StepSeries(this.backend, this.steps, {this.capped = false})
     : assert(steps.every((s) => s.targetRps > 0));
+
+  /// The testing tool, not the app, was the limit at [step]: flagged so, or
+  /// it only fell short of answering enough (fast replies, few errors)
+  /// while the result hit the tool's limit. One rule for colour and words.
+  bool toolLimited(LoadStep step) =>
+      step.k6Bound ||
+      (capped && !step.pass && step.p99 < _sloMs && step.errorRate < 0.01);
+
+  /// Any of its steps stopped at the testing tool's limit.
+  bool get anyToolLimited => steps.any(toolLimited);
 }
 
 enum StepChartMode { throughput, p99 }
@@ -167,12 +177,7 @@ class StepLoadChart extends StatelessWidget {
                 // Amber: the load generator, not the app, was the limit.
                 strokeColor: step.pass
                     ? p.surface
-                    : (step.k6Bound ||
-                              (s.capped &&
-                                  step.p99 < _sloMs &&
-                                  step.errorRate < 0.01)
-                          ? p.warn
-                          : p.danger),
+                    : (s.toolLimited(step) ? p.warn : p.danger),
                 strokeWidth: step.pass ? 1 : 2,
               );
             },
@@ -294,7 +299,7 @@ class StepLoadChart extends StatelessWidget {
                 '${st.errorRate > 0 ? ' · ${(st.errorRate * 100).toStringAsFixed(2)}% failed' : ''}'
                 '${st.pass
                     ? ''
-                    : st.k6Bound
+                    : series[s.barIndex - offset].toolLimited(st)
                     ? " · stopped at our testing tool's limit"
                     : ' · missed the limits'}';
           }),

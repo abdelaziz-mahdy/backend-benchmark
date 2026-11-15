@@ -131,6 +131,7 @@ class FrameworkCharts extends StatelessWidget {
                   'The dashed line is "handled everything it was asked". '
                   'Where the line drops below it, the framework stopped '
                   'keeping up. Hollow points missed a limit.'
+                  "${StepSeries(b, r.steps, capped: r.loadgenBound).anyToolLimited ? " Amber points stopped at our testing tool's limit, not the framework's." : ''}"
                   '${r.reps > 1 ? ' From one of the ${numberWord(r.reps)} tries, so its numbers can differ a little from the table above.' : ''}',
               child: StepLoadChart(
                 series: [StepSeries(b, r.steps, capped: r.loadgenBound)],
@@ -145,7 +146,7 @@ class FrameworkCharts extends StatelessWidget {
                   '99 of every 100 replies were faster than this. Above the '
                   'red line is too slow.'
                   '${r.reps > 1 ? ' From one of the ${numberWord(r.reps)} tries, so it can differ a little from the table above.' : ''}'
-                  "${r.steps.any((s) => !s.pass && (s.k6Bound || (r.loadgenBound && s.p99 < 100 && s.errorRate < 0.01))) ? " Amber points stopped at our testing tool's limit, not the framework's." : ''}",
+                  "${StepSeries(b, r.steps, capped: r.loadgenBound).anyToolLimited ? " Amber points stopped at our testing tool's limit, not the framework's." : ''}",
               child: StepLoadChart(
                 series: [StepSeries(b, r.steps, capped: r.loadgenBound)],
                 mode: StepChartMode.p99,
@@ -230,10 +231,7 @@ class _AllNumbers extends StatelessWidget {
     final p = context.palette;
     final t = Txt(p);
     final metrics = Metrics.available([result], Metrics.all);
-    String fmt(Metric m, double v) => switch (m.unit) {
-      // "40,000+": the result hit our testing tool's limit.
-      Unit.rps when m.id == 'sustainable_rps' && result.loadgenBound =>
-        '${whole(v)}+',
+    String plain(Metric m, double v) => switch (m.unit) {
       Unit.rps || Unit.ratio => whole(v),
       Unit.ms => msText(v),
       // The app's share of its own cores, as in every other table.
@@ -242,6 +240,11 @@ class _AllNumbers extends StatelessWidget {
       Unit.mb => memText(v),
       Unit.percent => formatMetricShort(m, v),
     };
+    // "40,000+": the result hit our testing tool's limit.
+    String fmt(Metric m, double v) =>
+        m.id == 'sustainable_rps' && result.loadgenBound
+        ? '${whole(v)}+'
+        : plain(m, v);
     final style = t.body.copyWith(
       fontSize: 15,
       fontFeatures: const [FontFeature.tabularFigures()],
@@ -269,11 +272,13 @@ class _AllNumbers extends StatelessWidget {
                         fmt(m, m.value(result)!),
                         style: style.copyWith(fontWeight: FontWeight.w700),
                       ),
+                      // The range without "+": only the result as a whole
+                      // is flagged as the tool's limit, as on other views.
                       if (m.stat(result) case final s?
                           when result.reps > 1 &&
-                              fmt(m, s.min) != fmt(m, s.max))
+                              plain(m, s.min) != plain(m, s.max))
                         Text(
-                          '${fmt(m, s.min)} to ${fmt(m, s.max)}',
+                          '${plain(m, s.min)} to ${plain(m, s.max)}',
                           style: t.small.copyWith(fontSize: 13),
                         ),
                     ],

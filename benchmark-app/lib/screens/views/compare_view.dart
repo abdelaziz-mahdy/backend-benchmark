@@ -601,7 +601,8 @@ class _ChartsState extends State<_Charts> {
             title: 'Requests handled at each step',
             subtitle:
                 'Where a line leaves the dashed diagonal, that framework '
-                'stopped keeping up.',
+                'stopped keeping up, or our testing tool could send no more.'
+                "${steps.any((x) => x.anyToolLimited) ? " Amber points stopped at our testing tool's limit, not the framework's." : ''}",
             child: Column(
               children: [
                 StepLoadChart(series: steps, mode: StepChartMode.throughput),
@@ -614,7 +615,8 @@ class _ChartsState extends State<_Charts> {
             title: 'Slow reply time at each step',
             subtitle:
                 'Above the red line is too slow; hollow points missed '
-                'a limit.',
+                'a limit.'
+                "${steps.any((x) => x.anyToolLimited) ? " Amber ones stopped at our testing tool's limit, not the framework's." : ''}",
             child: Column(
               children: [
                 StepLoadChart(series: steps, mode: StepChartMode.p99),
