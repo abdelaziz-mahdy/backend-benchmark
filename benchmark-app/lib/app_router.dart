@@ -127,8 +127,26 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
   /// The side state last reported, to notice changes the link misses.
   String? _lastSide;
 
-  /// The entry being applied needed a run change first.
+  /// The entry being applied needed a run change first, and the picks and
+  /// set-aside picks before that change (none of them may be lost).
   bool _crossedRun = false;
+  List<String> _beforeCross = const [];
+
+  /// Under the Router, for reporting a change as a replace of the current
+  /// history entry instead of a new one.
+  BuildContext? _context;
+
+  /// Notifies the Router; with [replace], the browser replaces the current
+  /// entry instead of adding one.
+  void _report({bool replace = false}) {
+    final c = _context;
+    if (replace && c != null && c.mounted) {
+      Router.neglect(c, notifyListeners);
+    } else {
+      notifyListeners();
+    }
+  }
+
   bool _applying = false;
 
   DashRouterDelegate(this.state) {
@@ -152,9 +170,17 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     // still updates the entry: same link, so the browser replaces it.
     final side = jsonEncode(state.sideState);
     if (now != _last || side != _lastSide) {
+      // Picking frameworks while Compare stays open is a choice, not a
+      // move: it replaces the entry, so Back leaves Compare in one step.
+      final last = _last;
+      final picksOnly =
+          last != null &&
+          last.pathSegments.firstOrNull == 'compare' &&
+          now.pathSegments.firstOrNull == 'compare' &&
+          last.queryParameters['run'] == now.queryParameters['run'];
       _last = now;
       _lastSide = side;
-      notifyListeners();
+      _report(replace: picksOnly);
     }
   }
 
@@ -168,22 +194,29 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     if (target != null && target != state.entry) {
       _pending = info;
       _crossedRun = true;
+      _beforeCross = [...state.compareKeys, ...state.parkedCompare];
       state.selectRun(target);
       return;
     }
     final crossed = _crossedRun;
+    final before = _beforeCross;
     _crossedRun = false;
+    _beforeCross = const [];
+    final fromHistory = info.state != null;
+    // Compare picks are a choice, not a place: Back and Forward on one run
+    // keep them as they are, whatever the entry's link says.
+    final picks = [...state.compareKeys];
+    final parked = [...state.parkedCompare];
+    final away = state.awayForRun;
     _applying = true;
     try {
       applyLocation(state, uri);
-      // Back and Forward bring back what the entry had beyond its link.
-      if (info.state != null) {
+      if (fromHistory) {
+        if (!crossed) state.restoreCompare(picks, parked, away);
         state.restoreSide(
           info.state,
-          // Saved picks come back only across a run change (where the run
-          // switch set some aside); on the same run, Back never undoes an
-          // "Add to compare" made since.
-          linkHasPicks: uri.pathSegments.firstOrNull == 'compare' || !crossed,
+          restorePicks: crossed,
+          keep: before,
           linkHasTest: uri.queryParameters.containsKey('s'),
         );
       }
@@ -192,9 +225,17 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     }
     _last = locationOf(state);
     _lastSide = jsonEncode(state.sideState);
-    _openedAs = uri;
-    _openedFor = _last;
-    notifyListeners();
+    if (fromHistory) {
+      // Shown as it is now; if that differs from the entry's link, the
+      // entry is replaced, never followed by a new one.
+      _openedAs = null;
+      _openedFor = null;
+      _report(replace: _last != uri);
+    } else {
+      _openedAs = uri;
+      _openedFor = _last;
+      notifyListeners();
+    }
   }
 
   @override
@@ -226,9 +267,14 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
   }
 
   @override
-  Widget build(BuildContext context) => Navigator(
-    pages: const [MaterialPage<void>(child: HomeScreen())],
-    onDidRemovePage: (_) {},
+  Widget build(BuildContext context) => Builder(
+    builder: (context) {
+      _context = context;
+      return Navigator(
+        pages: const [MaterialPage<void>(child: HomeScreen())],
+        onDidRemovePage: (_) {},
+      );
+    },
   );
 
   @override

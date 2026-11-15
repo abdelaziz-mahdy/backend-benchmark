@@ -293,12 +293,17 @@ class DashboardState extends ChangeNotifier {
     'test': scenario,
   };
 
-  /// Restores [sideState] saved with a history entry (Back, Forward). The
-  /// picks and the test come back only when the entry's link did not hold
-  /// them ([linkHasPicks], [linkHasTest]); a link always wins.
+  /// Restores [sideState] saved with a history entry (Back, Forward).
+  ///
+  /// Compare picks are a choice, not a place: with [restorePicks] false
+  /// (Back or Forward on the same run) they and the set-aside picks stay as
+  /// they are. With it (Back across a run change) the entry's picks come
+  /// back, and every other pick in [keep] is set aside, never dropped. The
+  /// test comes back when the entry's link did not hold one ([linkHasTest]).
   void restoreSide(
     Object? saved, {
-    bool linkHasPicks = false,
+    bool restorePicks = false,
+    Iterable<String> keep = const [],
     bool linkHasTest = false,
   }) {
     if (saved is! Map) return;
@@ -308,7 +313,13 @@ class DashboardState extends ChangeNotifier {
           if (x is String) x,
     ];
     final r = run;
-    if (!linkHasPicks && saved.containsKey('picks')) {
+    final test = saved['test'];
+    if (!linkHasTest &&
+        test is String &&
+        (r?.scenarios.contains(test) ?? false)) {
+      scenario = test;
+    }
+    if (restorePicks) {
       compareKeys
         ..clear()
         ..addAll(
@@ -316,19 +327,18 @@ class DashboardState extends ChangeNotifier {
             saved['picks'],
           ).where((k) => r?.backend(k) != null).take(maxCompare),
         );
+      parkedCompare
+        ..clear()
+        ..addAll(list(saved['parked']).where((k) => !compareKeys.contains(k)));
+      _awayForRun
+        ..clear()
+        ..addAll(list(saved['away']));
+      for (final k in keep) {
+        if (compareKeys.contains(k) || parkedCompare.contains(k)) continue;
+        parkedCompare.add(k);
+        if (r?.backend(k) == null) _awayForRun.add(k);
+      }
     }
-    final test = saved['test'];
-    if (!linkHasTest &&
-        test is String &&
-        (r?.scenarios.contains(test) ?? false)) {
-      scenario = test;
-    }
-    parkedCompare
-      ..clear()
-      ..addAll(list(saved['parked']).where((k) => !compareKeys.contains(k)));
-    _awayForRun
-      ..clear()
-      ..addAll(list(saved['away']));
     final missing = saved['missing'];
     missingKey = selectedKey == null && missing is String ? missing : null;
     notifyListeners();

@@ -830,25 +830,24 @@ void main() {
       router.dispose();
     });
 
-    testWidgets('Back and Forward bring back what an entry held', (t) async {
+    testWidgets('Back on one run keeps picks and brings back its note', (
+      t,
+    ) async {
       final state = await pumpApp(t, realisticBundle());
       final router = DashRouterDelegate(state);
       final keys = [for (final b in state.run!.backends) b.key];
-      // A Compare entry saved with a set-aside pick.
-      state.setView(HomeView.compare);
-      for (final k in keys.take(2)) {
-        state.toggleCompare(k);
-      }
-      state.parkedCompare.add('gone-framework');
+      // An entry on the picker with "X was not part of this run".
+      state.setView(HomeView.one);
+      state.missingKey = 'gone-framework';
       final saved = router.currentConfiguration!;
-      expect(saved.state, isA<Map<String, Object?>>());
-      // The visitor moves on; the set-aside pick is lost here...
-      state.clearCompare();
-      expect(state.parkedCompare, isEmpty);
-      // ...and Back to the saved entry restores it.
+      // The visitor picks frameworks for Compare and opens one.
+      state.toggleCompare(keys[0]);
+      state.toggleCompare(keys[1]);
+      state.selectFramework(keys[2]);
+      // Back: the note returns; the picks, a choice, stay as they are.
       await router.setNewRoutePath(saved);
-      expect(state.parkedCompare, ['gone-framework']);
-      expect(state.compareKeys, keys.take(2).toList());
+      expect(state.missingKey, 'gone-framework');
+      expect(state.compareKeys, [keys[0], keys[1]]);
       router.dispose();
     });
 
