@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/plain.dart';
 import '../../models/results.dart';
 import '../../state/dashboard_state.dart';
+import '../../utils/colors.dart';
 import '../../utils/theme_constants.dart';
 import '../../widgets/calm.dart';
 import 'home_nav.dart';
@@ -130,6 +131,9 @@ class EveryNumberView extends StatelessWidget {
           'A dash means the framework was not measured in that test.',
           'Select a framework name to see everything about it. The last '
               'column adds it to Compare (up to ${DashboardState.maxCompare}).',
+          if (state.selectedKey != null &&
+              run.backend(state.selectedKey!) != null)
+            'The row marked on the left is the one you looked up.',
         ]),
       ],
     );
@@ -236,7 +240,7 @@ class _Table extends StatelessWidget {
                 text,
                 textAlign: left ? TextAlign.left : TextAlign.right,
                 style: cell.copyWith(
-                  fontSize: narrow ? 11.5 : 14,
+                  fontSize: narrow ? 11 : 14,
                   height: 1.2,
                   color: on ? p.text : p.muted,
                   fontWeight: on ? FontWeight.w700 : FontWeight.w400,
@@ -257,11 +261,20 @@ class _Table extends StatelessWidget {
               : '${whole(s.min)} to ${whole(s.max)}';
         }
 
+        // The longest result in each test, for the bars under the numbers.
+        final most = {
+          for (final s in tests)
+            s: rows
+                .map((b) => b.scenarios[s])
+                .whereType<ScenarioResult>()
+                .map((r) => m.value(r, state.headline) ?? 0)
+                .fold(0.0, (a, v) => v > a ? v : a),
+        };
         final table = Table(
           columnWidths: {
             0: FlexColumnWidth(narrow ? 1.6 : 1.5),
             for (var i = 1; i <= tests.length; i++) i: const FlexColumnWidth(1),
-            tests.length + 1: FixedColumnWidth(narrow ? 40 : 68),
+            tests.length + 1: FixedColumnWidth(narrow ? 34 : 68),
           },
           defaultVerticalAlignment: TableCellVerticalAlignment.top,
           children: [
@@ -272,14 +285,13 @@ class _Table extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
                   child: ExcludeSemantics(
-                    child: Text(
-                      narrow ? '' : 'Compare',
-                      textAlign: TextAlign.center,
-                      style: cell.copyWith(
-                        fontSize: narrow ? 11 : 12,
-                        color: p.muted,
-                      ),
-                    ),
+                    child: narrow
+                        ? Icon(Icons.compare_arrows, size: 16, color: p.muted)
+                        : Text(
+                            'Compare',
+                            textAlign: TextAlign.center,
+                            style: cell.copyWith(fontSize: 12, color: p.muted),
+                          ),
                   ),
                 ),
               ],
@@ -308,13 +320,26 @@ class _Table extends StatelessWidget {
                       semanticLabel: 'Everything about ${b.name}',
                       builder: (context, hovered) => Padding(
                         padding: EdgeInsets.symmetric(vertical: 10),
-                        child: Text(
-                          b.name,
-                          style: cell.copyWith(
-                            height: 1.25,
-                            decoration: TextDecoration.underline,
-                            decorationColor: hovered ? p.text : p.line,
-                          ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Phones keep the width for the name; the bars
+                            // under the numbers carry its colour.
+                            if (!narrow) ...[
+                              LangBadge.of(b.key, b.language, size: 20),
+                              const SizedBox(width: 8),
+                            ],
+                            Expanded(
+                              child: Text(
+                                b.name,
+                                style: cell.copyWith(
+                                  height: 1.25,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: hovered ? p.text : p.line,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -322,7 +347,16 @@ class _Table extends StatelessWidget {
                   for (final s in tests)
                     Padding(
                       padding: cellPad,
-                      child: _value(b, s, m, cell, p, range(b, s), narrow),
+                      child: _value(
+                        b,
+                        s,
+                        m,
+                        cell,
+                        p,
+                        range(b, s),
+                        narrow,
+                        most[s]!,
+                      ),
                     ),
                   _CompareToggle(state: state, backend: b),
                 ],
@@ -340,10 +374,10 @@ class _Table extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: p.line),
             ),
-            child: c.maxWidth < 370
+            child: c.maxWidth < 330
                 ? SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: SizedBox(width: 370, child: table),
+                    child: SizedBox(width: 330, child: table),
                   )
                 : table,
           ),
@@ -360,6 +394,7 @@ class _Table extends StatelessWidget {
     Palette p,
     String? range,
     bool narrow,
+    double most,
   ) {
     final r = b.scenarios[test];
     final v = r == null ? null : m.value(r, state.headline);
@@ -389,6 +424,20 @@ class _Table extends StatelessWidget {
             semanticsLabel: '${m.format(v, cores)}${capped ? ' or more' : ''}',
           ),
         ),
+        // A thin bar in the framework's colour: its share of the column's
+        // best, so the column can be read by length as well as number.
+        if (m == Measure.load && most > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: ExcludeSemantics(
+              child: SpeedBar(
+                share: (v / most).clamp(0.0, 1.0),
+                color: BackendColors.of(b.key),
+                capped: capped,
+                height: 5,
+              ),
+            ),
+          ),
         if (m == Measure.load && state.showRange && range != null)
           Text(
             range,

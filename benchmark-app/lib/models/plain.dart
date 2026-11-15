@@ -324,26 +324,54 @@ String asFast(double f) {
   return 'less than a tenth as fast';
 }
 
-/// The answer under a test, in words: who is fastest and how the next one
-/// compares. Numbers are one tap away on the bars, not in the sentence.
-String answerFor(List<Result> results) {
-  if (results.isEmpty) return 'No framework has a result in this test.';
+/// The answer under a test, in words: who is fastest (or which ones are
+/// about the same at the top, the same rule Compare uses) and how the next
+/// one compares. Numbers are one tap away on the bars, not in the sentence.
+String answerFor(List<Result> results) => _ranked(results, followers: 1).$1;
+
+/// Who is at the top of [results] in words, then up to [followers] of the
+/// rest as a share of the fastest: "Next is B, about half as fast. Then C,
+/// about a tenth as fast." The flag says whether it already named the
+/// testing tool's limit.
+(String, bool) _ranked(List<Result> results, {required int followers}) {
+  if (results.isEmpty) {
+    return ('No framework has a result in this test.', false);
+  }
   final sorted = sortResults(results);
   final leader = sorted.first;
-  final tied = sorted.where((r) => r.value == leader.value).toList();
+  if (sorted.length == 1) {
+    return ('${capFirst(leader.name)} is the only one.', false);
+  }
+  final top = {
+    leader.key,
+    for (final r in sorted.skip(1))
+      if (r.value == leader.value || r.overlaps(leader)) r.key,
+  };
+  final tied = [
+    for (final r in sorted)
+      if (top.contains(r.key)) r,
+  ];
+  final out = <String>[];
+  final limitSaid = tied.length > 1 && tied.every((r) => r.capped);
   if (tied.length > 1) {
     final who = tied.length > 3
         ? '${capFirst(numberWord(tied.length))} frameworks'
         : capFirst(_names(tied));
-    return tied.any((r) => r.capped)
-        ? "$who tie for fastest at our testing tool's limit, so we can't "
-              'tell them apart.'
-        : '$who tie for fastest.';
+    out.add(
+      limitSaid
+          ? "$who tie for fastest at our testing tool's limit, so we can't "
+                'tell them apart.'
+          : '$who are about the same, the fastest.',
+    );
+  } else {
+    out.add('${capFirst(leader.name)} is the fastest.');
   }
-  if (sorted.length == 1) return '${capFirst(leader.name)} is the only one.';
-  final next = sorted[1];
-  return '${capFirst(leader.name)} is the fastest. Next is ${next.name}, '
-      '${asFast(next.value / leader.value)}.';
+  final rest = sorted.where((r) => !top.contains(r.key)).take(followers);
+  for (final (i, r) in rest.indexed) {
+    final how = leader.value <= 0 ? '' : ', ${asFast(r.value / leader.value)}';
+    out.add(i == 0 ? 'Next is ${r.name}$how.' : 'Then ${r.name}$how.');
+  }
+  return (out.join(' '), limitSaid);
 }
 
 /// Spearman's rank correlation of the frameworks both lists share; null
@@ -433,46 +461,20 @@ String compareVerdict(Map<String, List<Result>> byTest) {
   return [head, ...others].join(' ') + closeNote;
 }
 
-/// One test of a comparison in words: who handled the most (or who was too
-/// close to call), who came next, and who handled the least.
+/// One test of a comparison in words, with no numbers: who is at the top
+/// and how far behind each of the others is, as a share of the fastest.
 String compareTestSentence(List<Result> results) {
   final rs = sortResults(results);
   if (rs.isEmpty) return 'None of them was measured here.';
-  if (rs.length == 1) {
-    return 'Only ${rs.first.name} was measured here, at '
-        '${numberText(rs.first)}.';
-  }
-  final lead = rs.first;
-  final tied = sortResults([lead, ...closeTo(rs, lead)]);
-  final out = <String>[];
-  if (tied.length > 1) {
-    out.add(
-      '${capFirst(_names(tied))} were about the same, at '
-      '${spanText(tied.last.value, tied.first.value)}'
-      '${tied.any((r) => r.capped) ? ' or more' : ''}.',
-    );
-  } else {
-    out.add('${capFirst(lead.name)} was fastest, with ${numberText(lead)}.');
-  }
-  final rest = rs.skip(tied.length).toList();
-  if (rest.isNotEmpty) {
-    out.add(
-      '${capFirst(rest.first.name)} was next, with ${whole(rest.first.value)}.',
-    );
-  }
-  if (rest.length > 1) {
-    out.add(
-      '${capFirst(rest.last.name)} was slowest, with ${whole(rest.last.value)}.',
-    );
-  }
-  if (rs.any((r) => r.capped)) {
-    final c = rs.where((r) => r.capped).toList();
-    out.add(
-      "${capFirst(_names(c))} hit our testing tool's limit, so "
-      "${c.length == 1 ? 'it' : 'they'} may be faster.",
-    );
-  }
-  return out.join(' ');
+  if (rs.length == 1) return 'Only ${rs.first.name} was measured here.';
+  final capped = rs.where((r) => r.capped).toList();
+  final (words, limitSaid) = _ranked(rs, followers: rs.length);
+  return [
+    words,
+    if (capped.isNotEmpty && !limitSaid)
+      "${capFirst(_names(capped))} hit our testing tool's limit, so "
+          "${capped.length == 1 ? 'it' : 'they'} may be faster.",
+  ].join(' ');
 }
 
 // ------------------------------------------------------------ the method
@@ -654,7 +656,7 @@ String plainMetricLabel(Metric m) => switch (m.id) {
   'p99_ms' => 'Slow reply (99 in 100 were faster)',
   'p999_ms' => '999 in 1,000 replies were faster than',
   'error_rate' => 'Requests that failed',
-  'app_cpu' => 'Processor (100% is one core)',
+  'app_cpu' => 'Processor (share of its cores)',
   'app_mem_mb' => 'Memory',
   'db_cpu' => 'Database processor (100% is one core)',
   'rps_per_core' => 'Requests a second per core it used',

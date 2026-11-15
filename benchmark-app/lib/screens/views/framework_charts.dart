@@ -17,7 +17,7 @@ import '../../widgets/implementation.dart';
 class TestPicker extends StatelessWidget {
   final String label;
 
-  const TestPicker({super.key, this.label = 'Kind of work'});
+  const TestPicker({super.key, this.label = 'Test'});
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +118,7 @@ class FrameworkCharts extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                'Measured in the run of ${shortRunId(r.fromRun!)}.',
+                'Measured on ${longDate(r.fromRun!.split('_').first)}.',
                 style: t.small,
               ),
             ),
@@ -227,6 +227,8 @@ class _AllNumbers extends StatelessWidget {
     String fmt(Metric m, double v) => switch (m.unit) {
       Unit.rps || Unit.ratio => whole(v),
       Unit.ms => msText(v),
+      // The app's share of its own cores, as in every other table.
+      Unit.cpu when m.id == 'app_cpu' => cpuText(v, cores),
       Unit.cpu => '${whole(v)}%',
       Unit.mb => memText(v),
       Unit.percent => formatMetricShort(m, v),

@@ -170,6 +170,9 @@ class DashboardState extends ChangeNotifier {
   void setMeasure(Measure next) {
     if (measure == next) return;
     measure = next;
+    // Best first: most requests a second, but the lowest reply time,
+    // processor and memory.
+    if (sortTest != sortByName) sortDesc = next == Measure.load;
     notifyListeners();
   }
 

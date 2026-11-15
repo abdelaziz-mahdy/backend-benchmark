@@ -3,7 +3,7 @@ import 'package:url_launcher/link.dart';
 
 import '../models/results.dart';
 import '../utils/theme_constants.dart';
-import 'common.dart';
+import 'calm.dart';
 
 /// External link rendered as a real anchor on the web (opens a new tab).
 class SourceLink extends StatelessWidget {
@@ -206,7 +206,7 @@ class ImplementationCard extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Monogram(backend: b, size: 24),
+                  LangBadge.of(b.key, b.language, size: 24),
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text('How ${b.name} is built', style: display(18)),

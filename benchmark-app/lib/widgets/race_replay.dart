@@ -6,7 +6,7 @@ import '../models/results.dart';
 import '../utils/colors.dart';
 import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
-import 'common.dart';
+import 'calm.dart';
 import 'motion.dart';
 
 /// The limits a load step must hold (run params "slo").
@@ -352,7 +352,7 @@ class _ReplayLane extends StatelessWidget {
             final narrow = c.maxWidth < 560;
             final name = Row(
               children: [
-                Monogram(backend: b, size: 22),
+                LangBadge.of(b.key, b.language, size: 22),
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(

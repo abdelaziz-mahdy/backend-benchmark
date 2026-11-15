@@ -51,37 +51,51 @@ class SiteHeader extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, c) {
             final narrow = c.maxWidth < 560;
+            // Phones show the mark alone, so the three links keep words.
+            final tiny = c.maxWidth < 420;
             return SizedBox(
               height: 60,
               child: Row(
                 children: [
-                  Pressable(
-                    onTap: state.goHome,
-                    radius: 8,
-                    semanticLabel: "Backend Bench, home: who's fastest",
-                    builder: (context, hovered) => Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const _Mark(),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Backend Bench',
-                          style: t.body.copyWith(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                          ),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Pressable(
+                        onTap: state.goHome,
+                        radius: 8,
+                        semanticLabel: "Backend Bench, home: who's fastest",
+                        builder: (context, hovered) => Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const _Mark(),
+                            if (!tiny) const SizedBox(width: 10),
+                            if (!tiny)
+                              Flexible(
+                                child: Text(
+                                  'Backend Bench',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.fade,
+                                  softWrap: false,
+                                  style: t.body.copyWith(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                  const Spacer(),
                   _NavLink(
                     label: 'Results',
                     icon: Icons.leaderboard_outlined,
                     on: state.page == DashboardPage.home,
                     iconOnly: narrow,
-                    onTap: state.goHome,
+                    // Back to the results as they were left; the logo is
+                    // the way to the start.
+                    onTap: () => state.setPage(DashboardPage.home),
                   ),
                   _NavLink(
                     label: 'History',
@@ -159,8 +173,8 @@ class _NavLink extends StatelessWidget {
       semanticLabel: label,
       minWidth: 44,
       builder: (context, hovered) => Container(
-        height: 40,
-        padding: EdgeInsets.symmetric(horizontal: iconOnly ? 10 : 12),
+        height: iconOnly ? 48 : 40,
+        padding: EdgeInsets.symmetric(horizontal: iconOnly ? 4 : 12),
         decoration: BoxDecoration(
           color: on
               ? p.accentSoft
@@ -169,23 +183,41 @@ class _NavLink extends StatelessWidget {
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 19, color: on ? p.accent : p.muted),
-            if (!iconOnly) ...[
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: t.body.copyWith(
-                  fontSize: 15,
-                  color: on ? p.text : p.muted,
-                  fontWeight: on ? FontWeight.w700 : FontWeight.w400,
-                ),
+        // Phones put a small label under the icon, so every link still
+        // says where it goes.
+        child: iconOnly
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 18, color: on ? p.accent : p.muted),
+                  const SizedBox(height: 1),
+                  Text(
+                    label,
+                    style: t.body.copyWith(
+                      fontSize: 11,
+                      height: 1.1,
+                      color: on ? p.text : p.muted,
+                      fontWeight: on ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 19, color: on ? p.accent : p.muted),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: t.body.copyWith(
+                      fontSize: 15,
+                      color: on ? p.text : p.muted,
+                      fontWeight: on ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ],
-        ),
       ),
     );
   }
@@ -311,7 +343,10 @@ class SiteFooter extends StatelessWidget {
                 ),
               ),
               col('PAGES', [
-                TextLink(label: 'Results', onTap: state.goHome),
+                TextLink(
+                  label: 'Results',
+                  onTap: () => state.setPage(DashboardPage.home),
+                ),
                 TextLink(
                   label: 'History',
                   onTap: () => state.setPage(DashboardPage.history),
