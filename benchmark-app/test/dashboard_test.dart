@@ -984,6 +984,25 @@ void main() {
       expect(state.view, HomeView.one);
     });
 
+    testWidgets('Back to History keeps the results test and its own', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      state.setPage(DashboardPage.history);
+      final saved = router.currentConfiguration!;
+      // The visitor goes back to results and picks another test.
+      state.setPage(DashboardPage.home);
+      final other = state.run!.scenarios.last;
+      state.setScenario(other);
+      // Forward to History: the results test stays, and History, never
+      // given a test of its own, still follows it.
+      await router.setNewRoutePath(saved);
+      expect(state.scenario, other);
+      expect(state.historyTest, isNull);
+      router.dispose();
+    });
+
     testWidgets('a copied link keeps an older run', (t) async {
       final state = await pumpApp(t, twoRunBundle());
       expect(locationOf(state).queryParameters, isNot(contains('run')));

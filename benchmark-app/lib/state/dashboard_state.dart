@@ -298,6 +298,7 @@ class DashboardState extends ChangeNotifier {
     'away': [..._awayForRun],
     'missing': missingKey,
     'test': scenario,
+    'historyTest': historyTest,
   };
 
   /// Restores [sideState] saved with a history entry (Back, Forward).
@@ -352,6 +353,12 @@ class DashboardState extends ChangeNotifier {
         parkedCompare.add(k);
         if (r?.backend(k) == null) _awayForRun.add(k);
       }
+    }
+    // History's own test: as chosen, or none (it then follows the main
+    // test), never taken from History's link alone.
+    if (saved.containsKey('historyTest')) {
+      final h = saved['historyTest'];
+      historyTest = h is String ? h : null;
     }
     final missing = saved['missing'];
     missingKey = selectedKey == null && missing is String ? missing : null;
