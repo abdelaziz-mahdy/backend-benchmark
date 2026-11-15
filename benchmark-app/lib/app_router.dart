@@ -145,6 +145,10 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
   /// stand-in entry instead of adding one.
   bool _retrying = false;
 
+  /// Entries added so far, to tell whether the visitor moved on (a new
+  /// entry) since a stand-in was written.
+  int _added = 0;
+
   /// The entry being applied needed a run change first, and the picks and
   /// set-aside picks before that change (none of them may be lost).
   bool _crossedRun = false;
@@ -157,6 +161,7 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
   /// Notifies the Router; with [replace], the browser replaces the current
   /// entry instead of adding one.
   void _report({bool replace = false}) {
+    if (!replace) _added++;
     final c = _context;
     if (replace && c != null && c.mounted) {
       Router.neglect(c, notifyListeners);
@@ -244,8 +249,11 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
         // Try again replays the whole entry, as a Back that worked would,
         // in place of the stand-in entry shown meanwhile.
         _retrying = false;
+        final standIn = _added;
         state.retryFailed = () {
-          _retrying = true;
+          // Still on the stand-in: replace it. Moved on since: the retry is
+          // a new entry, so the visitor's newer one is kept.
+          _retrying = _added == standIn;
           _apply(pending);
         };
       } else {
@@ -337,6 +345,7 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     final parked = [...state.parkedCompare];
     final away = state.awayForRun;
     _applying = true;
+    state.viaHistory = fromHistory;
     try {
       applyLocation(state, uri);
       if (fromHistory) {

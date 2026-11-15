@@ -406,8 +406,30 @@ class _FoldState extends State<Fold> {
   late bool _open = widget.initiallyOpen;
   final _content = GlobalKey(debugLabel: 'fold content');
 
+  /// A fold with a name keeps its open state in the page's storage, so
+  /// Back to its view finds it as it was left.
+  String? get _memory => switch (widget.key) {
+    final ValueKey<String> k => 'fold-${k.value}',
+    _ => null,
+  };
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final id = _memory;
+    if (id == null) return;
+    final saved = PageStorage.maybeOf(
+      context,
+    )?.readState(context, identifier: id);
+    if (saved is bool) _open = saved;
+  }
+
   void _toggle() {
     setState(() => _open = !_open);
+    final id = _memory;
+    if (id != null) {
+      PageStorage.maybeOf(context)?.writeState(context, _open, identifier: id);
+    }
     widget.onChanged?.call(_open);
     // What opened must be seen: a fold near the bottom of the screen
     // scrolls up so its content shows, not just its triangle.

@@ -149,7 +149,8 @@ class HistoryGroup {
         for (final k in keys)
           (
             k,
-            names[k] ?? _nameIn(runs, k),
+            // Today's name wherever any run has one, never a v1 folder name.
+            names[k] ?? state.nameOf(k),
             [
               for (final r in runs)
                 switch (r.headline[k]?[sc]?[m.id]) {
@@ -163,14 +164,6 @@ class HistoryGroup {
       ],
     );
   }
-}
-
-String _nameIn(List<RunIndexEntry> runs, String key) {
-  for (final r in runs.reversed) {
-    final n = r.names[key];
-    if (n != null) return n;
-  }
-  return key;
 }
 
 class HistoryScreen extends StatefulWidget {

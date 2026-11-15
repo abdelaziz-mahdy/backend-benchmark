@@ -159,8 +159,31 @@ class _SpeedBarsState extends State<SpeedBars> {
   String? _open;
   final _reveal = GlobalKey(debugLabel: 'reveal');
 
+  /// The open box is kept in the page's storage under this set of bars'
+  /// key, so Back to this view finds it open as it was left.
+  String? get _memory => switch (widget.key) {
+    final ValueKey<String> k => 'open-bar-${k.value}',
+    _ => null,
+  };
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final id = _memory;
+    if (id != null && _open == null) {
+      final saved = PageStorage.maybeOf(
+        context,
+      )?.readState(context, identifier: id);
+      if (saved is String) _open = saved;
+    }
+  }
+
   void _toggle(String key) {
     setState(() => _open = _open == key ? null : key);
+    final id = _memory;
+    if (id != null) {
+      PageStorage.maybeOf(context)?.writeState(context, _open, identifier: id);
+    }
     // Closing one box can move the tapped row up; keep its box in view.
     if (_open != null) bringIntoView(_reveal);
   }

@@ -171,13 +171,21 @@ class StepLoadChart extends StatelessWidget {
             show: true,
             getDotPainter: (spot, _, bar, index) {
               final step = s.steps[index];
+              // A hollow amber square: the load generator, not the app, was
+              // the limit. The shape tells it apart from a line coloured
+              // near amber.
+              if (!step.pass && s.toolLimited(step)) {
+                return FlDotSquarePainter(
+                  size: 7,
+                  color: p.surface,
+                  strokeColor: p.warn,
+                  strokeWidth: 2,
+                );
+              }
               return FlDotCirclePainter(
                 radius: step.pass ? 2.8 : 4,
                 color: step.pass ? bar.color ?? p.text : p.surface,
-                // Amber: the load generator, not the app, was the limit.
-                strokeColor: step.pass
-                    ? p.surface
-                    : (s.toolLimited(step) ? p.warn : p.danger),
+                strokeColor: step.pass ? p.surface : p.danger,
                 strokeWidth: step.pass ? 1 : 2,
               );
             },

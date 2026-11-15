@@ -675,7 +675,7 @@ class _ChartsState extends State<_Charts> {
             subtitle:
                 'Where a line leaves the dashed diagonal, that framework '
                 'stopped keeping up, or our testing tool could send no more.'
-                "${steps.any((x) => x.anyToolLimited) ? " Amber points stopped at our testing tool's limit, not the framework's." : ''}",
+                "${steps.any((x) => x.anyToolLimited) ? " Amber squares stopped at our testing tool's limit, not the framework's." : ''}",
             child: Column(
               children: [
                 StepLoadChart(series: steps, mode: StepChartMode.throughput),
@@ -689,7 +689,7 @@ class _ChartsState extends State<_Charts> {
             subtitle:
                 'Above the red line is too slow; hollow points missed '
                 'a limit.'
-                "${steps.any((x) => x.anyToolLimited) ? " Amber ones stopped at our testing tool's limit, not the framework's." : ''}",
+                "${steps.any((x) => x.anyToolLimited) ? " Amber squares stopped at our testing tool's limit, not the framework's." : ''}",
             child: Column(
               children: [
                 StepLoadChart(series: steps, mode: StepChartMode.p99),
@@ -765,7 +765,7 @@ class _ChartsState extends State<_Charts> {
     return ChartBlock(
       title: 'Over time',
       subtitle:
-          '${widget.state.run!.isLegacy ? 'The whole test; every framework ran for the same time.' : 'The whole test, warm-up included. Faster frameworks ran more steps, so their lines are longer.'}'
+          '${widget.state.run!.isLegacy ? 'The whole test; every framework ran for the same time.' : 'The whole test, warm-up included. A line runs longer when its framework kept up with more steps, or when its app had to be restarted during the test.'}'
           '${switch (mode) {
             _OverTime.cpu => ' Processor: how much of its ${numberWord(cores)} ${cores == 1 ? 'core' : 'cores'} each one used; 100% is ${cores == 1 ? 'that core' : 'all of them'}.',
             _OverTime.dbCpu => " Database: the database's processor use; 100% is one core.",
@@ -954,6 +954,9 @@ class _SideBySide extends StatelessWidget {
                       child: Text(
                         b.name,
                         textAlign: TextAlign.right,
+                        // A wrapped name stays as wide as its longest line,
+                        // so the badge stays next to it.
+                        textWidthBasis: TextWidthBasis.longestLine,
                         style: cell.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),

@@ -81,8 +81,9 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final state = context.watch<DashboardState>();
     // A view changed from elsewhere (the logo, the footer, a link) starts
-    // at the switch, not wherever the last view was scrolled to.
-    if (_shown != null && _shown != state.view) _toTop();
+    // at the switch, not wherever the last view was scrolled to; Back and
+    // Forward return to where that view was left.
+    if (_shown != null && _shown != state.view && !state.viaHistory) _toTop();
     _shown = state.view;
     final run = state.run!;
     final p = context.palette;
@@ -99,6 +100,9 @@ class _HomePageState extends State<HomePage> {
       picker: widget.picker,
       profileHeading: _profileHeading,
       child: SingleChildScrollView(
+        // Each view keeps its own scroll (in the page's storage, which
+        // outlives this page), for Back and Forward.
+        key: PageStorageKey<String>('home-${state.view.name}'),
         controller: _scroll,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
