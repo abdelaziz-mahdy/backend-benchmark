@@ -113,7 +113,7 @@ class EveryNumberView extends StatelessWidget {
               'Each number is requests a second: the busiest rate we sent '
                   'that the framework kept up with, while 99 of every 100 '
                   'replies came back '
-                  '${sloPhrase(run)}, with few errors, and it kept up with at '
+                  '${sloPhrase(run)}, ${errorPhrase(run)}, and it kept up with at '
                   'least ${keptUp(run)} of the requests sent. Higher is '
                   'better.',
             if (anyCapped)

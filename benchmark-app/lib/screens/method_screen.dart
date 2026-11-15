@@ -335,8 +335,8 @@ class _MethodScreenState extends State<MethodScreen> {
           label: 'To pass a step',
           value: 'Fast, few errors, keeping up',
           detail:
-              '99 of every 100 replies within ${msText(slo.p99Ms)}, fewer '
-              'than ${_pct(slo.errorRate)} errors, and at least '
+              '99 of every 100 replies within ${msText(slo.p99Ms)}, '
+              '${errorPhrase(run)}, and at least '
               '${_pct(slo.servedRatio)} of requests answered.',
         ),
         FactCard(
@@ -475,11 +475,7 @@ class _MethodScreenState extends State<MethodScreen> {
             '99 of every 100 replies came back within ${msText(slo.p99Ms)}.',
             leading: tick(),
           ),
-          Point(
-            'Errors:',
-            'fewer than ${_pct(slo.errorRate)} of requests failed.',
-            leading: tick(),
-          ),
+          Point('Errors:', '${errorPhrase(run)}.', leading: tick()),
           Point(
             'Kept up:',
             'the app answered at least ${_pct(slo.servedRatio)} of the '
@@ -809,8 +805,8 @@ class _MethodScreenState extends State<MethodScreen> {
   ) => switch (m.id) {
     'sustainable_rps' =>
       'the busiest step it passed: 99 of every 100 replies within '
-          '${msText(slo.p99Ms)}, fewer than ${_pct(slo.errorRate)} '
-          'errors, and at least ${_pct(slo.servedRatio)} of requests '
+          '${msText(slo.p99Ms)}, ${errorPhrase(run)}, and at least '
+          '${_pct(slo.servedRatio)} of requests '
           'answered. The middle of the ${numberWord(_reps(run))} tries.',
     'peak_rps' =>
       'the most requests a second it really answered at any step, '
@@ -1295,7 +1291,14 @@ class _RunStaircase extends StatelessWidget {
               // Rate labels need about 46 px each; the result's label
               // always shows, the others where they do not collide.
               final stride = math.max(1, (46 / (barW + gap)).ceil());
-              final labelled = <int>{if (lastPass >= 0) lastPass};
+              // The first failed step is named in the text under the chart,
+              // so its bar is always labelled; the last passed one carries
+              // the flag and gets a label when there is room.
+              final labelled = <int>{if (firstFail >= 0) firstFail};
+              if (lastPass >= 0 &&
+                  labelled.every((j) => (lastPass - j).abs() >= stride)) {
+                labelled.add(lastPass);
+              }
               for (var i = 0; i < steps.length; i++) {
                 if (labelled.every((j) => (i - j).abs() >= stride)) {
                   labelled.add(i);

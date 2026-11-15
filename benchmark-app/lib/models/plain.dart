@@ -565,8 +565,9 @@ String compareVerdict(
   final others = [
     for (final e in wins.entries)
       if (e.key != top)
-        '${capFirst(names[e.key]!)} led in '
-            '${joinAnd([for (final t in e.value) testInfo(t).inSentence])}.',
+        '${capFirst(names[e.key]!)} led in the '
+            '${joinAnd([for (final t in e.value) testInfo(t).short])} '
+            '${e.value.length == 1 ? 'test' : 'tests'}.',
   ];
   return [head, ...others].join(' ') + closeNote;
 }
@@ -601,19 +602,11 @@ int appCoreCount(RunSummary run) {
   return 2;
 }
 
-/// 100 -> "a tenth of a second", 1000 -> "a second", 250 -> "250 ms".
-String _msPhrase(num ms) => switch (ms) {
-  100 => 'a tenth of a second',
-  1000 => 'a second',
-  500 => 'half a second',
-  _ => '${whole(ms)} ms',
-};
-
 /// The limit a reply had to meet, in words: "under a tenth of a second".
 String sloPhrase(RunSummary run) {
   final slo = run.params['slo'];
   final p99 = slo is Map && slo['p99_ms'] is num ? slo['p99_ms'] as num : 100;
-  return 'under ${_msPhrase(p99)}';
+  return 'within ${msText(p99.toDouble())}';
 }
 
 /// "95%": the share of the requests sent that a step must answer to pass.
@@ -712,7 +705,10 @@ List<String> howWeTested(RunSummary run) {
           'the middle try. The lowest and highest tries are shown next to it '
           'wherever you see a range.',
     'We call two frameworks about the same when each one\'s middle try '
-        "falls inside the other's lowest-to-highest tries.",
+        "falls inside the other's lowest-to-highest tries. Frameworks with "
+        'the same number always stay together, so if one of them is not '
+        'about the same as the fastest, none of them is counted as tied '
+        'for fastest.',
     if (limit != null)
       'Our testing tool has its own limit: results stop at about '
           '${whole(limit < 1000 ? limit : (limit / 1000).round() * 1000)} '
@@ -829,4 +825,15 @@ String metricMeaning(Metric m, RunSummary run) {
     'rps_per_100mb' => 'Requests a second for every 100 MB of memory it used.',
     _ => plainMetricLabel(m),
   };
+}
+
+/// "fewer than 1 in 100 failed": the error limit, said one way everywhere.
+String errorPhrase(RunSummary run) {
+  final slo = run.params['slo'];
+  final rate = slo is Map && slo['error_rate'] is num
+      ? (slo['error_rate'] as num).toDouble()
+      : 0.01;
+  return rate <= 0
+      ? 'none failed'
+      : 'fewer than 1 in ${(1 / rate).round()} failed';
 }

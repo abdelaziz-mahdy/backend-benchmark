@@ -25,10 +25,11 @@ final _historyMetrics = [
   (Metrics.memory, 'Memory'),
 ];
 
-String _metricMeaning(Metric m) => switch (m.id) {
+String _metricMeaning(Metric m, RunSummary run) => switch (m.id) {
   'sustainable_rps' =>
     'The main result: the busiest rate we sent that it kept up with, while '
-        'replies stayed fast and few failed. Higher is better.',
+        'replies came back ${sloPhrase(run)} and ${errorPhrase(run)}. '
+        'Higher is better.',
   'avg_rps' =>
     'Old method: the average requests a second while users were added. '
         'Higher is better.',
@@ -292,7 +293,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     onSelected: (m) => setState(() => _metric = m),
                   ),
                   const SizedBox(height: 8),
-                  Text(_metricMeaning(_metric), style: t.small),
+                  Text(_metricMeaning(_metric, run), style: t.small),
                   for (final g in groups) ...[
                     const SizedBox(height: kSectionGap),
                     _card(g, current, langs),

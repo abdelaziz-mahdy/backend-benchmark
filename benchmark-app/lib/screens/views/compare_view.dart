@@ -674,11 +674,12 @@ class _ChartsState extends State<_Charts> {
         series: series,
         field: field,
         format: (v) => '${v.toStringAsFixed(0)}%',
-        divideBy: widget.state.run!.isLegacy
-            ? 1
-            : appCoreCount(widget.state.run!).toDouble(),
-        ceiling: widget.state.run!.isLegacy ? null : 100,
-        ceilingLabel: 'all its cores',
+        divideBy: appCoreCount(widget.state.run!).toDouble(),
+        maxValue: 100,
+        ceiling: 100,
+        ceilingLabel: appCoreCount(widget.state.run!) == 1
+            ? 'its core'
+            : 'all its cores',
       ),
       _OverTime.dbCpu => TimeSeriesChart(
         series: series,

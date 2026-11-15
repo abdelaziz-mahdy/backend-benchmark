@@ -195,15 +195,17 @@ class FrameworkCharts extends StatelessWidget {
         title: 'Processor over time',
         subtitle:
             'How much of its ${numberWord(cores)} processor '
-            '${cores == 1 ? 'core' : 'cores'} it used. 100% is all of them.'
+            '${cores == 1 ? 'core' : 'cores'} it used. 100% is '
+            '${cores == 1 ? 'that core' : 'all of them'}.'
             '${seconds is num ? ' Each step lasted ${whole(seconds)} seconds.' : ''}',
         child: TimeSeriesChart(
           series: [(b, ts)],
           field: 'app_cpu',
           format: (v) => '${v.toStringAsFixed(0)}%',
-          divideBy: run.isLegacy ? 1 : cores.toDouble(),
-          ceiling: run.isLegacy ? null : 100,
-          ceilingLabel: 'all its cores',
+          divideBy: cores.toDouble(),
+          maxValue: 100,
+          ceiling: 100,
+          ceilingLabel: cores == 1 ? 'its core' : 'all its cores',
         ),
       ),
       ChartBlock(

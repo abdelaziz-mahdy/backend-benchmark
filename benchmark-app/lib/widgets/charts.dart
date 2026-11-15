@@ -330,6 +330,10 @@ class TimeSeriesChart extends StatelessWidget {
   /// one core) and shown as a share of the app's cores.
   final double divideBy;
 
+  /// Caps every value: a share of cores never reads above 100%, as in the
+  /// tables (short readings can poke a little past the limit).
+  final double? maxValue;
+
   const TimeSeriesChart({
     super.key,
     required this.series,
@@ -340,6 +344,7 @@ class TimeSeriesChart extends StatelessWidget {
     this.ceiling,
     this.ceilingLabel,
     this.divideBy = 1,
+    this.maxValue,
   }) : assert(format != null || formatFor != null);
 
   @override
@@ -357,7 +362,9 @@ class TimeSeriesChart extends StatelessWidget {
       for (var i = 0; i < ts.t.length && i < values.length; i++) {
         final raw = values[i];
         if (raw == null) continue;
-        final v = raw / divideBy;
+        final v = maxValue == null
+            ? raw / divideBy
+            : math.min(maxValue!, raw / divideBy);
         spots.add(FlSpot(ts.t[i], v));
         maxT = math.max(maxT, ts.t[i]);
         maxY = math.max(maxY, v);
