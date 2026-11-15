@@ -299,17 +299,6 @@ class Implementation {
 
   bool get isEmpty =>
       server == null && concurrency == null && dbAccess == null && pool == null;
-
-  /// Label/value pairs in display order, missing ones left out.
-  List<(String, String)> get facts => [
-    if (server != null) ('Server', server!),
-    if (concurrency != null) ('Concurrency', concurrency!),
-    if (dbAccess != null) ('Database access', dbAccess!),
-    if (pool != null) ('Database connections', pool!),
-  ];
-
-  /// One line for dense lists: "server · db access".
-  String get summary => [?server, ?dbAccess].join(' · ');
 }
 
 const kRepoUrl = 'https://github.com/abdelaziz-mahdy/backend-benchmark';
@@ -414,14 +403,6 @@ class BackendResult {
     );
   }
 
-  /// "go mux 1.8.1 · go 1.27"
-  String get subtitle => [
-    if (version != null) 'v$version',
-    ?runtime,
-    if (db == 'none') 'own storage',
-    if (formerName != null) 'v1 name: $formerName',
-  ].join(' · ');
-
   /// Source folder on GitHub (main branch), when the backend still exists.
   String? get sourceUrl =>
       path == null ? null : '$kRepoUrl/tree/main/backends/$path';
@@ -430,21 +411,51 @@ class BackendResult {
   String? sourceUrlAt(String? sha) =>
       path == null || sha == null ? null : '$kRepoUrl/tree/$sha/backends/$path';
 
-  /// "REST", "Serverpod RPC", "FOAM box RPC".
+  /// How the test calls it, in plain words.
   String get apiLabel => switch (apiStyle) {
-    'serverpod_rpc' => 'Serverpod RPC',
-    'foam_rpc' => 'FOAM box RPC',
-    'rest' => 'REST (JSON over HTTP)',
+    'serverpod_rpc' => "Serverpod's own calls (RPC)",
+    'foam_rpc' => "FOAM's own calls (RPC)",
+    'rest' => 'Plain web requests (JSON)',
     _ => apiStyle,
   };
 
-  /// "Postgres via PgBouncer", "Postgres", "own storage (no database)".
+  /// Where it keeps its data, in plain words.
   String get storageLabel => switch (db) {
-    'none' => 'own storage, no database',
-    'postgres' => pgbouncer ? 'Postgres via PgBouncer' : 'Postgres',
-    null => 'unknown',
+    'none' => 'Its own storage, no database',
+    'postgres' =>
+      pgbouncer
+          ? 'PostgreSQL, through a connection sharer (PgBouncer)'
+          : 'PostgreSQL',
+    null => 'Not recorded',
     _ => db!,
   };
+
+  /// "serverpod 4.0.3 on dart 3.13": the one way versions are written.
+  String? get versionLine {
+    if (version == null && runtime == null) return null;
+    return [
+      if (version != null) '${framework ?? name} $version',
+      if (runtime != null) version == null ? runtime! : 'on $runtime',
+    ].join(' ');
+  }
+
+  /// How it is built, with one set of labels for the profile card and
+  /// Compare. Values may be null when not recorded.
+  List<(String, String?)> get builtFacts => [
+    ('Web server', _plain(implementation?.server)),
+    ('How it handles many requests', _plain(implementation?.concurrency)),
+    ('Database access', _plain(implementation?.dbAccess)),
+    ('Database connections', _plain(implementation?.pool)),
+    ('How it is called', apiLabel),
+    ('Storage', storageLabel),
+    ('Versions', versionLine),
+  ];
+
+  /// Drops setting names in brackets, "20 (database.maxConnectionCount)"
+  /// -> "20": they mean nothing to a reader.
+  static String? _plain(String? v) => v
+      ?.replaceAll(RegExp(r'\s*\((?:[A-Za-z0-9_-]+\.)+[A-Za-z0-9_-]+\)'), '')
+      .trim();
 
   /// Text used by the finder: name, language, framework, runtime, key.
   bool matches(String query) {

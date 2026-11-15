@@ -37,7 +37,8 @@ String _metricMeaning(Metric m) => switch (m.id) {
     'Slow reply: 99 of every 100 replies came back within this time. Lower '
         'is better.',
   'app_cpu' =>
-    'How much processor it used. 100% is one full core. Lower is better.',
+    'How much of its processor cores it used. 100% is all of them. Lower '
+        'is better.',
   'app_mem_mb' => 'How much memory it used. Lower is better.',
   _ => m.help,
 };
@@ -118,6 +119,14 @@ class HistoryGroup {
     final legacy = runs.isNotEmpty && runs.first.isLegacy;
     final sc = legacy ? legacyScenario(scenario) : currentScenario(scenario);
     final m = legacy && metric == Metrics.sustainable ? Metrics.avgRps : metric;
+    // Old-method runs gave the app no fixed cores, so their processor stays
+    // per core; the current method gives every app the same cores.
+    final shown = state.run;
+    final cores = legacy
+        ? 1
+        : shown != null && !shown.isLegacy
+        ? appCoreCount(shown)
+        : 2;
     final keys = <String>{
       for (final r in runs)
         for (final e in r.headline.entries)
@@ -133,7 +142,15 @@ class HistoryGroup {
           (
             k,
             names[k] ?? _nameIn(runs, k),
-            [for (final r in runs) r.headline[k]?[sc]?[m.id]],
+            [
+              for (final r in runs)
+                switch (r.headline[k]?[sc]?[m.id]) {
+                  // The app processor is recorded per core; shown, as on
+                  // every other page, as a share of the app's own cores.
+                  final v? when m.id == 'app_cpu' => v / cores,
+                  final v => v,
+                },
+            ],
           ),
       ],
     );
@@ -161,12 +178,29 @@ class _HistoryScreenState extends State<HistoryScreen> {
   /// Framework highlighted across every chart (tap a legend entry).
   String? _focus;
 
+  /// The test shown. The choices come from the newest runs, whatever run
+  /// the rest of the site shows, so an old run never hides today's tests;
+  /// the old-method box maps it to its closest old test.
+  String? _test;
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardState>();
     final run = state.run;
-    final scenario = state.scenario;
-    if (run == null || scenario == null) return const SizedBox.shrink();
+    final shownTest = state.scenario;
+    if (run == null || shownTest == null) return const SizedBox.shrink();
+    final tests =
+        state.index
+            .where((e) => !e.isLegacy && e.scenarios.isNotEmpty)
+            .firstOrNull
+            ?.scenarios ??
+        run.scenarios;
+    final scenario = tests.contains(_test)
+        ? _test!
+        : tests.contains(currentScenario(shownTest))
+        ? currentScenario(shownTest)
+        : tests.firstOrNull;
+    if (scenario == null) return const SizedBox.shrink();
     final p = context.palette;
     final t = Txt(p);
     final names = {for (final b in run.backends) b.key: b.name};
@@ -218,12 +252,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   const SizedBox(height: 8),
                   SegmentSwitch<String>(
                     label: 'Test',
-                    options: [
-                      for (final s in run.scenarios) (s, testInfo(s).title),
-                    ],
-                    icons: {for (final s in run.scenarios) s: testIcon(s)},
+                    options: [for (final s in tests) (s, testInfo(s).title)],
+                    icons: {for (final s in tests) s: testIcon(s)},
                     selected: scenario,
-                    onSelected: state.setScenario,
+                    onSelected: (s) => setState(() => _test = s),
                   ),
                   const SizedBox(height: 8),
                   Text(testInfo(scenario).what, style: t.small),
@@ -252,7 +284,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  final _chartKeys = <String, GlobalKey>{};
+
   Widget _card(HistoryGroup g, String? current, Map<String, String> langs) {
+    final chartKey = _chartKeys.putIfAbsent(
+      g.groupKey,
+      () => GlobalKey(debugLabel: 'history chart ${g.groupKey}'),
+    );
     final p = context.palette;
     final t = Txt(p);
     final first = g.runs.isEmpty ? null : g.runs.first;
@@ -362,13 +400,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ],
             const SizedBox(height: 24),
-            HistoryChart(
-              labels: runDates(g.runs, short: narrow),
-              lines: lines,
-              highlight: focus,
-              format: (v) => _fmt(g.metric, v),
-            ),
-            const SizedBox(height: 20),
             const SubHead(Icons.touch_app_outlined, 'Latest numbers', size: 17),
             const SizedBox(height: 4),
             Text('Tap a name to highlight its line.', style: t.small),
@@ -387,10 +418,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     value: _fmt(g.metric, last(l.$3)),
                     selected: focus == l.$1,
                     dim: focus != null && focus != l.$1,
-                    onTap: () =>
-                        setState(() => _focus = focus == l.$1 ? null : l.$1),
+                    onTap: () {
+                      setState(() => _focus = focus == l.$1 ? null : l.$1);
+                      // The chart is under the names: keep it in sight.
+                      bringIntoView(chartKey);
+                    },
                   ),
               ],
+            ),
+            const SizedBox(height: 20),
+            // Under the names, so a tapped name's line is right below it.
+            HistoryChart(
+              key: chartKey,
+              labels: runDates(g.runs, short: narrow),
+              lines: lines,
+              highlight: focus,
+              format: (v) => _fmt(g.metric, v),
             ),
           ],
         ],

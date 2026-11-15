@@ -116,7 +116,7 @@ class SiteHeader extends StatelessWidget {
                     url: kRepoUrl,
                     icon: Icons.code,
                     label: 'Code on GitHub',
-                    showLabel: !narrow,
+                    narrow: narrow,
                   ),
                 ],
               ),
@@ -227,13 +227,13 @@ class _ExternalIcon extends StatelessWidget {
   final String url;
   final IconData icon;
   final String label;
-  final bool showLabel;
+  final bool narrow;
 
   const _ExternalIcon({
     required this.url,
     required this.icon,
     required this.label,
-    required this.showLabel,
+    required this.narrow,
   });
 
   @override
@@ -249,22 +249,34 @@ class _ExternalIcon extends StatelessWidget {
         semanticLabel: label,
         minWidth: 44,
         builder: (context, hovered) => Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: narrow ? 48 : 40,
+          padding: EdgeInsets.symmetric(horizontal: narrow ? 6 : 10),
           decoration: BoxDecoration(
             border: Border.all(color: hovered ? p.text : p.line),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 19, color: p.text),
-              if (showLabel) ...[
-                const SizedBox(width: 6),
-                Text('GitHub', style: t.body.copyWith(fontSize: 15)),
-              ],
-            ],
-          ),
+          // Phones put a small label under the icon, like the page links.
+          child: narrow
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, size: 18, color: p.text),
+                    const SizedBox(height: 1),
+                    Text(
+                      'Code',
+                      style: t.body.copyWith(fontSize: 11, height: 1.1),
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 19, color: p.text),
+                    const SizedBox(width: 6),
+                    Text('GitHub', style: t.body.copyWith(fontSize: 15)),
+                  ],
+                ),
         ),
       ),
     );

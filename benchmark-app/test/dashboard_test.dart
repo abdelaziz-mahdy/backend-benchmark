@@ -380,6 +380,19 @@ void main() {
       expect(answerFor([]), contains('No framework'));
     });
 
+    test('everyone at the tool limit ties, and a fifth is a fifth', () {
+      final answer = answerFor([
+        res('a', 48000, capped: true),
+        res('b', 48000, capped: true),
+        res('c', 46000, capped: true),
+        res('d', 20000),
+      ]);
+      expect(answer, startsWith("A, b and c tie for fastest at our testing"));
+      expect(answer, contains('Next is d,'));
+      expect(asFast(0.19), 'about a fifth as fast');
+      expect(asFast(0.25), 'about a quarter as fast');
+    });
+
     test('runs that overlap at the top are about the same, as in Compare', () {
       final answer = answerFor([
         res('zeta', 9000, low: 8000, high: 9500),
@@ -491,6 +504,9 @@ void main() {
       final state = await pumpApp(t, realisticBundle());
       state.sortBy('db_read');
       state.setMeasure(Measure.typical);
+      expect(state.sortDesc, isFalse);
+      // A new column keeps best first too.
+      state.sortBy('db_write');
       expect(state.sortDesc, isFalse);
       state.setMeasure(Measure.load);
       expect(state.sortDesc, isTrue);

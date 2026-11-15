@@ -129,7 +129,7 @@ class Metrics {
     unit: Unit.cpu,
     higherIsBetter: false,
     help:
-        'Average CPU of the app container (100% = one core; 2 cores assigned).',
+        'How much of its processor cores the app used, on average. 100% is all of them.',
     value: (r) => _stat(r, 'app_cpu'),
   );
   static final memory = Metric(

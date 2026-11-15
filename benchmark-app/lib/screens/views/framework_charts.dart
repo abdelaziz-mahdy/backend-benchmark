@@ -181,22 +181,22 @@ class FrameworkCharts extends StatelessWidget {
           child: TimeSeriesChart(
             series: [(b, ts)],
             field: 'rps',
-            format: formatNumber,
+            format: whole,
           ),
         ),
       ChartBlock(
         title: 'Processor over time',
         subtitle:
-            '100% is one core. It had ${numberWord(cores)} '
-            '${cores == 1 ? 'core' : 'cores'}'
-            '${run.isLegacy ? '' : ' (the dashed line)'}.'
+            'How much of its ${numberWord(cores)} processor '
+            '${cores == 1 ? 'core' : 'cores'} it used. 100% is all of them.'
             '${seconds is num ? ' Each step lasted ${whole(seconds)} seconds.' : ''}',
         child: TimeSeriesChart(
           series: [(b, ts)],
           field: 'app_cpu',
           format: (v) => '${v.toStringAsFixed(0)}%',
-          ceiling: run.isLegacy ? null : cores * 100.0,
-          ceilingLabel: '$cores ${cores == 1 ? 'core' : 'cores'}',
+          divideBy: run.isLegacy ? 1 : cores.toDouble(),
+          ceiling: run.isLegacy ? null : 100,
+          ceilingLabel: 'all its cores',
         ),
       ),
       ChartBlock(
@@ -247,7 +247,7 @@ class _AllNumbers extends StatelessWidget {
               border: Border(top: BorderSide(color: p.line)),
             ),
             child: Tooltip(
-              message: m.help,
+              message: metricMeaning(m, context.read<DashboardState>().run!),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

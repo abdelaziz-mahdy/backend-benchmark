@@ -387,6 +387,10 @@ class _TestBlock extends StatelessWidget {
           Text(compareTestSentence(results), style: t.body),
           const SizedBox(height: 10),
           SpeedBars(
+            // A new set of picks starts with every box closed.
+            key: ValueKey(
+              'compare-bars-$test-${[for (final r in results) r.key].join(',')}',
+            ),
             test: test,
             results: results,
             all: all,
@@ -652,19 +656,35 @@ class _ChartsState extends State<_Charts> {
       _OverTime.rps => TimeSeriesChart(
         series: series,
         field: field,
-        format: formatNumber,
+        format: whole,
       ),
-      _ => TimeSeriesChart(
+      _OverTime.cpu => TimeSeriesChart(
+        series: series,
+        field: field,
+        format: (v) => '${v.toStringAsFixed(0)}%',
+        divideBy: widget.state.run!.isLegacy
+            ? 1
+            : appCoreCount(widget.state.run!).toDouble(),
+        ceiling: widget.state.run!.isLegacy ? null : 100,
+        ceilingLabel: 'all its cores',
+      ),
+      _OverTime.dbCpu => TimeSeriesChart(
         series: series,
         field: field,
         format: (v) => '${v.toStringAsFixed(0)}%',
       ),
     };
+    final cores = appCoreCount(widget.state.run!);
     return ChartBlock(
       title: 'Over time',
       subtitle:
           'The whole test, warm-up included. Faster frameworks ran more '
-          'steps, so their lines are longer. 100% processor is one core.',
+          'steps, so their lines are longer.'
+          '${switch (mode) {
+            _OverTime.cpu => ' Processor: how much of its ${numberWord(cores)} cores each one used; 100% is all of them.',
+            _OverTime.dbCpu => " Database: the database's processor use; 100% is one core.",
+            _ => '',
+          }}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -738,14 +758,10 @@ class _SideBySide extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 6),
       child: child,
     );
+    // The same labels as the profile's "How it is built" card.
     final impl = <(String, String? Function(BackendResult))>[
-      ('Server', (b) => b.implementation?.server),
-      ('Concurrency', (b) => b.implementation?.concurrency),
-      ('Database access', (b) => b.implementation?.dbAccess),
-      ('Database connections', (b) => b.implementation?.pool),
-      ('How it is called', (b) => b.apiLabel),
-      ('Storage', (b) => b.storageLabel),
-      ('Versions', (b) => b.subtitle.isEmpty ? null : b.subtitle),
+      for (final (i, (label, _)) in picked.first.builtFacts.indexed)
+        (label, (b) => b.builtFacts[i].$2),
     ];
     final table = Table(
       columnWidths: {
@@ -784,7 +800,7 @@ class _SideBySide extends StatelessWidget {
             children: [
               c(
                 Tooltip(
-                  message: m.help,
+                  message: metricMeaning(m, state.run!),
                   child: Text(plainMetricLabel(m), style: cell),
                 ),
               ),
@@ -815,7 +831,7 @@ class _SideBySide extends StatelessWidget {
             border: Border(top: BorderSide(color: p.line)),
           ),
           children: [
-            c(Text('Source code', style: cell.copyWith(color: p.muted))),
+            c(Text('Code', style: cell.copyWith(color: p.muted))),
             for (final b in picked)
               c(
                 b.sourceUrl == null
@@ -824,7 +840,7 @@ class _SideBySide extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: SourceLink(
                           url: b.sourceUrlAt(sha) ?? b.sourceUrl!,
-                          label: 'backends/${b.path}',
+                          label: 'Code on GitHub',
                           fontSize: 13,
                         ),
                       ),

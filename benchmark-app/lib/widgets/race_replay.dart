@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../models/plain.dart';
 import '../models/results.dart';
 import '../utils/colors.dart';
 import '../utils/formatters.dart';
@@ -28,18 +29,19 @@ class Slo {
     );
   }
 
-  /// Why [s] failed, from its recorded numbers: "p99 412 ms", "errors 3.1%",
-  /// "served 88%", "load generator limit"; "" when it passed.
+  /// Why [s] failed, from its recorded numbers, in plain words: "slow
+  /// reply 412 ms", "3.1% errors", "answered 88%", "our testing tool's
+  /// limit"; "" when it passed.
   String reason(LoadStep s) {
     if (s.pass) return '';
     final parts = [
-      if (s.p99 >= p99Ms) 'p99 ${formatMs(s.p99)}',
+      if (s.p99 >= p99Ms) 'slow reply ${formatMs(s.p99)}',
       if (s.errorRate >= errorRate)
-        'errors ${(s.errorRate * 100).toStringAsFixed(1)}%',
+        '${(s.errorRate * 100).toStringAsFixed(1)}% errors',
       if (s.targetRps > 0 && s.achievedRps / s.targetRps < servedRatio)
-        'served ${(s.achievedRps / s.targetRps * 100).round()}%',
+        'answered ${(s.achievedRps / s.targetRps * 100).round()}%',
     ];
-    if (s.k6Bound) return 'load generator limit';
+    if (s.k6Bound) return "our testing tool's limit";
     return parts.isEmpty ? 'failed a limit' : parts.join(', ');
   }
 }
@@ -175,7 +177,7 @@ class _RaceReplayState extends State<RaceReplay>
   Widget build(BuildContext context) {
     if (_lanes.isEmpty || _rates.isEmpty) {
       return Text(
-        'No recorded load steps for this scenario.',
+        'No recorded steps for this test.',
         style: body(13, color: context.palette.muted),
       );
     }
@@ -212,9 +214,9 @@ class _RaceReplayState extends State<RaceReplay>
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('REQUESTED', style: caps(10.5)),
+                Text('Asked for', style: caps(10.5)),
                 Text(
-                  '${formatRps(rate)} req/s',
+                  '${whole(rate)} a second',
                   style: mono(18, weight: FontWeight.w700),
                 ),
               ],
@@ -234,7 +236,7 @@ class _RaceReplayState extends State<RaceReplay>
                   min: 0,
                   max: math.max(1, _rates.length - 1).toDouble(),
                   divisions: math.max(1, _rates.length - 1),
-                  label: '${compactRps(rate)} req/s',
+                  label: '${whole(rate)} a second',
                   semanticFormatterCallback: (v) =>
                       '${formatRps(_rates[v.round().clamp(0, _rates.length - 1)])} '
                       'requests per second requested',
@@ -274,11 +276,19 @@ class _RaceReplayState extends State<RaceReplay>
               spacing: 14,
               runSpacing: 4,
               children: [
-                _key(context.palette.accent, 'flag: highest step held so far'),
-                _key(context.palette.danger, 'broke a limit', hatched: true),
+                _key(
+                  context.palette.accent,
+                  'flag: the busiest step passed so far',
+                ),
+                _key(
+                  context.palette.danger,
+                  'failed: too slow, too many errors '
+                  'or could not keep up',
+                  hatched: true,
+                ),
                 _key(
                   context.palette.warn,
-                  'the load generator was the limit',
+                  "hit our testing tool's limit",
                   hatched: true,
                 ),
               ],
@@ -327,12 +337,12 @@ class _ReplayLane extends StatelessWidget {
     final status = step == null
         ? 'not started'
         : done
-        ? 'held ${formatRps(held ?? 0)} · stopped at ${formatRps(lane.top)}'
+        ? 'passed ${whole(held ?? 0)} · stopped at ${whole(lane.top)}'
         : failed
-        ? 'out at ${formatRps(step.targetRps)}: ${slo.reason(step)}'
+        ? 'failed at ${whole(step.targetRps)}: ${slo.reason(step)}'
         : exact
-        ? 'served ${formatRps(step.achievedRps)}'
-        : 'held ${formatRps(step.targetRps)}, no step here';
+        ? 'answered ${whole(step.achievedRps)} a second'
+        : 'passed ${whole(step.targetRps)}; no step at this rate';
     final barColor = step == null
         ? context.palette.line
         : !failed

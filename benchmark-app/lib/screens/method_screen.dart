@@ -550,15 +550,16 @@ class _MethodScreenState extends State<MethodScreen> {
             Point('Memory:', 'each app may use up to ${_size(mem['app'])}.'),
           const Point(
             'Settings:',
-            'production mode and release builds. One worker per core where '
-                'the language runs on one thread. About 20 database '
+            'each app runs the way it would for real visitors, not in a '
+                'test or debug mode. Languages that use one processor core '
+                'at a time start one copy per core. About 20 database '
                 'connections in total.',
           ),
           Point(
             'Data:',
             'before each database test the table is emptied and filled with '
                 '${whole(run.params['seed_rows'] as num? ?? 10000)} rows '
-                "through the app's own API.",
+                'by sending them to the app, the same way visitors would.',
           ),
           const Point(
             'Reads',
@@ -574,8 +575,7 @@ class _MethodScreenState extends State<MethodScreen> {
           Point(
             'Repeats:',
             'every test runs ${numberWord(reps)} times. We show the middle '
-                'run and keep the lowest and highest. If they differ by more '
-                'than 10%, the result is marked as noisy.',
+                'run; tap a bar to see the lowest and highest next to it.',
           ),
         ]),
       ],
@@ -614,10 +614,11 @@ class _MethodScreenState extends State<MethodScreen> {
           Point('Computer:', '${run.machine.label} memory.'),
           if (docker['cpus'] != null)
             Point(
-              'Docker setup:',
+              'Shared by the apps, database and testing tool:',
               '${docker['cpus']} processor cores and '
-                  '${docker['mem_gb'] ?? '?'} GB of memory for everything'
-                  '${docker['version'] != null ? ', Docker ${docker['version']}' : ''}.',
+                  '${docker['mem_gb'] ?? '?'} GB of memory. Each part runs in '
+                  'its own sealed-off box (a Docker container)'
+                  '${docker['version'] != null ? ', Docker version ${docker['version']}' : ''}.',
             ),
           Point('Method:', '$method.'),
           if (run.contributor != null) Point('Run by:', run.contributor!),
@@ -775,12 +776,6 @@ class _MethodScreenState extends State<MethodScreen> {
             'the reply-time and error limits a step must meet to pass. '
                 'Engineers call these an SLO (service level objective).',
           ),
-          const Point(
-            'Place and share of the best:',
-            'the position among every framework in that test. Equal numbers '
-                'share a place. The share is this number divided by the best '
-                'one.',
-          ),
         ]),
       ],
     );
@@ -833,8 +828,8 @@ class _MethodScreenState extends State<MethodScreen> {
           'the share of requests that failed, at the busiest '
               'step it passed.',
         'app_cpu' =>
-          'how much processor the app used. 100% is one full '
-              'core; each app had ${numberWord(cores)}.',
+          'how much of its ${numberWord(cores)} processor cores the app '
+              'used. 100% is all of them.',
         'app_mem_mb' => 'how much memory the app used, on average.',
         'db_cpu' =>
           'how much processor the database used while serving this '
@@ -862,13 +857,15 @@ class _MethodScreenState extends State<MethodScreen> {
           if (!run.isLegacy)
             Point(
               "Our testing tool's limit:",
-              'it tops out around $around requests a second on this computer, '
-                  'so the fastest frameworks tie in No database (marked with '
-                  "the tool's limit). Their real limit is higher.",
+              'it tops out around $around requests a second on this computer '
+                  'in No database, and lower in the tests that use the '
+                  'database, where it has more work per request. Frameworks '
+                  "that hit it get a striped bar end; their real limit is "
+                  'higher.',
             ),
           const Point(
             'One computer:',
-            'the numbers belong to this computer and its Docker setup. Only '
+            'the numbers belong to this computer and how it was set up. Only '
                 'runs on the same computer with the same method can be '
                 'compared, which is why History never mixes them.',
           ),

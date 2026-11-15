@@ -93,7 +93,7 @@ class DashboardState extends ChangeNotifier {
       }
       if (sortTest != sortByName && !tests.contains(sortTest)) {
         sortTest = tests.isEmpty ? sortByName : tests.first;
-        sortDesc = true;
+        sortDesc = measure == Measure.load;
       }
       final keys = loaded.backends.map((b) => b.key).toSet();
       // Picks the run lacks are parked, not dropped, and parked picks the
@@ -183,7 +183,8 @@ class DashboardState extends ChangeNotifier {
       sortDesc = !sortDesc;
     } else {
       sortTest = test;
-      sortDesc = true;
+      // Best first: most requests a second, lowest of everything else.
+      sortDesc = test == sortByName || measure == Measure.load;
     }
     notifyListeners();
   }

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../models/plain.dart';
 import '../models/results.dart';
 import '../utils/colors.dart';
 import '../utils/formatters.dart';
@@ -112,9 +113,10 @@ class StepLoadChart extends StatelessWidget {
     minY = minY.floorToDouble();
     maxY = maxY.ceilToDouble();
 
-    String fmtX(double v) => compactRps(base * math.pow(2, v));
+    // Full numbers ("4,000") as everywhere else on the site.
+    String fmtX(double v) => whole(base * math.pow(2, v));
     String fmtY(double v) {
-      if (throughput) return compactRps(base * math.pow(2, v));
+      if (throughput) return whole(base * math.pow(2, v));
       final ms = math.pow(10, v).toDouble();
       if (ms >= 1000) return '${(ms / 1000).round()} s';
       return ms >= 1 ? '${ms.round()} ms' : '${ms.toStringAsFixed(1)} ms';
@@ -223,8 +225,7 @@ class StepLoadChart extends StatelessWidget {
                         : Alignment.bottomLeft,
                     padding: const EdgeInsets.only(right: 4, top: 2),
                     style: mono(10.5, color: p.accent, weight: FontWeight.w700),
-                    labelResolver: (_) =>
-                        'result ${formatNumber(sustainable!)}',
+                    labelResolver: (_) => 'result ${whole(sustainable!)}',
                   ),
                 ),
             ],
@@ -274,8 +275,8 @@ class StepLoadChart extends StatelessWidget {
             if (s.barIndex - offset < 0) return '';
             final st = series[s.barIndex - offset].steps[s.spotIndex];
             final name = series[s.barIndex - offset].backend.name;
-            return '$name, asked for ${formatNumber(st.targetRps)} a second\n'
-                'handled ${formatNumber(st.achievedRps)} · slow reply '
+            return '$name, asked for ${whole(st.targetRps)} a second\n'
+                'handled ${whole(st.achievedRps)} · slow reply '
                 '${formatMs(st.p99)}'
                 '${st.errorRate > 0 ? ' · ${(st.errorRate * 100).toStringAsFixed(2)}% failed' : ''}'
                 '${st.pass
@@ -307,6 +308,10 @@ class TimeSeriesChart extends StatelessWidget {
   final double? ceiling;
   final String? ceilingLabel;
 
+  /// Divides every value: the app processor is recorded per core (100% is
+  /// one core) and shown as a share of the app's cores.
+  final double divideBy;
+
   const TimeSeriesChart({
     super.key,
     required this.series,
@@ -316,6 +321,7 @@ class TimeSeriesChart extends StatelessWidget {
     this.height = 230,
     this.ceiling,
     this.ceilingLabel,
+    this.divideBy = 1,
   }) : assert(format != null || formatFor != null);
 
   @override
@@ -331,8 +337,9 @@ class TimeSeriesChart extends StatelessWidget {
       if (values == null) continue;
       final spots = <FlSpot>[];
       for (var i = 0; i < ts.t.length && i < values.length; i++) {
-        final v = values[i];
-        if (v == null) continue;
+        final raw = values[i];
+        if (raw == null) continue;
+        final v = raw / divideBy;
         spots.add(FlSpot(ts.t[i], v));
         maxT = math.max(maxT, ts.t[i]);
         maxY = math.max(maxY, v);
@@ -435,7 +442,9 @@ class TimeSeriesChart extends StatelessWidget {
           ),
           lineTouchData: _touch(
             p,
-            (s) => '${names[s.barIndex]}: ${format(s.y)} @ ${s.x.toInt()}s',
+            (s) =>
+                '${names[s.barIndex]}: ${format(s.y)} at ${s.x.toInt()} '
+                'seconds',
           ),
         ),
       ),

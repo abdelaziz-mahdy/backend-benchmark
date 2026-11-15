@@ -319,9 +319,27 @@ String asFast(double f) {
   if (f >= 0.6) return 'about two-thirds as fast';
   if (f >= 0.42) return 'about half as fast';
   if (f >= 0.3) return 'about a third as fast';
-  if (f >= 0.18) return 'about a quarter as fast';
+  if (f >= 0.22) return 'about a quarter as fast';
+  if (f >= 0.16) return 'about a fifth as fast';
   if (f >= 0.1) return 'about a tenth as fast';
   return 'less than a tenth as fast';
+}
+
+/// The frameworks at the top of [results] that cannot be told apart: the
+/// fastest, those whose runs overlap it, and, when it hit our testing
+/// tool's limit, every other one that hit the limit too. Fastest first.
+List<Result> topGroup(List<Result> results) {
+  final sorted = sortResults(results);
+  if (sorted.isEmpty) return const [];
+  final leader = sorted.first;
+  return [
+    leader,
+    for (final r in sorted.skip(1))
+      if (r.value == leader.value ||
+          r.overlaps(leader) ||
+          (leader.capped && r.capped))
+        r,
+  ];
 }
 
 /// The answer under a test, in words: who is fastest (or which ones are
@@ -342,11 +360,7 @@ String answerFor(List<Result> results) => _ranked(results, followers: 1).$1;
   if (sorted.length == 1) {
     return ('${capFirst(leader.name)} is the only one.', false);
   }
-  final top = {
-    leader.key,
-    for (final r in sorted.skip(1))
-      if (r.value == leader.value || r.overlaps(leader)) r.key,
-  };
+  final top = {for (final r in topGroup(sorted)) r.key};
   final tied = [
     for (final r in sorted)
       if (top.contains(r.key)) r,
@@ -418,7 +432,7 @@ String compareVerdict(Map<String, List<Result>> byTest) {
     final rs = sortResults(e.value);
     if (rs.length < 2) continue;
     contested++;
-    if (rs[0].overlaps(rs[1])) {
+    if (topGroup(rs).length > 1) {
       close++;
       continue;
     }
@@ -527,7 +541,7 @@ String ledeFor(RunSummary run) {
   if (run.isLegacy) {
     final users = run.params['users'];
     final secs = run.params['runtime_s'];
-    return 'An older test of the same small API, built in $n frameworks. It '
+    return 'An older test of the same small app, built in $n frameworks. It '
         'sent ${users is num ? whole(users) : 'thousands of'} simulated users '
         'at each one${secs is num ? ' for ${whole(secs)} seconds' : ''}. Its '
         'result is the average number of requests a second it handled. These '
@@ -577,7 +591,7 @@ List<String> howWeTested(RunSummary run) {
       : null;
   final limit = toolLimit(run);
   return [
-    'Every framework ran the same small API on ${numberWord(cores)} '
+    'Every framework ran the same small app on ${numberWord(cores)} '
         'processor ${cores == 1 ? 'core' : 'cores'}'
         '${memText == null ? '' : ' with $memText of memory'}. A PostgreSQL '
         'database ran beside it on its own cores.',
@@ -593,10 +607,11 @@ List<String> howWeTested(RunSummary run) {
           'wherever you see a range.',
     "When two frameworks' runs overlap, we call them about the same.",
     if (limit != null)
-      'The load tool itself has a limit (about '
+      "Our testing tool has its own limit: up to about "
           '${whole(limit < 1000 ? limit : (limit / 1000).round() * 1000)} '
-          'requests a second on this machine). A framework that reached the '
-          'limit may really be faster than its number.',
+          'requests a second on this computer, and less in the tests that use '
+          'the database, where it has more work per request. A framework that '
+          'hit the limit may really be faster than its number.',
     'Everything ran on one $cpu computer. On other machines the numbers will '
         'be different.',
   ];
@@ -668,3 +683,45 @@ String plainMetricLabel(Metric m) => switch (m.id) {
 String unitFor(Metric headline) => headline == Metrics.avgRps
     ? 'requests a second, on average'
     : 'requests a second';
+
+/// What a measured number means, in plain words, for tooltips next to a
+/// number's name.
+String metricMeaning(Metric m, RunSummary run) {
+  final cores = appCoreCount(run);
+  return switch (m.id) {
+    'sustainable_rps' =>
+      'The main result: the busiest step it passed while 99 of every 100 '
+          'replies came back ${sloPhrase(run)}, with few errors. Higher is '
+          'better.',
+    'peak_rps' =>
+      'The most requests a second it answered at any step, however slow the '
+          'replies were. Higher is better.',
+    'avg_rps' =>
+      'Old method: the average requests a second while more and more '
+          'visitors were added. Higher is better.',
+    'p50_ms' =>
+      'Typical reply: half of all replies came back faster than this. Lower '
+          'is better.',
+    'p90_ms' => '9 in 10 replies came back faster than this. Lower is better.',
+    'p99_ms' =>
+      'Slow reply: 99 of every 100 replies came back within this. Lower is '
+          'better.',
+    'p999_ms' =>
+      '999 of every 1,000 replies came back within this. Lower is better.',
+    'error_rate' => 'The share of requests that failed. Lower is better.',
+    'app_cpu' =>
+      'How much of its ${numberWord(cores)} processor cores the app used. '
+          '100% is all of them. Lower is better.',
+    'app_mem_mb' => 'How much memory the app used. Lower is better.',
+    'db_cpu' =>
+      "How much processor the database used while serving this framework. "
+          '100% is one core. Lower is better.',
+    'rps_per_core' =>
+      'Requests a second for each processor core it really used. Higher is '
+          'better.',
+    'rps_per_100mb' =>
+      'Requests a second for every 100 MB of memory it used. Higher is '
+          'better.',
+    _ => plainMetricLabel(m),
+  };
+}

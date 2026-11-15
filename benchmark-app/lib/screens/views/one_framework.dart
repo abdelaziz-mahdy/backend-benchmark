@@ -184,10 +184,7 @@ class _Profile extends StatelessWidget {
     final tests = testsOf(run).where(b.scenarios.containsKey).toList();
     final about = [
       languageLabel(b.language),
-      [
-        [b.framework ?? b.name, ?b.version].join(' '),
-        if (b.runtime != null) 'on ${b.runtime}',
-      ].join(' '),
+      ?b.versionLine,
       if (b.formerName != null) 'named "${b.formerName}" in this run',
     ].join(' · ');
     final cores = appCoreCount(run);
@@ -344,10 +341,18 @@ class _TestRow extends StatelessWidget {
     final info = testInfo(test);
     if (r == null) return const SizedBox.shrink();
     final max = all.first.value;
-    final fastest = all.first.key == r.key;
+    // Fastest by the same rule as Who's fastest: a tie at the top (overlapping
+    // runs, or several at our testing tool's limit) counts as fastest.
+    final top = topGroup(all);
+    final fastest = top.any((x) => x.key == r.key);
+    final others = all.where((x) => x.key != r.key);
     final pair = [
-      if (fastest) ...[r, ?all.skip(1).firstOrNull] else ...[all.first, r],
+      if (fastest) ...[r, ?others.firstOrNull] else ...[all.first, r],
     ];
+    final tieNote = top.length < 2
+        ? ''
+        : ' ${capFirst(numberWord(top.length))} frameworks tie for fastest'
+              "${top.every((x) => x.capped) ? " at our testing tool's limit" : ''}.";
     final share = max <= 0 ? 0.0 : (r.value / max).clamp(0.0, 1.0);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -373,10 +378,12 @@ class _TestRow extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            [
-              placeSentence(all, r),
-              if (!fastest) '${capFirst(asFast(share))} as the fastest.',
-            ].join(' '),
+            fastest
+                ? (top.length < 2
+                      ? placeSentence(all, r)
+                      : 'Tied for fastest.$tieNote')
+                : '${placeSentence(all, r)} '
+                      '${capFirst(asFast(share))} as the fastest.$tieNote',
             style: t.body.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
