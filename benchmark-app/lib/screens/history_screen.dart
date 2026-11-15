@@ -37,8 +37,8 @@ String _metricMeaning(Metric m) => switch (m.id) {
     'Slow reply: 99 of every 100 replies came back within this time. Lower '
         'is better.',
   'app_cpu' =>
-    'How much of its processor cores it used. 100% is all of them. Lower '
-        'is better.',
+    'How much of its processor cores it used. 100% is all of them (in the '
+        'old method, 100% is one core). Lower is better.',
   'app_mem_mb' => 'How much memory it used. Lower is better.',
   _ => m.help,
 };
@@ -98,13 +98,21 @@ class HistoryGroup {
   final Metric metric;
   final List<(String key, String name, List<double?> values)> lines;
 
+  /// Frameworks whose newest number here hit our testing tool's limit, so
+  /// it reads "40,000+" as on every other page.
+  final Set<String> capped;
+
   const HistoryGroup({
     required this.groupKey,
     required this.runs,
     required this.scenario,
     required this.metric,
     required this.lines,
+    this.capped = const {},
   });
+
+  /// "40,000+" when [key]'s newest number hit the tool's limit.
+  String plus(String key) => capped.contains(key) ? '+' : '';
 
   /// Builds the series for [groupKey]. Runs from other computers or
   /// methods never end up in the same group.
@@ -132,11 +140,22 @@ class HistoryGroup {
         for (final e in r.headline.entries)
           if (e.value[sc]?[m.id] != null) e.key,
     }.toList()..sort();
+    final capped = <String>{
+      if (m == Metrics.sustainable)
+        for (final k in keys)
+          if (runs.reversed
+                  .where((r) => r.headline[k]?[sc]?[m.id] != null)
+                  .firstOrNull
+                  ?.headline[k]?[sc]?['loadgen_bound'] ==
+              1.0)
+            k,
+    };
     return HistoryGroup(
       groupKey: groupKey,
       runs: runs,
       scenario: sc,
       metric: m,
+      capped: capped,
       lines: [
         for (final k in keys)
           (
@@ -255,7 +274,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     options: [for (final s in tests) (s, testInfo(s).title)],
                     icons: {for (final s in tests) s: testIcon(s)},
                     selected: scenario,
-                    onSelected: (s) => setState(() => _test = s),
+                    onSelected: (s) {
+                      setState(() => _test = s);
+                      // Into the URL too, so a reload or a shared link keeps it.
+                      state.setScenario(s);
+                    },
                   ),
                   const SizedBox(height: 8),
                   Text(testInfo(scenario).what, style: t.small),
@@ -307,7 +330,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final legend = [...lines]
       ..sort((a, b) {
         final va = last(a.$3) ?? -1, vb = last(b.$3) ?? -1;
-        return g.metric.higherIsBetter ? vb.compareTo(va) : va.compareTo(vb);
+        final c = g.metric.higherIsBetter ? vb.compareTo(va) : va.compareTo(vb);
+        // Equal numbers in name order, as everywhere else on the site.
+        return c != 0 ? c : a.$2.compareTo(b.$2);
       });
     final multi = lines
         .where((l) => l.$3.whereType<double>().length > 1)
@@ -415,7 +440,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     badge: LangBadge.of(l.$1, lang(l.$1), size: 20),
                     color: identityColor(p, l.$1),
                     name: l.$2,
-                    value: _fmt(g.metric, last(l.$3)),
+                    value: '${_fmt(g.metric, last(l.$3))}${g.plus(l.$1)}',
                     selected: focus == l.$1,
                     dim: focus != null && focus != l.$1,
                     onTap: () {
@@ -606,8 +631,13 @@ class _Snapshot extends StatelessWidget {
       children: [
         Points([
           Point(
-            'One run each so far,',
-            'made on $dates, so there is no line to draw yet.',
+            group.runs.length == 1
+                ? 'One run so far,'
+                : '${capFirst(numberWord(group.runs.length))} runs on $dates,',
+            group.runs.length == 1
+                ? 'made on $dates, so there is no line to draw yet.'
+                : 'and each framework is in only one of them, so there is no '
+                      'line to draw yet.',
           ),
           const Point('Longer bar is better.', 'Ranked from best to worst.'),
         ]),
@@ -640,14 +670,14 @@ class _Snapshot extends StatelessWidget {
                       style: proseStyle(context).copyWith(height: 1.3),
                     );
                     final value = Text(
-                      _fmt(m, last(lines[i].$3)),
+                      '${_fmt(m, last(lines[i].$3))}${group.plus(lines[i].$1)}',
                       textAlign: TextAlign.right,
                       style: t.num(15.5),
                     );
                     final bar = SpeedBar(
                       share: barShare(m, last(lines[i].$3), best),
                       color: color,
-                      capped: false,
+                      capped: group.capped.contains(lines[i].$1),
                       height: 10,
                     );
                     if (stacked) {

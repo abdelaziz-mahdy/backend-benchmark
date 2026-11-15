@@ -205,7 +205,11 @@ class _RunLine extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           // The latest view combines each framework's newest run.
-          '${entry?.kind == RunKind.latest ? 'Latest results, up to' : 'Results from'} '
+          '${entry?.kind != RunKind.latest
+              ? 'Results from'
+              : entry == state.index.firstOrNull
+              ? 'Latest results, up to'
+              : 'Combined results of an older method, up to'} '
           '${longDate(entry?.date ?? run.date)}'
           '${run.isLegacy ? ' (old method)' : ''}',
           style: t.small,

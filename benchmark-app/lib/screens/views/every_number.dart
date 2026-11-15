@@ -279,19 +279,32 @@ class _Table extends StatelessWidget {
           defaultVerticalAlignment: TableCellVerticalAlignment.top,
           children: [
             TableRow(
+              // Every heading sits on the same baseline, at the bottom.
               children: [
-                head(DashboardState.sortByName, 'Framework', left: true),
-                for (final s in tests) head(s, testInfo(s).short),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
-                  child: ExcludeSemantics(
-                    child: narrow
-                        ? Icon(Icons.compare_arrows, size: 16, color: p.muted)
-                        : Text(
-                            'Compare',
-                            textAlign: TextAlign.center,
-                            style: cell.copyWith(fontSize: 12, color: p.muted),
-                          ),
+                for (final cell in [
+                  head(DashboardState.sortByName, 'Framework', left: true),
+                  for (final s in tests) head(s, testInfo(s).short),
+                ])
+                  TableCell(
+                    verticalAlignment: TableCellVerticalAlignment.bottom,
+                    child: cell,
+                  ),
+                TableCell(
+                  verticalAlignment: TableCellVerticalAlignment.bottom,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
+                    child: ExcludeSemantics(
+                      child: narrow
+                          ? Icon(Icons.compare_arrows, size: 16, color: p.muted)
+                          : Text(
+                              'Compare',
+                              textAlign: TextAlign.center,
+                              style: cell.copyWith(
+                                fontSize: 12,
+                                color: p.muted,
+                              ),
+                            ),
+                    ),
                   ),
                 ),
               ],

@@ -380,6 +380,50 @@ void main() {
       expect(answerFor([]), contains('No framework'));
     });
 
+    test('how it is built drops setting names a reader cannot use', () {
+      final b = BackendResult.fromJson({
+        'key': 'x',
+        'name': 'x',
+        'language': 'go',
+        'status': 'ok',
+        'implementation': {
+          'server': 'Express 5 on Bun (NODE_ENV=production)',
+          'concurrency': 'uvicorn, one worker per core (2)',
+          'pool':
+              'one persistent connection per thread (CONN_MAX_AGE 60); '
+              'PgBouncer transaction mode, 50 server connections',
+        },
+        'scenarios': {'db_mixed': scenarioJson(sustainable: 1)},
+      });
+      final facts = {for (final (k, v) in b.builtFacts) k: v};
+      expect(facts['Web server'], 'Express 5 on Bun');
+      expect(facts['How it handles many requests'], contains('(2)'));
+      expect(
+        facts['Database connections'],
+        'one persistent connection per thread; PgBouncer transaction mode, '
+        '50 server connections',
+      );
+    });
+
+    test('Compare names the size and kind of a tie at the top', () {
+      final verdict = compareVerdict({
+        'db_mixed': [res('a', 900), res('b', 300), res('c', 100)],
+        'no_db': [
+          res('a', 48000, capped: true),
+          res('b', 48000, capped: true),
+          res('c', 47000, capped: true),
+        ],
+      });
+      expect(
+        verdict,
+        contains("In one test, the top three tie at our testing tool's limit."),
+      );
+      expect(
+        placeSentence([res('a', 9), res('b', 5), res('c', 1)], res('b', 5)),
+        'One of the other 2 was faster.',
+      );
+    });
+
     test('everyone at the tool limit ties, and a fifth is a fifth', () {
       final answer = answerFor([
         res('a', 48000, capped: true),

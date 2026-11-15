@@ -445,17 +445,29 @@ class BackendResult {
     ('Web server', _plain(implementation?.server)),
     ('How it handles many requests', _plain(implementation?.concurrency)),
     ('Database access', _plain(implementation?.dbAccess)),
-    ('Database connections', _plain(implementation?.pool)),
+    ('Database connections', _plain(implementation?.pool, allBrackets: true)),
     ('How it is called', apiLabel),
     ('Storage', storageLabel),
     ('Versions', versionLine),
   ];
 
-  /// Drops setting names in brackets, "20 (database.maxConnectionCount)"
-  /// -> "20": they mean nothing to a reader.
-  static String? _plain(String? v) => v
-      ?.replaceAll(RegExp(r'\s*\((?:[A-Za-z0-9_-]+\.)+[A-Za-z0-9_-]+\)'), '')
-      .trim();
+  /// Drops setting names a reader cannot use: brackets holding a setting
+  /// ("(database.maxConnectionCount)", "(NODE_ENV=production)",
+  /// "(CONN_MAX_AGE 60)"), or with [allBrackets] every bracket, since the
+  /// connection counts carry library names there ("20 (HikariCP …)").
+  static String? _plain(String? v, {bool allBrackets = false}) {
+    if (v == null) return null;
+    final setting = RegExp(
+      r'[=.]|\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b|\b[A-Z][a-z]+[A-Z]\w*\b',
+    );
+    return v
+        .replaceAllMapped(RegExp(r'\s*\(([^()]*)\)'), (m) {
+          final inside = m[1]!;
+          return allBrackets || setting.hasMatch(inside) ? '' : m[0]!;
+        })
+        .replaceAllMapped(RegExp(r'\s+([,;])'), (m) => m[1]!)
+        .trim();
+  }
 
   /// Text used by the finder: name, language, framework, runtime, key.
   bool matches(String query) {

@@ -139,8 +139,8 @@ class FrameworkCharts extends StatelessWidget {
               title: 'Slow reply time at each step',
               subtitle:
                   '99 of every 100 replies were faster than this. Above the '
-                  "red line is too slow. Amber points stopped at our "
-                  "testing tool's limit, not the framework's.",
+                  'red line is too slow.'
+                  "${r.steps.any((s) => !s.pass && s.k6Bound) ? " Amber points stopped at our testing tool's limit, not the framework's." : ''}",
               child: StepLoadChart(
                 series: [StepSeries(b, r.steps)],
                 mode: StepChartMode.p99,
@@ -225,6 +225,9 @@ class _AllNumbers extends StatelessWidget {
     final t = Txt(p);
     final metrics = Metrics.available([result], Metrics.all);
     String fmt(Metric m, double v) => switch (m.unit) {
+      // "40,000+": the result hit our testing tool's limit.
+      Unit.rps when m.id == 'sustainable_rps' && result.loadgenBound =>
+        '${whole(v)}+',
       Unit.rps || Unit.ratio => whole(v),
       Unit.ms => msText(v),
       // The app's share of its own cores, as in every other table.
@@ -380,9 +383,10 @@ class _FrameworkHistory extends StatelessWidget {
         title: 'History',
         child: Text(
           runs.isEmpty
-              ? 'No earlier runs of ${backend.name} on this machine.'
-              : 'Only one run of ${backend.name} on this machine so far; '
-                    'later runs will show up here.',
+              ? 'No earlier runs of ${backend.name} with this method on '
+                    'this computer.'
+              : 'Only one run of ${backend.name} with this method on this '
+                    'computer so far; later runs will show up here.',
           style: t.small,
         ),
       );

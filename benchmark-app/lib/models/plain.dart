@@ -224,7 +224,8 @@ String placeSentence(List<Result> all, Result r) {
         '${same == 1 ? 'other' : 'others'}.';
   }
   if (more == n - 1) return 'The slowest of the $n.';
-  return '$more of the other ${n - 1} were faster.';
+  if (more == 1) return 'One of the other ${n - 1} was faster.';
+  return '${capFirst(numberWord(more))} of the other ${n - 1} were faster.';
 }
 
 /// What the inline reveal and the profile rows say after the number: the
@@ -313,7 +314,7 @@ List<Band> bandsFor(List<Result> results) {
 /// [f] (a share of the fastest, 0..1) in words: "about three-quarters as
 /// fast". Readers compare words and bar lengths, not numbers.
 String asFast(double f) {
-  if (f >= 0.95) return 'about as fast';
+  // "About as fast" would read as a tie, which only overlapping runs are.
   if (f >= 0.85) return 'nearly as fast';
   if (f >= 0.7) return 'about three-quarters as fast';
   if (f >= 0.6) return 'about two-thirds as fast';
@@ -427,13 +428,15 @@ String kindsOfWork(int n) => '${numberWord(n)} ${n == 1 ? 'test' : 'tests'}';
 String compareVerdict(Map<String, List<Result>> byTest) {
   final wins = <String, List<String>>{};
   final names = <String, String>{};
-  var contested = 0, close = 0;
+  var contested = 0;
+  final ties = <List<Result>>[];
   for (final e in byTest.entries) {
     final rs = sortResults(e.value);
     if (rs.length < 2) continue;
     contested++;
-    if (topGroup(rs).length > 1) {
-      close++;
+    final top = topGroup(rs);
+    if (top.length > 1) {
+      ties.add(top);
       continue;
     }
     (wins[rs[0].key] ??= []).add(e.key);
@@ -449,11 +452,17 @@ String compareVerdict(Map<String, List<Result>> byTest) {
   }
   final most = wins.values.map((w) => w.length).reduce(math.max);
   final leaders = wins.keys.where((k) => wins[k]!.length == most).toList();
+  final close = ties.length;
+  // Said the way the test's own sentence says it: "the top three tie at our
+  // testing tool's limit", or "the top two were about the same".
+  String tieWords(List<Result> t) => t.every((r) => r.capped)
+      ? "the top ${numberWord(t.length)} tie at our testing tool's limit"
+      : 'the top ${numberWord(t.length)} were about the same';
   final closeNote = close == 0
       ? ''
       : close == 1
-      ? ' In one test, the top two were about the same.'
-      : ' In ${numberWord(close)} tests, the top two were about the same.';
+      ? ' In one test, ${tieWords(ties.single)}.'
+      : ' In ${numberWord(close)} tests, there was a tie at the top.';
   if (leaders.length > 1) {
     return '${capFirst(joinAnd([for (final k in leaders) names[k]!]))} each '
         'were fastest in ${kindsOfWork(most)}.$closeNote';

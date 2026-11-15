@@ -143,7 +143,7 @@ class CompareView extends StatelessWidget {
               unit: unit,
               onOpen: nav.open,
             ),
-          const BarsNote(),
+          BarsNote(capped: byTest.values.expand((x) => x).any((r) => r.capped)),
           const SizedBox(height: 26),
           Fold(
             key: ValueKey('replay-${run.id}'),
@@ -212,14 +212,9 @@ class CompareView extends StatelessWidget {
                 },
               ),
             if (picked.length >= 2)
-              TextLink(
-                label: 'Copy a link',
+              CopyLink(
                 size: 15.5,
-                onTap: () => copyToClipboard(
-                  context,
-                  '${Uri.base.removeFragment()}#${locationOf(state)}',
-                  'Link copied',
-                ),
+                link: () => '${Uri.base.removeFragment()}#${locationOf(state)}',
               ),
             CalmButton(
               label: 'See all results',
@@ -741,9 +736,11 @@ class _SideBySide extends StatelessWidget {
       height: 1.3,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
-    String fmt(Metric m, double? v) {
+    String fmt(Metric m, double? v, {bool capped = false}) {
       if (v == null) return '—';
       return switch (m.unit) {
+        // "40,000+": the result hit our testing tool's limit.
+        Unit.rps when m.id == 'sustainable_rps' && capped => '${whole(v)}+',
         Unit.rps || Unit.ratio => whole(v),
         Unit.ms => msText(v),
         // The app's share of its own cores, as in every other table.
@@ -807,7 +804,11 @@ class _SideBySide extends StatelessWidget {
               for (final b in picked)
                 c(
                   Text(
-                    fmt(m, m.value(b.scenarios[test]!)),
+                    fmt(
+                      m,
+                      m.value(b.scenarios[test]!),
+                      capped: b.scenarios[test]!.loadgenBound,
+                    ),
                     textAlign: TextAlign.right,
                     style: cell,
                   ),

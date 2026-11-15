@@ -393,6 +393,9 @@ def headline(summary):
         per = {}
         for scenario, sc in b["scenarios"].items():
             per[scenario] = {k: (sc.get(k) or {}).get("median") for k in HEADLINE_KEYS if sc.get(k)}
+            # History marks a result that hit the testing tool's limit ("+").
+            if sc.get("loadgen_bound"):
+                per[scenario]["loadgen_bound"] = 1.0
         if per:
             out[b["key"]] = per
     return out

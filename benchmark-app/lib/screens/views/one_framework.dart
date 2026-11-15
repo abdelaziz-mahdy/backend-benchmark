@@ -296,13 +296,8 @@ class _ProfileActions extends StatelessWidget {
             label: 'Open compare (${state.compareKeys.length})',
             onTap: () => nav.go(HomeView.compare),
           ),
-        TextLink(
-          label: 'Copy a link',
-          onTap: () => copyToClipboard(
-            context,
-            '${Uri.base.removeFragment()}#${locationOf(state)}',
-            'Link copied',
-          ),
+        CopyLink(
+          link: () => '${Uri.base.removeFragment()}#${locationOf(state)}',
         ),
         if (full)
           Text(
@@ -352,7 +347,8 @@ class _TestRow extends StatelessWidget {
     final tieNote = top.length < 2
         ? ''
         : ' ${capFirst(numberWord(top.length))} frameworks tie for fastest'
-              "${top.every((x) => x.capped) ? " at our testing tool's limit" : ''}.";
+              "${top.every((x) => x.capped) ? " at our testing tool's limit" : ''}"
+              '${fastest ? '' : '; the top bar is one of them'}.';
     final share = max <= 0 ? 0.0 : (r.value / max).clamp(0.0, 1.0);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),

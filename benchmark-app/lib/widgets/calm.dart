@@ -2,6 +2,8 @@
 // type, hairlines, pill chips, outlined buttons, folds that open in place,
 // and a visible focus ring for keyboard users.
 
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -747,14 +749,44 @@ class Bullets extends StatelessWidget {
   }
 }
 
-/// Copies [text] and confirms it.
-void copyToClipboard(BuildContext context, String text, String done) {
-  Clipboard.setData(ClipboardData(text: text));
-  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-    SnackBar(
-      content: Text(done),
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 2),
+/// "Copy a link": copies [link] and confirms right where it was tapped,
+/// by reading "Link copied" for two seconds.
+class CopyLink extends StatefulWidget {
+  final String Function() link;
+  final double size;
+
+  const CopyLink({super.key, required this.link, this.size = 14.5});
+
+  @override
+  State<CopyLink> createState() => _CopyLinkState();
+}
+
+class _CopyLinkState extends State<CopyLink> {
+  bool _done = false;
+  Timer? _reset;
+
+  @override
+  void dispose() {
+    _reset?.cancel();
+    super.dispose();
+  }
+
+  void _copy() {
+    Clipboard.setData(ClipboardData(text: widget.link()));
+    _reset?.cancel();
+    setState(() => _done = true);
+    _reset = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _done = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    child: TextLink(
+      label: _done ? 'Link copied ✓' : 'Copy a link',
+      size: widget.size,
+      onTap: _copy,
     ),
   );
 }

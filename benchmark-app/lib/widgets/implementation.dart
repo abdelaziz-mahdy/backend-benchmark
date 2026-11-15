@@ -89,6 +89,7 @@ class FactList extends StatelessWidget {
                         style: body(14.5, color: context.palette.muted),
                       ),
                     ),
+                    const SizedBox(width: 12),
                     Expanded(child: value),
                   ],
                 ),

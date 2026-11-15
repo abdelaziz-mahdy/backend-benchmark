@@ -277,7 +277,7 @@ class _MethodScreenState extends State<MethodScreen> {
       section(
         'run',
         'This run and the computer',
-        '${run.machine.cpu} · ${longDate(run.date)} · change the run here.',
+        '${run.machine.cpu} · ${_when(state)} · change the run here.',
         Icons.computer,
         _thisRun(state, run),
       ),
@@ -551,8 +551,9 @@ class _MethodScreenState extends State<MethodScreen> {
           const Point(
             'Settings:',
             'each app runs the way it would for real visitors, not in a '
-                'test or debug mode. Languages that use one processor core '
-                'at a time start one copy per core. About 20 database '
+                'test or debug mode. Most frameworks whose language uses one '
+                'processor core at a time start one copy per core; Serverpod '
+                'runs a single copy (see its page). About 20 database '
                 'connections in total.',
           ),
           Point(
@@ -610,7 +611,7 @@ class _MethodScreenState extends State<MethodScreen> {
         RunPicker(state: state),
         const SizedBox(height: 24),
         Points([
-          if (run.date != null) Point('Date:', longDate(run.date)),
+          if (run.date != null) Point('Date:', '${capFirst(_when(state))}.'),
           Point('Computer:', '${run.machine.label} memory.'),
           if (docker['cpus'] != null)
             Point(
@@ -1604,7 +1605,9 @@ class RunPicker extends StatelessWidget {
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          runLabel(e),
+                          // The detail tells apart runs on the same computer.
+                          '${runLabel(e, newest: state.index.firstOrNull)} · '
+                          '${runDetail(e)}',
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -1628,4 +1631,17 @@ class RunPicker extends StatelessWidget {
       ),
     );
   }
+}
+
+/// When the shown numbers were measured: one date for a single run; for a
+/// combined view, "up to 5 October 2026, combined from 2 runs", since each
+/// framework keeps its own newest run.
+String _when(DashboardState state) {
+  final e = state.entry;
+  final date = longDate(e?.date ?? state.run?.date);
+  if (e == null || e.kind != RunKind.latest) return date;
+  return [
+    'up to $date',
+    if (e.runs.length > 1) 'combined from ${numberWord(e.runs.length)} runs',
+  ].join(', ');
 }
