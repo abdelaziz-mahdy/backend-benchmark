@@ -2,6 +2,8 @@
 // type, hairlines, pill chips, outlined buttons, folds that open in place,
 // and a visible focus ring for keyboard users.
 
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -404,8 +406,30 @@ class _FoldState extends State<Fold> {
   late bool _open = widget.initiallyOpen;
   final _content = GlobalKey(debugLabel: 'fold content');
 
+  /// A fold with a name keeps its open state in the page's storage, so
+  /// Back to its view finds it as it was left.
+  String? get _memory => switch (widget.key) {
+    final ValueKey<String> k => 'fold-${k.value}',
+    _ => null,
+  };
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final id = _memory;
+    if (id == null) return;
+    final saved = PageStorage.maybeOf(
+      context,
+    )?.readState(context, identifier: id);
+    if (saved is bool) _open = saved;
+  }
+
   void _toggle() {
     setState(() => _open = !_open);
+    final id = _memory;
+    if (id != null) {
+      PageStorage.maybeOf(context)?.writeState(context, _open, identifier: id);
+    }
     widget.onChanged?.call(_open);
     // What opened must be seen: a fold near the bottom of the screen
     // scrolls up so its content shows, not just its triangle.
@@ -747,14 +771,44 @@ class Bullets extends StatelessWidget {
   }
 }
 
-/// Copies [text] and confirms it.
-void copyToClipboard(BuildContext context, String text, String done) {
-  Clipboard.setData(ClipboardData(text: text));
-  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-    SnackBar(
-      content: Text(done),
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 2),
+/// "Copy a link": copies [link] and confirms right where it was tapped,
+/// by reading "Link copied" for two seconds.
+class CopyLink extends StatefulWidget {
+  final String Function() link;
+  final double size;
+
+  const CopyLink({super.key, required this.link, this.size = 14.5});
+
+  @override
+  State<CopyLink> createState() => _CopyLinkState();
+}
+
+class _CopyLinkState extends State<CopyLink> {
+  bool _done = false;
+  Timer? _reset;
+
+  @override
+  void dispose() {
+    _reset?.cancel();
+    super.dispose();
+  }
+
+  void _copy() {
+    Clipboard.setData(ClipboardData(text: widget.link()));
+    _reset?.cancel();
+    setState(() => _done = true);
+    _reset = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _done = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    child: TextLink(
+      label: _done ? 'Link copied ✓' : 'Copy a link',
+      size: widget.size,
+      onTap: _copy,
     ),
   );
 }
@@ -821,8 +875,10 @@ class SpeedBar extends StatelessWidget {
               if (capped)
                 Positioned(
                   left: w + 2,
-                  top: 3,
-                  bottom: 3,
+                  // Inset in proportion, so thin bars (the table's) still
+                  // show their stripes.
+                  top: height * 0.18,
+                  bottom: height * 0.18,
                   width: stripe - 2,
                   child: CustomPaint(painter: _BarStripes(color)),
                 ),
@@ -916,3 +972,23 @@ IconData testIcon(String id) => switch (id) {
   'no_db' || 'no_db_test' => Icons.bolt_outlined,
   _ => Icons.science_outlined,
 };
+
+/// Floating messages, counted while open, so a lesser one (one that also
+/// shows on the page) never pushes away another, such as an Undo.
+abstract final class Messages {
+  static int open = 0;
+
+  /// Shows [bar] in place of the current message.
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? show(
+    BuildContext context,
+    SnackBar bar,
+  ) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return null;
+    messenger.hideCurrentSnackBar();
+    final c = messenger.showSnackBar(bar);
+    open++;
+    c.closed.whenComplete(() => open--);
+    return c;
+  }
+}

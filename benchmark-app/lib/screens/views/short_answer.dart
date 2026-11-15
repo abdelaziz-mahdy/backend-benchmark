@@ -135,6 +135,10 @@ class SpeedBars extends StatefulWidget {
   /// Shows the "Longer bar = …" note under the bars.
   final bool legend;
 
+  /// The framework whose page this is: its box offers no "More about" (it
+  /// would only lead back to the same page).
+  final String? page;
+
   const SpeedBars({
     super.key,
     required this.test,
@@ -144,6 +148,7 @@ class SpeedBars extends StatefulWidget {
     required this.onOpen,
     this.all,
     this.legend = true,
+    this.page,
   });
 
   @override
@@ -154,8 +159,31 @@ class _SpeedBarsState extends State<SpeedBars> {
   String? _open;
   final _reveal = GlobalKey(debugLabel: 'reveal');
 
+  /// The open box is kept in the page's storage under this set of bars'
+  /// key, so Back to this view finds it open as it was left.
+  String? get _memory => switch (widget.key) {
+    final ValueKey<String> k => 'open-bar-${k.value}',
+    _ => null,
+  };
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final id = _memory;
+    if (id != null && _open == null) {
+      final saved = PageStorage.maybeOf(
+        context,
+      )?.readState(context, identifier: id);
+      if (saved is String) _open = saved;
+    }
+  }
+
   void _toggle(String key) {
     setState(() => _open = _open == key ? null : key);
+    final id = _memory;
+    if (id != null) {
+      PageStorage.maybeOf(context)?.writeState(context, _open, identifier: id);
+    }
     // Closing one box can move the tapped row up; keep its box in view.
     if (_open != null) bringIntoView(_reveal);
   }
@@ -193,7 +221,7 @@ class _SpeedBarsState extends State<SpeedBars> {
                       all: widget.all ?? widget.results,
                       test: widget.test,
                       unit: widget.unit,
-                      onOpen: widget.onOpen,
+                      onOpen: r.key == widget.page ? null : widget.onOpen,
                     ),
                   ),
                 ),
@@ -221,7 +249,8 @@ class _SpeedBarsState extends State<SpeedBars> {
       expanded: isOpen,
       radius: 10,
       semanticLabel:
-          '${r.name}, ${asFast(share)} as the fastest. '
+          '${r.name}, '
+          '${topGroup(widget.results, all: widget.all).any((x) => x.key == r.key) ? (topGroup(widget.results, all: widget.all).length > 1 ? 'tied for fastest' : 'the fastest') : '${asFast(share)} as the fastest'}. '
           'Show its number.',
       builder: (context, hovered) => Container(
         constraints: const BoxConstraints(minHeight: 44),
@@ -282,7 +311,9 @@ class Reveal extends StatelessWidget {
   final List<Result> all;
   final String test;
   final String unit;
-  final void Function(String key) onOpen;
+
+  /// Opens the framework's page; null on that page itself.
+  final void Function(String key)? onOpen;
 
   const Reveal({
     super.key,
@@ -335,12 +366,14 @@ class Reveal extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(sentences.join(' '), style: t.smallText),
-          const SizedBox(height: 12),
-          CalmButton(
-            label: 'More about ${result.name}',
-            accent: true,
-            onTap: () => onOpen(result.key),
-          ),
+          if (onOpen case final open?) ...[
+            const SizedBox(height: 12),
+            CalmButton(
+              label: 'More about ${result.name}',
+              accent: true,
+              onTap: () => open(result.key),
+            ),
+          ],
         ],
       ),
     );

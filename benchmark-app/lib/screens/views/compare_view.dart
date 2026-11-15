@@ -82,16 +82,60 @@ class CompareView extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         _Picked(state: state, picked: picked),
-        if (parked.isNotEmpty)
+        // Set-aside picks, said for what they are: missing from this run;
+        // over the most Compare holds; or, once a place is free, ready to
+        // come back with one tap.
+        if ([
+              for (final k in parked)
+                if (run.backend(k) == null) k,
+            ]
+            case final gone when gone.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              '${capFirst(joinAnd([for (final k in parked) state.nameOf(k)]))} '
-              '${parked.length == 1 ? 'is' : 'are'} not in this run, so '
-              '${parked.length == 1 ? 'it is' : 'they are'} left out. '
-              '${parked.length == 1 ? 'It comes' : 'They come'} back when you '
-              'change to a run that has ${parked.length == 1 ? 'it' : 'them'}.',
+              '${capFirst(joinAnd([for (final k in gone) state.nameOf(k)]))} '
+              '${gone.length == 1 ? 'is' : 'are'} not in this run, so '
+              '${gone.length == 1 ? 'it is' : 'they are'} set aside. '
+              '${gone.length == 1 ? 'It comes' : 'They come'} back when you '
+              'change to a run that has ${gone.length == 1 ? 'it' : 'them'}.',
               style: t.small,
+            ),
+          ),
+        if ([
+              for (final k in parked)
+                if (run.backend(k) != null) k,
+            ]
+            case final here when here.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Wrap(
+              spacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  picked.length >= DashboardState.maxCompare
+                      ? '${capFirst(joinAnd([for (final k in here) state.nameOf(k)]))} '
+                            '${here.length == 1 ? 'is' : 'are'} set aside: Compare '
+                            'holds ${numberWord(DashboardState.maxCompare)}. Remove a '
+                            'pick to bring ${here.length == 1 ? 'it' : 'one'} back.'
+                      : '${capFirst(joinAnd([for (final k in here) state.nameOf(k)]))} '
+                            '${here.length == 1 ? 'was' : 'were'} set aside when '
+                            'Compare was full. There is room now'
+                            '${here.length > DashboardState.maxCompare - picked.length ? ' for ${numberWord(DashboardState.maxCompare - picked.length)}' : ''}.',
+                  style: t.small,
+                ),
+                if (picked.length < DashboardState.maxCompare)
+                  TextLink(
+                    // Promise only what the tap does: it fills the free places.
+                    label: here.length == 1
+                        ? 'Bring it back'
+                        : here.length <=
+                              DashboardState.maxCompare - picked.length
+                        ? 'Bring them back'
+                        : 'Bring back ${joinAnd([for (final k in here.take(DashboardState.maxCompare - picked.length)) state.nameOf(k)])}',
+                    onTap: state.restoreParked,
+                  ),
+              ],
             ),
           ),
         if (picked.length < 2) ...[
@@ -127,7 +171,13 @@ class CompareView extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 580),
             child: Semantics(
               liveRegion: true,
-              child: Text(compareVerdict(byTest), style: t.answer),
+              child: Text(
+                compareVerdict(
+                  byTest,
+                  full: {for (final s in tests) s: resultsFor(run, s)},
+                ),
+                style: t.answer,
+              ),
             ),
           ),
           const SizedBox(height: 18),
@@ -143,35 +193,41 @@ class CompareView extends StatelessWidget {
               unit: unit,
               onOpen: nav.open,
             ),
-          const BarsNote(),
+          BarsNote(capped: byTest.values.expand((x) => x).any((r) => r.capped)),
           const SizedBox(height: 26),
-          Fold(
-            key: ValueKey('replay-${run.id}'),
-            title: 'Watch the load climb',
-            subtitle:
-                'Replays each framework\'s recorded steps, one rate at a '
-                'time.',
-            topLine: true,
-            child: _WithTestPicker(
-              child: _Replay(state: state, picked: picked),
+          // The old method recorded no load steps, so the two step-based
+          // sections would only open onto "nothing recorded".
+          if (!run.isLegacy) ...[
+            Fold(
+              key: ValueKey('replay-${run.id}'),
+              title: 'Watch the load climb',
+              subtitle:
+                  'Replays each framework\'s recorded steps, one rate at a '
+                  'time.',
+              topLine: true,
+              child: _WithTestPicker(
+                child: _Replay(state: state, picked: picked),
+              ),
             ),
-          ),
-          Fold(
-            key: ValueKey('shared-${run.id}'),
-            title: 'At a shared load',
-            subtitle:
-                'Reply times, processor and memory at a rate all of them '
-                'handled.',
-            child: _WithTestPicker(
-              child: _Shared(state: state, picked: picked),
+            Fold(
+              key: ValueKey('shared-${run.id}'),
+              title: 'At a shared load',
+              subtitle:
+                  'Reply times, processor and memory at a rate all of them '
+                  'handled.',
+              child: _WithTestPicker(
+                child: _Shared(state: state, picked: picked),
+              ),
             ),
-          ),
+          ],
           Fold(
-            key: ValueKey('charts-${run.id}'),
+            key: ValueKey('charts-${run.id}-${state.compareSet}'),
             title: 'Charts and all numbers',
-            subtitle:
-                'The load steps, processor and memory over time, every '
-                'measured number side by side, and how each is built.',
+            subtitle: run.isLegacy
+                ? 'Processor and memory over time, every measured number '
+                      'side by side, and how each is built.'
+                : 'The load steps, processor and memory over time, every '
+                      'measured number side by side, and how each is built.',
             child: _WithTestPicker(
               child: _Charts(state: state, picked: picked),
             ),
@@ -182,44 +238,39 @@ class CompareView extends StatelessWidget {
           spacing: 10,
           runSpacing: 10,
           children: [
-            if (picked.isNotEmpty)
+            if (picked.isNotEmpty || parked.isNotEmpty)
               CalmButton(
                 label: 'Clear all',
                 onTap: () {
                   final was = [...state.compareKeys];
+                  final aside = [...state.parkedCompare];
+                  final away = state.awayForRun;
+                  final n = was.length + aside.length;
                   state.clearCompare();
-                  ScaffoldMessenger.maybeOf(context)
-                    ?..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Cleared ${numberWord(was.length)} '
-                          '${was.length == 1 ? 'framework' : 'frameworks'}.',
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                        action: SnackBarAction(
-                          label: 'Undo',
-                          onPressed: () {
-                            for (final k in was) {
-                              if (!state.compareKeys.contains(k)) {
-                                state.toggleCompare(k);
-                              }
-                            }
-                          },
-                        ),
+                  Messages.show(
+                    context,
+                    SnackBar(
+                      // Set-aside picks count too, and Undo puts both back.
+                      content: Text(
+                        'Cleared ${numberWord(n)} '
+                        '${n == 1 ? 'framework' : 'frameworks'}.',
                       ),
-                    );
+                      behavior: SnackBarBehavior.floating,
+                      // Times out, so a stale Undo cannot replace newer
+                      // picks.
+                      persist: false,
+                      action: SnackBarAction(
+                        label: 'Undo',
+                        onPressed: () => state.undoClear(was, aside, away),
+                      ),
+                    ),
+                  );
                 },
               ),
             if (picked.length >= 2)
-              TextLink(
-                label: 'Copy a link',
+              CopyLink(
                 size: 15.5,
-                onTap: () => copyToClipboard(
-                  context,
-                  '${Uri.base.removeFragment()}#${locationOf(state)}',
-                  'Link copied',
-                ),
+                link: () => '${Uri.base.removeFragment()}#${locationOf(state)}',
               ),
             CalmButton(
               label: 'See all results',
@@ -259,7 +310,7 @@ class _Picked extends StatelessWidget {
             for (final b in picked)
               Pressable(
                 key: ValueKey('picked-${b.key}'),
-                onTap: () => state.toggleCompare(b.key),
+                onTap: () => state.toggleCompare(b.key, restore: true),
                 radius: 999,
                 semanticLabel: 'Remove ${b.name}',
                 builder: (context, hovered) => Container(
@@ -289,7 +340,9 @@ class _Picked extends StatelessWidget {
                   ),
                 ),
               ),
-            if (!full && picked.isNotEmpty)
+            // Only when there is something left to add: an empty menu
+            // would be a button that does nothing.
+            if (!full && picked.isNotEmpty && others.isNotEmpty)
               PopupMenuButton<String>(
                 tooltip: 'Add a framework',
                 position: PopupMenuPosition.under,
@@ -325,7 +378,9 @@ class _Picked extends StatelessWidget {
               ),
           ],
         ),
-        if (full)
+        // The set-aside note says the same when it shows; one line, not two.
+        if (full &&
+            !state.parkedCompare.any((k) => state.run!.backend(k) != null))
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
@@ -384,9 +439,16 @@ class _TestBlock extends StatelessWidget {
           ),
           Text(info.what, style: t.small),
           const SizedBox(height: 10),
-          Text(compareTestSentence(results), style: t.body),
+          Text(compareTestSentence(results, all: all), style: t.body),
           const SizedBox(height: 10),
           SpeedBars(
+            // A new set of picks, or another run, starts with every box
+            // closed.
+            key: ValueKey(
+              'compare-bars-${context.read<DashboardState>().run?.id}-'
+              '${context.read<DashboardState>().compareSet}-$test-'
+              '${[for (final r in results) r.key].join(',')}',
+            ),
             test: test,
             results: results,
             all: all,
@@ -428,11 +490,10 @@ class _Replay extends StatelessWidget {
       children: [
         Text(
           'Each step asked for a fixed number of requests a second. A step '
-          'failed when 99 in 100 replies were not back within '
-          '${formatMs(slo.p99Ms)}, when ${(slo.errorRate * 100).round()} in '
-          '100 or more failed, or when fewer than '
-          '${(slo.servedRatio * 100).round()} in 100 were handled. Press play '
-          'or drag the slider.',
+          'passed only when 99 of every 100 replies came back '
+          '${sloPhrase(run)}, ${errorPhrase(run)}, and it answered at least '
+          '${keptUp(run)} of the requests sent. Press play or drag the '
+          'slider.',
           style: Txt.of(context).small,
         ),
         const SizedBox(height: 12),
@@ -476,58 +537,83 @@ class _Shared extends StatelessWidget {
       fontSize: 14.5,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
+    // Phones: a smaller header and a narrower first column, so a heading
+    // like "Processor" never breaks mid-word.
+    final narrow = MediaQuery.sizeOf(context).width < 480;
     Widget c(String text, {bool left = false, bool head = false}) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       child: Text(
         text,
         textAlign: left ? TextAlign.left : TextAlign.right,
-        style: head ? cell.copyWith(color: p.muted, height: 1.2) : cell,
+        style: head
+            ? cell.copyWith(
+                color: p.muted,
+                height: 1.2,
+                fontSize: narrow ? 12.5 : null,
+              )
+            : cell,
       ),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'All ${numberWord(picked.length)} handled ${whole(shared.rps)} '
+          '${picked.length == 2 ? 'Both' : 'All ${numberWord(picked.length)}'} '
+          'handled ${whole(shared.rps)} '
           'requests a second. At that same rate, from each one\'s recorded '
           'steps:',
           style: t.body,
         ),
         const SizedBox(height: 8),
-        Table(
-          columnWidths: const {0: FlexColumnWidth(1.5)},
-          defaultVerticalAlignment: TableCellVerticalAlignment.bottom,
-          children: [
-            TableRow(
-              children: [
-                c('Framework', left: true, head: true),
-                for (final r in rows) c(r.$1, head: true),
-              ],
-            ),
-            for (final b in picked)
-              TableRow(
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: p.line)),
+        if (narrow)
+          ByMeasure(
+            blocks: [
+              for (final r in rows)
+                (
+                  r.$1,
+                  null,
+                  [
+                    for (final b in picked)
+                      (b, Text(r.$2(shared.steps[b.key]!), style: cell)),
+                  ],
                 ),
+            ],
+          )
+        else
+          Table(
+            columnWidths: {0: FlexColumnWidth(narrow ? 1.1 : 1.5)},
+            defaultVerticalAlignment: TableCellVerticalAlignment.bottom,
+            children: [
+              TableRow(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 4,
-                    ),
-                    child: Row(
-                      children: [
-                        LangBadge.of(b.key, b.language, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text(b.name, style: cell)),
-                      ],
-                    ),
-                  ),
-                  for (final r in rows) c(r.$2(shared.steps[b.key]!)),
+                  c('Framework', left: true, head: true),
+                  for (final r in rows) c(r.$1, head: true),
                 ],
               ),
-          ],
-        ),
+              for (final b in picked)
+                TableRow(
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: p.line)),
+                  ),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          LangBadge.of(b.key, b.language, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(b.name, style: cell)),
+                        ],
+                      ),
+                    ),
+                    for (final r in rows) c(r.$2(shared.steps[b.key]!)),
+                  ],
+                ),
+            ],
+          ),
         const SizedBox(height: 4),
         Bullets([
           'Unlike the main numbers, these are at the same rate for all of '
@@ -577,7 +663,11 @@ class _ChartsState extends State<_Charts> {
     final steps = [
       for (final b in here)
         if (b.scenarios[s]!.steps.isNotEmpty)
-          StepSeries(b, b.scenarios[s]!.steps),
+          StepSeries(
+            b,
+            b.scenarios[s]!.steps,
+            capped: b.scenarios[s]!.loadgenBound,
+          ),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -587,7 +677,8 @@ class _ChartsState extends State<_Charts> {
             title: 'Requests handled at each step',
             subtitle:
                 'Where a line leaves the dashed diagonal, that framework '
-                'stopped keeping up.',
+                'stopped keeping up, or our testing tool could send no more.'
+                "${steps.any((x) => x.anyToolLimited) ? " Amber squares stopped at our testing tool's limit, not the framework's." : ''}",
             child: Column(
               children: [
                 StepLoadChart(series: steps, mode: StepChartMode.throughput),
@@ -600,7 +691,8 @@ class _ChartsState extends State<_Charts> {
             title: 'Slow reply time at each step',
             subtitle:
                 'Above the red line is too slow; hollow points missed '
-                'a limit.',
+                'a limit.'
+                "${steps.any((x) => x.anyToolLimited) ? " Amber squares stopped at our testing tool's limit, not the framework's." : ''}",
             child: Column(
               children: [
                 StepLoadChart(series: steps, mode: StepChartMode.p99),
@@ -614,8 +706,9 @@ class _ChartsState extends State<_Charts> {
         ChartBlock(
           title: 'All numbers side by side',
           subtitle:
-              'Each one at its own result, so only the first rows are a '
-              'race. Hover over or press and hold a name for what it means.',
+              '${widget.state.run!.isLegacy ? 'The old test sent every framework the same traffic.' : 'Each one at its own result, so only the first rows are a race.'}'
+              // Phones show each number's meaning under its name.
+              '${MediaQuery.sizeOf(context).width < 480 ? '' : ' Hover over or press and hold a name for what it means.'}',
           child: _SideBySide(state: state, picked: here, test: s),
         ),
       ],
@@ -652,19 +745,35 @@ class _ChartsState extends State<_Charts> {
       _OverTime.rps => TimeSeriesChart(
         series: series,
         field: field,
-        format: formatNumber,
+        format: whole,
       ),
-      _ => TimeSeriesChart(
+      _OverTime.cpu => TimeSeriesChart(
+        series: series,
+        field: field,
+        format: (v) => '${v.toStringAsFixed(0)}%',
+        divideBy: appCoreCount(widget.state.run!).toDouble(),
+        maxValue: 100,
+        ceiling: 100,
+        ceilingLabel: appCoreCount(widget.state.run!) == 1
+            ? 'its core'
+            : 'all its cores',
+      ),
+      _OverTime.dbCpu => TimeSeriesChart(
         series: series,
         field: field,
         format: (v) => '${v.toStringAsFixed(0)}%',
       ),
     };
+    final cores = appCoreCount(widget.state.run!);
     return ChartBlock(
       title: 'Over time',
       subtitle:
-          'The whole test, warm-up included. Faster frameworks ran more '
-          'steps, so their lines are longer. 100% processor is one core.',
+          '${widget.state.run!.isLegacy ? 'The whole test; every framework ran for the same time.' : 'The whole test, warm-up included. A line runs longer when its framework kept up with more steps, or when its app had to be restarted during the test.'}'
+          '${switch (mode) {
+            _OverTime.cpu => ' Processor: how much of its ${numberWord(cores)} ${cores == 1 ? 'core' : 'cores'} each one used; 100% is ${cores == 1 ? 'that core' : 'all of them'}.',
+            _OverTime.dbCpu => " Database: the database's processor use; 100% is one core.",
+            _ => '',
+          }}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -721,9 +830,11 @@ class _SideBySide extends StatelessWidget {
       height: 1.3,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
-    String fmt(Metric m, double? v) {
+    String fmt(Metric m, double? v, {bool capped = false}) {
       if (v == null) return '—';
       return switch (m.unit) {
+        // "40,000+": the result hit our testing tool's limit.
+        Unit.rps when m.id == 'sustainable_rps' && capped => '${whole(v)}+',
         Unit.rps || Unit.ratio => whole(v),
         Unit.ms => msText(v),
         // The app's share of its own cores, as in every other table.
@@ -738,15 +849,93 @@ class _SideBySide extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 6),
       child: child,
     );
+    // The same labels as the profile's "How it is built" card.
     final impl = <(String, String? Function(BackendResult))>[
-      ('Server', (b) => b.implementation?.server),
-      ('Concurrency', (b) => b.implementation?.concurrency),
-      ('Database access', (b) => b.implementation?.dbAccess),
-      ('Database connections', (b) => b.implementation?.pool),
-      ('How it is called', (b) => b.apiLabel),
-      ('Storage', (b) => b.storageLabel),
-      ('Versions', (b) => b.subtitle.isEmpty ? null : b.subtitle),
+      for (final (i, (label, _)) in picked.first.builtFacts.indexed)
+        (label, (b) => b.builtFacts[i].$2),
     ];
+    // Build details a run did not record come from today's code; say so,
+    // as the profile's card does.
+    final today = [
+      for (final b in picked)
+        if (b.implementationFrom == 'manifest') b.name,
+    ];
+    final Widget? fromToday = today.isEmpty
+        ? null
+        : Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'How ${joinAnd(today)} ${today.length == 1 ? 'is' : 'are'} '
+              "built comes from today's code: this run did not record it.",
+              style: t.small,
+            ),
+          );
+    // A phone gets one block per number, one row per framework, instead
+    // of a table wider than the screen.
+    if (MediaQuery.sizeOf(context).width < 480) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ByMeasure(
+            blocks: [
+              for (final m in metrics)
+                (
+                  plainMetricLabel(m),
+                  metricMeaning(m, state.run!),
+                  [
+                    for (final b in picked)
+                      (
+                        b,
+                        Text(
+                          fmt(
+                            m,
+                            m.value(b.scenarios[test]!),
+                            capped: b.scenarios[test]!.loadgenBound,
+                          ),
+                          style: cell,
+                        ),
+                      ),
+                  ],
+                ),
+              for (final (label, value) in impl)
+                if (picked.any((b) => value(b) != null))
+                  (
+                    label,
+                    null,
+                    [
+                      for (final b in picked)
+                        (
+                          b,
+                          Text(
+                            value(b) ?? '—',
+                            style: cell.copyWith(fontSize: 13),
+                          ),
+                        ),
+                    ],
+                  ),
+              (
+                'Code',
+                null,
+                [
+                  for (final b in picked)
+                    (
+                      b,
+                      b.sourceUrl == null
+                          ? Text('—', style: cell)
+                          : SourceLink(
+                              url: b.sourceUrlAt(sha) ?? b.sourceUrl!,
+                              label: 'Code on GitHub',
+                              fontSize: 13,
+                            ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          ?fromToday,
+        ],
+      );
+    }
     final table = Table(
       columnWidths: {
         0: const FixedColumnWidth(170),
@@ -768,6 +957,9 @@ class _SideBySide extends StatelessWidget {
                       child: Text(
                         b.name,
                         textAlign: TextAlign.right,
+                        // A wrapped name stays as wide as its longest line,
+                        // so the badge stays next to it.
+                        textWidthBasis: TextWidthBasis.longestLine,
                         style: cell.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -784,14 +976,18 @@ class _SideBySide extends StatelessWidget {
             children: [
               c(
                 Tooltip(
-                  message: m.help,
+                  message: metricMeaning(m, state.run!),
                   child: Text(plainMetricLabel(m), style: cell),
                 ),
               ),
               for (final b in picked)
                 c(
                   Text(
-                    fmt(m, m.value(b.scenarios[test]!)),
+                    fmt(
+                      m,
+                      m.value(b.scenarios[test]!),
+                      capped: b.scenarios[test]!.loadgenBound,
+                    ),
                     textAlign: TextAlign.right,
                     style: cell,
                   ),
@@ -815,7 +1011,7 @@ class _SideBySide extends StatelessWidget {
             border: Border(top: BorderSide(color: p.line)),
           ),
           children: [
-            c(Text('Source code', style: cell.copyWith(color: p.muted))),
+            c(Text('Code', style: cell.copyWith(color: p.muted))),
             for (final b in picked)
               c(
                 b.sourceUrl == null
@@ -824,7 +1020,7 @@ class _SideBySide extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: SourceLink(
                           url: b.sourceUrlAt(sha) ?? b.sourceUrl!,
-                          label: 'backends/${b.path}',
+                          label: 'Code on GitHub',
                           fontSize: 13,
                         ),
                       ),
@@ -833,9 +1029,12 @@ class _SideBySide extends StatelessWidget {
         ),
       ],
     );
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: table,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SingleChildScrollView(scrollDirection: Axis.horizontal, child: table),
+        ?fromToday,
+      ],
     );
   }
 }
@@ -856,4 +1055,67 @@ class _WithTestPicker extends StatelessWidget {
       child,
     ],
   );
+}
+
+/// Numbers for a phone: one block per number (its name, and a line per
+/// framework with its badge, name and value), where a side-by-side table
+/// would run off the screen or break names mid-word.
+class ByMeasure extends StatelessWidget {
+  final List<(String, String?, List<(BackendResult, Widget)>)> blocks;
+
+  const ByMeasure({super.key, required this.blocks});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = Txt(p);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (label, help, rows) in blocks)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: p.line)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  label,
+                  style: t.small.copyWith(fontWeight: FontWeight.w700),
+                ),
+                if (help != null)
+                  Text(help, style: t.small.copyWith(fontSize: 13)),
+                const SizedBox(height: 6),
+                for (final (b, value) in rows)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        LangBadge.of(b.key, b.language, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            b.name,
+                            style: t.body.copyWith(fontSize: 14.5),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: value,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
 }

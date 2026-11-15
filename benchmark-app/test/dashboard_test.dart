@@ -7,6 +7,7 @@ import 'package:benchmark_app/models/results.dart';
 import 'package:benchmark_app/screens/views/short_answer.dart';
 import 'package:benchmark_app/services/results_service.dart';
 import 'package:benchmark_app/state/dashboard_state.dart';
+import 'package:flutter/services.dart' show ByteData;
 import 'package:flutter_test/flutter_test.dart' hide closeTo;
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
@@ -335,15 +336,21 @@ void main() {
       expect(whole(1234567.4), '1,234,567');
     });
 
-    test('runs whose ranges overlap are too close to call', () {
+    test('about the same only when each middle is in the other range', () {
       final all = [
         res('a', 5000, low: 4000, high: 6000),
-        res('b', 4500, low: 4400, high: 4600),
+        res('b', 4800, low: 4600, high: 5100),
         res('c', 3000, low: 2900, high: 3100),
       ];
       expect(closeTo(all, all[0]).map((r) => r.key), ['b']);
       expect(closeTo(all, all[2]), isEmpty);
       expect(closeSentence(all, all[0]), contains('b'));
+      // One wide range is not enough: serverpod (1,900 to 5,750) is not
+      // "about the same" as fastapi at 2,900 with tight tries.
+      final wide = res('serverpod', 4250, low: 1900, high: 5750);
+      final tight = res('fastapi', 2900, low: 2800, high: 3000);
+      expect(wide.overlaps(tight), isFalse);
+      expect(answerFor([wide, tight]), startsWith('Serverpod is the fastest'));
     });
 
     test('bands group by round numbers, highest first', () {
@@ -378,6 +385,195 @@ void main() {
       );
       expect(answer, isNot(contains('9,000')));
       expect(answerFor([]), contains('No framework'));
+    });
+
+    test('how it is built drops setting names a reader cannot use', () {
+      final b = BackendResult.fromJson({
+        'key': 'x',
+        'name': 'x',
+        'language': 'go',
+        'status': 'ok',
+        'implementation': {
+          'server': 'Express 5 on Bun (NODE_ENV=production)',
+          'concurrency': 'uvicorn, one worker per core (2)',
+          'pool':
+              'one persistent connection per thread (CONN_MAX_AGE 60); '
+              'PgBouncer transaction mode, 50 server connections',
+        },
+        'scenarios': {'db_mixed': scenarioJson(sustainable: 1)},
+      });
+      final facts = {for (final (k, v) in b.builtFacts) k: v};
+      expect(facts['Web server'], 'Express 5 on Bun');
+      expect(facts['How it handles many requests'], contains('(2)'));
+      expect(
+        facts['Database connections'],
+        'one persistent connection per thread; PgBouncer transaction mode, '
+        '50 server connections',
+      );
+    });
+
+    test('Compare names the size and kind of a tie at the top', () {
+      final verdict = compareVerdict({
+        'db_mixed': [res('a', 900), res('b', 300), res('c', 100)],
+        'no_db': [
+          res('a', 48000, capped: true),
+          res('b', 48000, capped: true),
+          res('c', 47000, capped: true),
+        ],
+      });
+      expect(
+        verdict,
+        contains("In one test, the top three tie at our testing tool's limit."),
+      );
+      expect(
+        placeSentence([res('a', 9), res('b', 5), res('c', 1)], res('b', 5)),
+        'One of the other 2 was faster.',
+      );
+    });
+
+    test('a leader at the tool limit carries the caveat; ties are counted', () {
+      expect(
+        answerFor([res('a', 40000, capped: true), res('b', 30000)]),
+        'A is the fastest. Next is b, about three-quarters as fast. '
+        "A hit our testing tool's limit, so it may be faster.",
+      );
+      expect(
+        placeSentence([
+          res('a', 9),
+          res('b', 5),
+          res('c', 5),
+          res('d', 1),
+        ], res('b', 5)),
+        'One of the other 3 was faster, and one was about the same.',
+      );
+    });
+
+    test('one tie rule for the answer, a bar box and Compare', () {
+      final rust = res('rust', 32000, low: 24000, high: 32000, capped: true);
+      final bun = res('bun', 24000, low: 24000, high: 32000);
+      final node = res('node', 24000, low: 16000, high: 24000);
+      final all = [rust, bun, node];
+      // The answer tells rust apart, so bun's box does not call them the
+      // same; bun and node, on the same side, still are.
+      expect(closeTo(all, bun).map((r) => r.key), ['node']);
+      // Compare with only rust and bun picked follows the whole test.
+      expect(
+        compareTestSentence([rust, bun], all: all),
+        startsWith('Rust is the fastest.'),
+      );
+    });
+
+    test('a close call is never counted as faster', () {
+      final all = [
+        res('top', 40000),
+        res('foam', 16000, low: 7750, high: 16000),
+        res('spring', 15500, low: 15500, high: 22000),
+      ];
+      expect(
+        placeSentence(all, all[2]),
+        'One of the other 2 was faster, and one was about the same.',
+      );
+    });
+
+    test('about-the-same followers share one speed word', () {
+      expect(
+        answerFor([
+          res('rust', 29000),
+          res('spring', 18000, low: 15500, high: 18000),
+          res('asp', 17000, low: 17000, high: 19000),
+        ]),
+        'Rust is the fastest. Next are spring and asp, about two-thirds as fast.',
+      );
+    });
+
+    test('the same speed word is said once; two tests are "both"', () {
+      expect(
+        compareTestSentence([
+          res('a', 46000),
+          res('b', 25000),
+          res('c', 21000),
+        ]),
+        'A is the fastest. Next are b and c, about half as fast.',
+      );
+      expect(
+        compareVerdict({
+          'db_test': [res('a', 900), res('b', 300)],
+          'no_db_test': [res('a', 900), res('b', 300)],
+        }),
+        startsWith('A was fastest in both tests.'),
+      );
+    });
+
+    test("a bar's box never names one the sentence grouped elsewhere", () {
+      final all = [
+        res('bun', 24000),
+        res('asp', 16000, low: 12000, high: 16000),
+        res('go', 16000, low: 16000, high: 16000),
+        res('node', 12000, low: 12000, high: 16000),
+      ];
+      // The sentence puts asp and go together and node after them, so
+      // asp's box does not call node about the same.
+      expect(closeTo(all, all[1]).map((r) => r.key), ['go']);
+      expect(closeTo(all, all[3]), isEmpty);
+      // Compare with a few picks keeps the same groups.
+      expect(
+        compareTestSentence([all[0], all[1], all[3]], all: all),
+        contains('Then node'),
+      );
+    });
+
+    test('a chain of close calls never stretches one speed word', () {
+      final blocks = followerBlocks([
+        res('bun', 24000),
+        res('go', 16000, low: 16000, high: 16000),
+        res('asp', 16000, low: 12000, high: 16000),
+        res('node', 12000, low: 12000, high: 16000),
+      ]);
+      // node is about the same as asp but not go, so it starts its own.
+      expect(blocks.map((b) => b.map((r) => r.key).toList()), [
+        ['asp', 'go'],
+        ['node'],
+      ]);
+    });
+
+    test('every capped framework in a tie gets the limit caveat', () {
+      final answer = answerFor([
+        res('bun', 24000, low: 24000, high: 32000),
+        res('rust', 32000, low: 24000, high: 32000, capped: true),
+        res('go', 8000),
+      ]);
+      expect(answer, contains("Rust hit our testing tool's limit"));
+    });
+
+    test('frameworks with the same number are named together', () {
+      expect(
+        answerFor([res('a', 40000), res('b', 30000), res('c', 30000)]),
+        'A is the fastest. Next are b and c, about three-quarters as fast.',
+      );
+    });
+
+    test('equal numbers join the top together or not at all', () {
+      // express (bun) overlaps the leader, express (node) has the same
+      // number but does not: neither is called "about the same".
+      final top = topGroup([
+        res('rust', 32000, low: 24000, high: 32000, capped: true),
+        res('bun', 24000, low: 24000, high: 32000),
+        res('node', 24000, low: 16000, high: 24000),
+      ]);
+      expect(top.map((r) => r.key), ['rust']);
+    });
+
+    test('everyone at the tool limit ties, and a fifth is a fifth', () {
+      final answer = answerFor([
+        res('a', 48000, capped: true),
+        res('b', 48000, capped: true),
+        res('c', 46000, capped: true),
+        res('d', 20000),
+      ]);
+      expect(answer, startsWith("A, b and c tie for fastest at our testing"));
+      expect(answer, contains('Next is d,'));
+      expect(asFast(0.19), 'about a fifth as fast');
+      expect(asFast(0.25), 'about a quarter as fast');
     });
 
     test('runs that overlap at the top are about the same, as in Compare', () {
@@ -492,6 +688,9 @@ void main() {
       state.sortBy('db_read');
       state.setMeasure(Measure.typical);
       expect(state.sortDesc, isFalse);
+      // A new column keeps best first too.
+      state.sortBy('db_write');
+      expect(state.sortDesc, isFalse);
       state.setMeasure(Measure.load);
       expect(state.sortDesc, isTrue);
     });
@@ -547,6 +746,346 @@ void main() {
       expect(state.compareKeys, contains('foam3'));
     });
 
+    testWidgets('a run that fails to load says so and can be tried again', (
+      t,
+    ) async {
+      final files = twoRunBundle().files;
+      var fails = 1;
+      final state = await pumpApp(
+        t,
+        _FlakyBundle(files, 'assets/results/runs/r0.json', () => fails-- > 0),
+      );
+      final shown = state.entry;
+      await t.runAsync(() => state.selectRun(state.index[1], inPlace: true));
+      await settle(t);
+      // The run on screen stays, links name it, and the visitor is told
+      // next to the run choice.
+      expect(state.entry, shown);
+      expect(state.failedRun, state.index[1]);
+      expect(locationOf(state).queryParameters['run'], isNull);
+      expect(find.textContaining('Could not load'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      // Its Try again tries again.
+      await t.tap(find.text('Try again'));
+      await t.runAsync(() async {
+        for (var i = 0; i < 10; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await t.pump();
+        }
+      });
+      await settle(t);
+      expect(state.entry, state.index[1]);
+      expect(state.failedRun, isNull);
+      expect(find.textContaining('Could not load'), findsNothing);
+    });
+
+    testWidgets('a run Back asked for that fails is said wherever you are', (
+      t,
+    ) async {
+      final files = twoRunBundle().files;
+      var fails = 1;
+      final state = await pumpApp(
+        t,
+        _FlakyBundle(files, 'assets/results/runs/r0.json', () => fails-- > 0),
+      );
+      state.setPage(DashboardPage.method);
+      await settle(t);
+      await t.runAsync(() => state.selectRun(state.index[1], byRouter: true));
+      await settle(t);
+      expect(find.byType(SnackBar), findsOneWidget);
+      // The note on the page stays after the message times out.
+      expect(find.textContaining('Could not load'), findsNWidgets(2));
+      await t.tap(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.text('Try again'),
+        ),
+      );
+      await t.runAsync(() async {
+        for (var i = 0; i < 10; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await t.pump();
+        }
+      });
+      await settle(t);
+      expect(state.entry, state.index[1]);
+      expect(state.failedRun, isNull);
+    });
+
+    testWidgets('the could-not-load message goes away on its own', (t) async {
+      final files = twoRunBundle().files;
+      final state = await pumpApp(
+        t,
+        _FlakyBundle(files, 'assets/results/runs/r0.json', () => true),
+      );
+      await t.runAsync(() => state.selectRun(state.index[1], byRouter: true));
+      await settle(t);
+      expect(find.byType(SnackBar), findsOneWidget);
+      for (var i = 0; i < 12; i++) {
+        await t.pump(const Duration(seconds: 1));
+      }
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.textContaining('Could not load'), findsOneWidget);
+    });
+
+    testWidgets('a test the loaded run lacks is never set', (t) async {
+      final state = await pumpApp(t, realisticBundle());
+      final before = state.scenario;
+      state.setScenario('no_such_test');
+      expect(state.scenario, before);
+      // History keeps its own test, in its own URL.
+      state.setPage(DashboardPage.history);
+      state.setHistoryTest('db_write');
+      expect(locationOf(state).queryParameters['s'], 'db_write');
+      expect(state.scenario, before);
+    });
+
+    testWidgets('a freed Compare place brings back a set-aside pick', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final keys = [for (final b in state.run!.backends) b.key];
+      for (final k in keys.take(4)) {
+        state.toggleCompare(k);
+      }
+      state.parkedCompare.add(keys[4]);
+      // Elsewhere a remove only removes.
+      state.toggleCompare(keys[0]);
+      expect(state.compareKeys, isNot(contains(keys[4])));
+      // Compare's own remove brings the set-aside pick back.
+      state.toggleCompare(keys[0]);
+      state.toggleCompare(keys[0], restore: true);
+      expect(state.compareKeys, contains(keys[4]));
+      expect(state.parkedCompare, isEmpty);
+      // With room free, one tap brings set-aside picks back.
+      state.toggleCompare(keys[1]);
+      state.parkedCompare.add(keys[1]);
+      state.restoreParked();
+      expect(state.compareKeys, contains(keys[1]));
+      expect(state.parkedCompare, isEmpty);
+      // Clear all, then Undo, puts back picks and set-aside picks.
+      final picks = [...state.compareKeys];
+      state.parkedCompare.add('gone-framework');
+      state.clearCompare();
+      state.restoreCompare(picks, ['gone-framework'], {'gone-framework'});
+      expect(state.awayForRun, {'gone-framework'});
+      expect(state.compareKeys, picks);
+      expect(state.parkedCompare, ['gone-framework']);
+    });
+
+    testWidgets('Back keeps set-aside picks and a missing framework', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final keys = [for (final b in state.run!.backends) b.key];
+      state.parkedCompare.add('gone-framework');
+      state.missingKey = 'gone-framework';
+      state.applyRoute(
+        page: DashboardPage.home,
+        view: HomeView.compare,
+        compare: keys.take(2).toList(),
+      );
+      expect(state.parkedCompare, ['gone-framework']);
+      state.applyRoute(page: DashboardPage.home, view: HomeView.one);
+      expect(state.missingKey, 'gone-framework');
+    });
+
+    testWidgets('Back never gets stuck on a rewritten link or Compare', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      final key = state.run!.backends.first.key;
+      // An old-style link is reported as it was opened, so it adds no
+      // new history entry for Back to land on.
+      final old = Uri.parse('/f/$key');
+      await router.setNewRoutePath(RouteInformation(uri: old));
+      expect(router.currentConfiguration?.uri, old);
+      // A change the visitor makes is reported as itself.
+      state.setView(HomeView.all);
+      expect(router.currentConfiguration?.uri, Uri(path: '/all'));
+      // Back to plain /compare means no picks, so it can leave Compare.
+      state.toggleCompare(key);
+      await router.setNewRoutePath(
+        RouteInformation(uri: Uri.parse('/compare')),
+      );
+      expect(state.compareKeys, isEmpty);
+      router.dispose();
+    });
+
+    testWidgets('Back on one run keeps picks and brings back its note', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      final keys = [for (final b in state.run!.backends) b.key];
+      // An entry on the picker with "X was not part of this run".
+      state.setView(HomeView.one);
+      state.missingKey = 'gone-framework';
+      final saved = router.currentConfiguration!;
+      // The visitor picks frameworks for Compare and opens one.
+      state.toggleCompare(keys[0]);
+      state.toggleCompare(keys[1]);
+      state.selectFramework(keys[2]);
+      // Back: the note returns; the picks, a choice, stay as they are.
+      await router.setNewRoutePath(saved);
+      expect(state.missingKey, 'gone-framework');
+      expect(state.compareKeys, [keys[0], keys[1]]);
+      router.dispose();
+    });
+
+    testWidgets('Back restores the test but never undoes a pick on one run', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      final keys = [for (final b in state.run!.backends) b.key];
+      for (final k in keys.take(3)) {
+        state.toggleCompare(k);
+      }
+      state.setView(HomeView.all);
+      final saved = router.currentConfiguration!;
+      // Elsewhere the picks change and a test is chosen...
+      state.toggleCompare(keys.first);
+      final test = state.scenario;
+      state.setScenario(state.run!.scenarios.last);
+      // ...and Back to the /all entry brings back its test, but on the same
+      // run never undoes a Compare change made since.
+      final now = [...state.compareKeys];
+      await router.setNewRoutePath(saved);
+      expect(state.compareKeys, now);
+      expect(state.scenario, test);
+      router.dispose();
+    });
+
+    testWidgets('Back across a run change brings back its picks', (t) async {
+      final state = await pumpApp(t, twoRunBundle());
+      final router = DashRouterDelegate(state);
+      final keys = [for (final b in state.run!.backends) b.key];
+      for (final k in keys.take(2)) {
+        state.toggleCompare(k);
+      }
+      state.setView(HomeView.all);
+      final saved = router.currentConfiguration!;
+      await t.runAsync(() => state.selectRun(state.index[1]));
+      await settle(t);
+      state.compareKeys.clear();
+      await t.runAsync(() async {
+        await router.setNewRoutePath(saved);
+        await Future<void>.delayed(Duration.zero);
+      });
+      await settle(t);
+      expect(state.entry, state.index.first);
+      expect(state.compareKeys, keys.take(2).toList());
+      router.dispose();
+    });
+
+    testWidgets('after a reload, Back brings back an entry\'s picks', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      final keys = [for (final b in state.run!.backends) b.key];
+      // An entry saved before the reload, with two picks.
+      final entry = RouteInformation(
+        uri: Uri(path: '/compare/${keys[0]},${keys[1]}'),
+        state: {
+          'picks': [keys[0], keys[1]],
+          'parked': <String>[],
+          'away': <String>[],
+          'missing': null,
+          'test': state.scenario,
+        },
+      );
+      // Fresh visit, nothing picked yet: Back restores them.
+      await router.setNewRoutePath(entry);
+      expect(state.compareKeys, [keys[0], keys[1]]);
+      router.dispose();
+    });
+
+    testWidgets('a change the link does not show still updates the entry', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      var reports = 0;
+      router.addListener(() => reports++);
+      state.setView(HomeView.compare);
+      state.restoreCompare([], ['gone-framework']);
+      final before = reports;
+      state.clearCompare();
+      // Same link (/compare), but the entry must be updated.
+      expect(reports, greaterThan(before));
+      expect((router.currentConfiguration!.state! as Map)['parked'], isEmpty);
+      router.dispose();
+    });
+
+    testWidgets('an opened old link never comes back after moving on', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      final key = state.run!.backends.first.key;
+      await router.setNewRoutePath(RouteInformation(uri: Uri.parse('/f/$key')));
+      final tidy = locationOf(state);
+      final other = state.run!.scenarios.last;
+      state.setScenario(other);
+      state.setScenario(tidy.queryParameters['s']!);
+      // Back at the same view, it shows its own tidy link, not the old one.
+      expect(router.currentConfiguration?.uri, tidy);
+      router.dispose();
+    });
+
+    testWidgets('a run change never swaps a pick for one set aside for room', (
+      t,
+    ) async {
+      final state = await pumpApp(t, twoRunBundle());
+      final keys = [for (final b in state.run!.backends) b.key];
+      // foam3 is missing from the other run; the rest fit.
+      state.toggleCompare('foam3');
+      state.parkedCompare.add(keys.firstWhere((k) => k != 'foam3'));
+      await t.runAsync(() => state.selectRun(state.index[1]));
+      await settle(t);
+      // The pick set aside for room did not fill foam3's place.
+      expect(state.compareKeys, isEmpty);
+      await t.runAsync(() => state.selectRun(state.index[0]));
+      await settle(t);
+      expect(state.compareKeys, ['foam3']);
+    });
+
+    testWidgets('History keeps the results view and its own test', (t) async {
+      final state = await pumpApp(t, realisticBundle());
+      final key = state.run!.backends.first.key;
+      state.selectFramework(key);
+      final main = state.scenario;
+      final other = state.run!.scenarios.firstWhere((x) => x != main);
+      applyLocation(state, Uri.parse('/history?s=$other'));
+      expect(state.page, DashboardPage.history);
+      expect(state.historyTest, other);
+      // The main test and the view under History stay as they were.
+      expect(state.scenario, main);
+      expect(state.view, HomeView.one);
+    });
+
+    testWidgets('Back to History keeps the results test and its own', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      state.setPage(DashboardPage.history);
+      final saved = router.currentConfiguration!;
+      // The visitor goes back to results and picks another test.
+      state.setPage(DashboardPage.home);
+      final other = state.run!.scenarios.last;
+      state.setScenario(other);
+      // Forward to History: the results test stays, and History, never
+      // given a test of its own, still follows it.
+      await router.setNewRoutePath(saved);
+      expect(state.scenario, other);
+      expect(state.historyTest, isNull);
+      router.dispose();
+    });
+
     testWidgets('a copied link keeps an older run', (t) async {
       final state = await pumpApp(t, twoRunBundle());
       expect(locationOf(state).queryParameters, isNot(contains('run')));
@@ -560,7 +1099,9 @@ void main() {
       final router = DashRouterDelegate(state);
       final old = state.index[1].id;
       await t.runAsync(
-        () => router.setNewRoutePath(Uri.parse('/all?run=$old')),
+        () => router.setNewRoutePath(
+          RouteInformation(uri: Uri.parse('/all?run=$old')),
+        ),
       );
       await t.runAsync(() => Future<void>.delayed(Duration.zero));
       await settle(t);
@@ -569,4 +1110,18 @@ void main() {
       router.dispose();
     });
   });
+}
+
+/// Fails loading [key] while [fail] says so.
+class _FlakyBundle extends MapBundle {
+  final String key;
+  final bool Function() fail;
+
+  _FlakyBundle(super.files, this.key, this.fail);
+
+  @override
+  Future<ByteData> load(String key) {
+    if (key == this.key && fail()) throw StateError('network hiccup');
+    return super.load(key);
+  }
 }

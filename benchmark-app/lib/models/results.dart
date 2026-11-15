@@ -299,17 +299,6 @@ class Implementation {
 
   bool get isEmpty =>
       server == null && concurrency == null && dbAccess == null && pool == null;
-
-  /// Label/value pairs in display order, missing ones left out.
-  List<(String, String)> get facts => [
-    if (server != null) ('Server', server!),
-    if (concurrency != null) ('Concurrency', concurrency!),
-    if (dbAccess != null) ('Database access', dbAccess!),
-    if (pool != null) ('Database connections', pool!),
-  ];
-
-  /// One line for dense lists: "server · db access".
-  String get summary => [?server, ?dbAccess].join(' · ');
 }
 
 const kRepoUrl = 'https://github.com/abdelaziz-mahdy/backend-benchmark';
@@ -414,14 +403,6 @@ class BackendResult {
     );
   }
 
-  /// "go mux 1.8.1 · go 1.27"
-  String get subtitle => [
-    if (version != null) 'v$version',
-    ?runtime,
-    if (db == 'none') 'own storage',
-    if (formerName != null) 'v1 name: $formerName',
-  ].join(' · ');
-
   /// Source folder on GitHub (main branch), when the backend still exists.
   String? get sourceUrl =>
       path == null ? null : '$kRepoUrl/tree/main/backends/$path';
@@ -430,21 +411,70 @@ class BackendResult {
   String? sourceUrlAt(String? sha) =>
       path == null || sha == null ? null : '$kRepoUrl/tree/$sha/backends/$path';
 
-  /// "REST", "Serverpod RPC", "FOAM box RPC".
+  /// How the test calls it, in plain words.
   String get apiLabel => switch (apiStyle) {
-    'serverpod_rpc' => 'Serverpod RPC',
-    'foam_rpc' => 'FOAM box RPC',
-    'rest' => 'REST (JSON over HTTP)',
+    'serverpod_rpc' => "serverpod's own calls (RPC)",
+    'foam_rpc' => "foam3's own calls (RPC)",
+    'rest' => 'Plain web requests (JSON)',
     _ => apiStyle,
   };
 
-  /// "Postgres via PgBouncer", "Postgres", "own storage (no database)".
+  /// Where it keeps its data, in plain words.
   String get storageLabel => switch (db) {
-    'none' => 'own storage, no database',
-    'postgres' => pgbouncer ? 'Postgres via PgBouncer' : 'Postgres',
-    null => 'unknown',
+    'none' => 'Its own storage, no database',
+    'postgres' =>
+      pgbouncer
+          ? 'PostgreSQL, through a connection sharer (PgBouncer)'
+          : 'PostgreSQL',
+    null => 'Not recorded',
     _ => db!,
   };
+
+  /// "serverpod 4.0.3 on dart 3.13": the one way versions are written.
+  String? get versionLine {
+    if (version == null && runtime == null) return null;
+    return [
+      if (version != null) '${framework ?? name} $version',
+      if (runtime != null) version == null ? runtime! : 'on $runtime',
+    ].join(' ');
+  }
+
+  /// How it is built, with one set of labels for the profile card and
+  /// Compare. Values may be null when not recorded.
+  List<(String, String?)> get builtFacts => [
+    ('Web server', _plain(implementation?.server)),
+    ('How it handles many requests', _plain(implementation?.concurrency)),
+    ('Database access', _plain(implementation?.dbAccess)),
+    // A framework with no database has no connections, whatever its
+    // manifest says for a sibling variant.
+    (
+      'Database connections',
+      db == 'none'
+          ? 'None (no database)'
+          : _plain(implementation?.pool, allBrackets: true),
+    ),
+    ('How it is called', apiLabel),
+    ('Storage', storageLabel),
+    ('Versions', versionLine),
+  ];
+
+  /// Drops setting names a reader cannot use: brackets holding a setting
+  /// ("(database.maxConnectionCount)", "(NODE_ENV=production)",
+  /// "(CONN_MAX_AGE 60)"), or with [allBrackets] every bracket, since the
+  /// connection counts carry library names there ("20 (HikariCP …)").
+  static String? _plain(String? v, {bool allBrackets = false}) {
+    if (v == null) return null;
+    final setting = RegExp(
+      r'[=.]|\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b|\b[A-Z][a-z]+[A-Z]\w*\b',
+    );
+    return v
+        .replaceAllMapped(RegExp(r'\s*\(([^()]*)\)'), (m) {
+          final inside = m[1]!;
+          return allBrackets || setting.hasMatch(inside) ? '' : m[0]!;
+        })
+        .replaceAllMapped(RegExp(r'\s+([,;])'), (m) => m[1]!)
+        .trim();
+  }
 
   /// Text used by the finder: name, language, framework, runtime, key.
   bool matches(String query) {

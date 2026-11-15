@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -11,6 +13,7 @@ import '../utils/theme_constants.dart';
 import '../widgets/calm.dart';
 import '../widgets/charts.dart' show HistoryChart;
 import '../widgets/prose.dart';
+import '../widgets/run_switcher.dart' show RunLoadFailedNote;
 import '../widgets/site_frame.dart' show SiteFooter, SiteWidth;
 
 /// Numbers History can plot (they are in index.json's headline data), with
@@ -23,22 +26,20 @@ final _historyMetrics = [
   (Metrics.memory, 'Memory'),
 ];
 
-String _metricMeaning(Metric m) => switch (m.id) {
-  'sustainable_rps' =>
-    'The main result: the most requests a second it handled while staying '
-        'fast and error-free. Higher is better.',
+String _metricMeaning(Metric m, RunSummary run) => switch (m.id) {
+  'sustainable_rps' => metricMeaning(m, run),
   'avg_rps' =>
     'Old method: the average requests a second while users were added. '
         'Higher is better.',
   'peak_rps' =>
-    'The most requests a second it answered at any step, however slow the '
-        'replies were. Higher is better.',
-  'p99_ms' =>
-    'Slow reply: 99 of every 100 replies came back within this time. Lower '
-        'is better.',
+    'The most requests a second it really answered at any step, however '
+        'slow the replies were. It can sit just below the result, which '
+        'counts the rate we sent.',
+  'p99_ms' => 'Slow reply: 99 of every 100 replies came back within this time.',
   'app_cpu' =>
-    'How much processor it used. 100% is one full core. Lower is better.',
-  'app_mem_mb' => 'How much memory it used. Lower is better.',
+    'How much of its processor cores it used. 100% is all of them (in the '
+        'old method, 100% is one core).',
+  'app_mem_mb' => 'How much memory it used.',
   _ => m.help,
 };
 
@@ -48,23 +49,12 @@ String _fmt(Metric m, double? v) {
   return switch (m.unit) {
     Unit.rps || Unit.ratio => whole(v),
     Unit.ms => msText(v),
-    Unit.cpu => '${v.round()}%',
+    // Capped at 100%, as cpuText does everywhere else.
+    Unit.cpu => '${math.min(100, v.round())}%',
     Unit.mb => memText(v),
     Unit.percent => formatMetricShort(m, v),
   };
 }
-
-/// v1 runs used different tests; this is the closest match.
-String legacyScenario(String scenario) =>
-    scenario.startsWith('no_db') ? 'no_db_test' : 'db_test';
-
-/// The current test closest to a v1 one (a v1 run may be loaded while
-/// History shows current runs).
-String currentScenario(String scenario) => switch (scenario) {
-  'no_db_test' => 'no_db',
-  'db_test' => 'db_mixed',
-  _ => scenario,
-};
 
 /// The date of each run, written out: "5 October 2026", or "5 Oct" when
 /// [short]. Runs that share a date are numbered: "4 Oct (2)".
@@ -97,13 +87,21 @@ class HistoryGroup {
   final Metric metric;
   final List<(String key, String name, List<double?> values)> lines;
 
+  /// Frameworks whose newest number here hit our testing tool's limit, so
+  /// it reads "40,000+" as on every other page.
+  final Set<String> capped;
+
   const HistoryGroup({
     required this.groupKey,
     required this.runs,
     required this.scenario,
     required this.metric,
     required this.lines,
+    this.capped = const {},
   });
+
+  /// "40,000+" when [key]'s newest number hit the tool's limit.
+  String plus(String key) => capped.contains(key) ? '+' : '';
 
   /// Builds the series for [groupKey]. Runs from other computers or
   /// methods never end up in the same group.
@@ -118,34 +116,54 @@ class HistoryGroup {
     final legacy = runs.isNotEmpty && runs.first.isLegacy;
     final sc = legacy ? legacyScenario(scenario) : currentScenario(scenario);
     final m = legacy && metric == Metrics.sustainable ? Metrics.avgRps : metric;
+    // Old-method runs gave the app no fixed cores, so their processor stays
+    // per core; the current method gives every app the same cores.
+    final shown = state.run;
+    final cores = legacy
+        ? 1
+        : shown != null && !shown.isLegacy
+        ? appCoreCount(shown)
+        : 2;
     final keys = <String>{
       for (final r in runs)
         for (final e in r.headline.entries)
           if (e.value[sc]?[m.id] != null) e.key,
     }.toList()..sort();
+    final capped = <String>{
+      if (m == Metrics.sustainable)
+        for (final k in keys)
+          if (runs.reversed
+                  .where((r) => r.headline[k]?[sc]?[m.id] != null)
+                  .firstOrNull
+                  ?.headline[k]?[sc]?['loadgen_bound'] ==
+              1.0)
+            k,
+    };
     return HistoryGroup(
       groupKey: groupKey,
       runs: runs,
       scenario: sc,
       metric: m,
+      capped: capped,
       lines: [
         for (final k in keys)
           (
             k,
-            names[k] ?? _nameIn(runs, k),
-            [for (final r in runs) r.headline[k]?[sc]?[m.id]],
+            // Today's name wherever any run has one, never a v1 folder name.
+            names[k] ?? state.nameOf(k),
+            [
+              for (final r in runs)
+                switch (r.headline[k]?[sc]?[m.id]) {
+                  // The app processor is recorded per core; shown, as on
+                  // every other page, as a share of the app's own cores.
+                  final v? when m.id == 'app_cpu' => math.min(100.0, v / cores),
+                  final v => v,
+                },
+            ],
           ),
       ],
     );
   }
-}
-
-String _nameIn(List<RunIndexEntry> runs, String key) {
-  for (final r in runs.reversed) {
-    final n = r.names[key];
-    if (n != null) return n;
-  }
-  return key;
 }
 
 class HistoryScreen extends StatefulWidget {
@@ -165,8 +183,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<DashboardState>();
     final run = state.run;
-    final scenario = state.scenario;
-    if (run == null || scenario == null) return const SizedBox.shrink();
+    final shownTest = state.scenario;
+    if (run == null || shownTest == null) return const SizedBox.shrink();
+    final tests =
+        state.index
+            .where((e) => !e.isLegacy && e.scenarios.isNotEmpty)
+            .firstOrNull
+            ?.scenarios ??
+        run.scenarios;
+    // The choices come from the newest runs, whatever run the rest of the
+    // site shows, so an old run never hides today's tests; the old-method
+    // box maps the choice to its closest old test.
+    final chosen = state.historyTest;
+    final scenario = chosen != null && tests.contains(chosen)
+        ? chosen
+        : tests.contains(currentScenario(shownTest))
+        ? currentScenario(shownTest)
+        : tests.firstOrNull;
+    if (scenario == null) return const SizedBox.shrink();
     final p = context.palette;
     final t = Txt(p);
     final names = {for (final b in run.backends) b.key: b.name};
@@ -202,6 +236,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     lead: 'How the results changed from run to run.',
                     onBack: () => state.setPage(DashboardPage.home),
                   ),
+                  RunLoadFailedNote(state: state, inPlace: false),
                   const SizedBox(height: 16),
                   const Points([
                     Point(
@@ -218,12 +253,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   const SizedBox(height: 8),
                   SegmentSwitch<String>(
                     label: 'Test',
-                    options: [
-                      for (final s in run.scenarios) (s, testInfo(s).title),
-                    ],
-                    icons: {for (final s in run.scenarios) s: testIcon(s)},
+                    // The short names every other test switch uses.
+                    options: [for (final s in tests) (s, testInfo(s).short)],
+                    icons: {for (final s in tests) s: testIcon(s)},
                     selected: scenario,
-                    onSelected: state.setScenario,
+                    // Kept in the URL, so Back, a reload or a shared link
+                    // shows the same test.
+                    onSelected: state.setHistoryTest,
                   ),
                   const SizedBox(height: 8),
                   Text(testInfo(scenario).what, style: t.small),
@@ -237,7 +273,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     onSelected: (m) => setState(() => _metric = m),
                   ),
                   const SizedBox(height: 8),
-                  Text(_metricMeaning(_metric), style: t.small),
+                  Text(_metricMeaning(_metric, run), style: t.small),
                   for (final g in groups) ...[
                     const SizedBox(height: kSectionGap),
                     _card(g, current, langs),
@@ -252,7 +288,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  final _chartKeys = <String, GlobalKey>{};
+
   Widget _card(HistoryGroup g, String? current, Map<String, String> langs) {
+    final chartKey = _chartKeys.putIfAbsent(
+      g.groupKey,
+      () => GlobalKey(debugLabel: 'history chart ${g.groupKey}'),
+    );
     final p = context.palette;
     final t = Txt(p);
     final first = g.runs.isEmpty ? null : g.runs.first;
@@ -269,7 +311,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final legend = [...lines]
       ..sort((a, b) {
         final va = last(a.$3) ?? -1, vb = last(b.$3) ?? -1;
-        return g.metric.higherIsBetter ? vb.compareTo(va) : va.compareTo(vb);
+        final c = g.metric.higherIsBetter ? vb.compareTo(va) : va.compareTo(vb);
+        // Equal numbers in name order, as everywhere else on the site.
+        return c != 0 ? c : a.$2.compareTo(b.$2);
       });
     final multi = lines
         .where((l) => l.$3.whereType<double>().length > 1)
@@ -332,10 +376,29 @@ class _HistoryScreenState extends State<HistoryScreen> {
             '"${testInfo(g.scenario).title}" test.',
             style: t.small,
           ),
+          if (g.capped.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              // Striped ends only exist where this box draws bars.
+              multi.isEmpty
+                  ? "+ and a striped bar end = hit our testing tool's limit, "
+                        'so it may be faster.'
+                  : "+ = hit our testing tool's limit, so it may be faster.",
+              style: t.small,
+            ),
+          ],
           const SizedBox(height: 20),
           if (lines.isEmpty)
             Text(
-              'No results for this test on this computer.',
+              // Results exist but this number was never recorded (the old
+              // method kept fewer), or there are no results for the test.
+              g.runs.any(
+                    (r) => r.headline.values.any((m) => m[g.scenario] != null),
+                  )
+                  ? (legacy
+                        ? 'The old method did not record this number.'
+                        : 'These runs did not record this number.')
+                  : 'No results for this test on this computer.',
               style: proseStyle(context).copyWith(color: p.muted),
             )
           else if (multi.isEmpty)
@@ -362,13 +425,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             ],
             const SizedBox(height: 24),
-            HistoryChart(
-              labels: runDates(g.runs, short: narrow),
-              lines: lines,
-              highlight: focus,
-              format: (v) => _fmt(g.metric, v),
-            ),
-            const SizedBox(height: 20),
             const SubHead(Icons.touch_app_outlined, 'Latest numbers', size: 17),
             const SizedBox(height: 4),
             Text('Tap a name to highlight its line.', style: t.small),
@@ -384,13 +440,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     badge: LangBadge.of(l.$1, lang(l.$1), size: 20),
                     color: identityColor(p, l.$1),
                     name: l.$2,
-                    value: _fmt(g.metric, last(l.$3)),
+                    value: '${_fmt(g.metric, last(l.$3))}${g.plus(l.$1)}',
                     selected: focus == l.$1,
                     dim: focus != null && focus != l.$1,
-                    onTap: () =>
-                        setState(() => _focus = focus == l.$1 ? null : l.$1),
+                    onTap: () {
+                      setState(() => _focus = focus == l.$1 ? null : l.$1);
+                      // The chart is under the names: keep it in sight.
+                      bringIntoView(chartKey);
+                    },
                   ),
               ],
+            ),
+            const SizedBox(height: 20),
+            // Under the names, so a tapped name's line is right below it.
+            HistoryChart(
+              key: chartKey,
+              labels: runDates(g.runs, short: narrow),
+              lines: lines,
+              highlight: focus,
+              format: (v) => _fmt(g.metric, v),
+              // A share of its cores never passes 100%.
+              top: g.metric.id == 'app_cpu' && !legacy ? 100 : null,
+              capped: g.capped,
             ),
           ],
         ],
@@ -465,7 +536,10 @@ class _Change extends StatelessWidget {
     final pct = a == 0 ? null : (b - a) / a * 100;
     final better = metric.higherIsBetter ? b > a : b < a;
     final same = _fmt(metric, a) == _fmt(metric, b);
-    final tone = same ? p.muted : (better ? p.accent : p.danger);
+    // Reply times, processor and memory were measured at each run's own
+    // result, so a change in them is not "better" or "worse" by itself.
+    final race = metric.isRace;
+    final tone = same || !race ? p.muted : (better ? p.accent : p.danger);
     final s = proseStyle(context);
     return Wrap(
       spacing: 12,
@@ -501,8 +575,12 @@ class _Change extends StatelessWidget {
                 color: tone,
               ),
               Text(
-                '${pct >= 0 ? '+' : '−'}${pct.abs().round()}% '
-                '${better ? '(better)' : '(worse)'}',
+                '${pct >= 0 ? '+' : '−'}${pct.abs().round()}%'
+                '${!race
+                    ? ''
+                    : better
+                    ? ' (better)'
+                    : ' (worse)'}',
                 style: t.num(15).copyWith(color: tone),
               ),
             ],
@@ -549,6 +627,12 @@ class _Snapshot extends StatelessWidget {
     final t = Txt(p);
     final m = group.metric;
     final best = last(lines.first.$3);
+    // Only a race (requests a second) gets places and "longer is better";
+    // the rest were measured at each framework's own result.
+    final race = m.isRace;
+    final most = lines
+        .map((l) => last(l.$3) ?? 0)
+        .fold(0.0, (a, v) => v > a ? v : a);
     // Equal values share a place (1st, 2nd, 2nd, 4th).
     final places = <int>[];
     for (var i = 0; i < lines.length; i++) {
@@ -563,10 +647,23 @@ class _Snapshot extends StatelessWidget {
       children: [
         Points([
           Point(
-            'One run each so far,',
-            'made on $dates, so there is no line to draw yet.',
+            group.runs.length == 1
+                ? 'One run so far,'
+                : '${capFirst(numberWord(group.runs.length))} runs on $dates,',
+            group.runs.length == 1
+                ? 'made on $dates, so there is no line to draw yet.'
+                : 'and each framework is in only one of them, so there is no '
+                      'line to draw yet.',
           ),
-          const Point('Longer bar is better.', 'Ranked from best to worst.'),
+          if (race)
+            const Point('Longer bar is better.', 'Ranked from best to worst.')
+          else
+            const Point(
+              'Not a race:',
+              'each framework was measured at its own result, so these '
+                  'numbers describe it rather than rank it. Longer bar = a '
+                  'bigger number.',
+            ),
         ]),
         const SizedBox(height: 16),
         LayoutBuilder(
@@ -579,13 +676,17 @@ class _Snapshot extends StatelessWidget {
                   if (i > 0) const SizedBox(height: 10),
                   () {
                     final color = BackendColors.of(lines[i].$1);
-                    final place = SizedBox(
-                      width: 40,
-                      child: Text(
-                        _ordinal(places[i]),
-                        style: t.small.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                    );
+                    final place = race
+                        ? SizedBox(
+                            width: 40,
+                            child: Text(
+                              _ordinal(places[i]),
+                              style: t.small.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink();
                     final who = [
                       LangBadge.of(lines[i].$1, lang(lines[i].$1), size: 20),
                       const SizedBox(width: 8),
@@ -597,14 +698,18 @@ class _Snapshot extends StatelessWidget {
                       style: proseStyle(context).copyWith(height: 1.3),
                     );
                     final value = Text(
-                      _fmt(m, last(lines[i].$3)),
+                      '${_fmt(m, last(lines[i].$3))}${group.plus(lines[i].$1)}',
                       textAlign: TextAlign.right,
                       style: t.num(15.5),
                     );
                     final bar = SpeedBar(
-                      share: barShare(m, last(lines[i].$3), best),
+                      share: race
+                          ? barShare(m, last(lines[i].$3), best)
+                          : most <= 0
+                          ? 0
+                          : (last(lines[i].$3) ?? 0) / most,
                       color: color,
-                      capped: false,
+                      capped: group.capped.contains(lines[i].$1),
                       height: 10,
                     );
                     if (stacked) {

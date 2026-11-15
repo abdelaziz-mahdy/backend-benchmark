@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:material_ui/material_ui.dart';
 
+import 'models/tests.dart';
 import 'screens/home_screen.dart';
 import 'state/dashboard_state.dart';
 
@@ -23,7 +26,8 @@ import 'state/dashboard_state.dart';
 /// browser history.
 Uri locationOf(DashboardState s) {
   final base = _place(s);
-  final entry = s.entry;
+  // The run on screen: while another loads, links still mean this one.
+  final entry = s.shownEntry ?? s.entry;
   if (entry == null || s.index.isEmpty || entry == s.index.first) return base;
   return base.replace(
     queryParameters: {...base.queryParameters, 'run': entry.id},
@@ -37,7 +41,13 @@ Uri _place(DashboardState s) {
     queryParameters: withScenario && scenario != null ? {'s': scenario} : null,
   );
   return switch (s.page) {
-    DashboardPage.history => at('/history'),
+    // History lists the newest runs' tests: an old-method test is named
+    // by its closest current one, the one History shows.
+    DashboardPage.history => switch (s.historyTest ??
+        (scenario == null ? null : currentScenario(scenario))) {
+      null => Uri(path: '/history'),
+      final test => Uri(path: '/history', queryParameters: {'s': test}),
+    },
     DashboardPage.method => at('/method', withScenario: false),
     DashboardPage.home => switch (s.view) {
       HomeView.short => Uri(path: '/'),
@@ -72,38 +82,94 @@ void applyLocation(DashboardState state, Uri uri) {
       state.applyRoute(
         page: DashboardPage.home,
         view: HomeView.compare,
-        compare: rest?.split(','),
+        // Plain /compare means no picks, so Back to it leaves Compare.
+        compare: rest?.split(',') ?? const [],
         scenario: scenario,
       );
+    // History and Method keep the results view underneath, so the header's
+    // "Results" returns to it as it was left.
     case 'history':
-      state.applyRoute(page: DashboardPage.history, scenario: scenario);
+      state.applyRoute(
+        page: DashboardPage.history,
+        view: state.view,
+        scenario: scenario == null ? null : currentScenario(scenario),
+      );
     case 'method':
-      state.applyRoute(page: DashboardPage.method);
+      state.applyRoute(page: DashboardPage.method, view: state.view);
     default:
       state.applyRoute(page: DashboardPage.home, scenario: scenario);
   }
 }
 
-class DashRouteParser extends RouteInformationParser<Uri> {
+/// Hands the router whole history entries: the link, plus what a link does
+/// not hold (set-aside picks and the like, saved per entry).
+class DashRouteParser extends RouteInformationParser<RouteInformation> {
   const DashRouteParser();
 
   @override
-  Future<Uri> parseRouteInformation(RouteInformation routeInformation) async =>
-      routeInformation.uri;
+  Future<RouteInformation> parseRouteInformation(
+    RouteInformation routeInformation,
+  ) async => routeInformation;
 
   @override
-  RouteInformation? restoreRouteInformation(Uri configuration) =>
-      RouteInformation(uri: configuration);
+  RouteInformation? restoreRouteInformation(RouteInformation configuration) =>
+      configuration;
 }
 
 /// Keeps the URL and [DashboardState] in step: state changes become browser
 /// history entries, and Back, Forward or a pasted link set the state.
-class DashRouterDelegate extends RouterDelegate<Uri> with ChangeNotifier {
+class DashRouterDelegate extends RouterDelegate<RouteInformation>
+    with ChangeNotifier {
   final DashboardState state;
 
-  /// A link that arrived before the data did.
-  Uri? _pending;
+  /// An entry that arrived before the data (or its run) did, and the
+  /// visitor's action count then: any action since makes it stale.
+  RouteInformation? _pending;
+  int _pendingActions = 0;
   Uri? _last;
+
+  /// The link last opened (pasted, Back, Forward) and the location it
+  /// came to mean. While the state still matches, that link is reported
+  /// as it was, so the app's tidier form of it never becomes a new history
+  /// entry that Back would only land on and rewrite again.
+  Uri? _openedAs;
+  Uri? _openedFor;
+
+  /// The side state last reported, to notice changes the link misses.
+  String? _lastSide;
+
+  /// The next report replaces the current entry (a cancelled Back's).
+  bool _replaceNext = false;
+
+  /// Try again is replaying a failed entry: when it lands, it replaces the
+  /// stand-in entry instead of adding one.
+  bool _retrying = false;
+
+  /// Entries added so far, to tell whether the visitor moved on (a new
+  /// entry) since a stand-in was written.
+  int _added = 0;
+
+  /// The entry being applied needed a run change first, and the picks and
+  /// set-aside picks before that change (none of them may be lost).
+  bool _crossedRun = false;
+  List<String> _beforeCross = const [];
+
+  /// Under the Router, for reporting a change as a replace of the current
+  /// history entry instead of a new one.
+  BuildContext? _context;
+
+  /// Notifies the Router; with [replace], the browser replaces the current
+  /// entry instead of adding one.
+  void _report({bool replace = false}) {
+    if (!replace) _added++;
+    final c = _context;
+    if (replace && c != null && c.mounted) {
+      Router.neglect(c, notifyListeners);
+    } else {
+      notifyListeners();
+    }
+  }
+
   bool _applying = false;
 
   DashRouterDelegate(this.state) {
@@ -117,44 +183,229 @@ class DashRouterDelegate extends RouterDelegate<Uri> with ChangeNotifier {
     final pending = _pending;
     if (pending != null) {
       _pending = null;
-      _apply(pending);
+      // Its run could not be loaded (and is not retried in a loop).
+      final want = pending.uri.queryParameters['run'];
+      final failedHere =
+          state.failedRun != null &&
+          state.failedRun ==
+              (want == null
+                  ? state.index.firstOrNull
+                  : state.index.where((e) => e.id == want).firstOrNull);
+      if (state.actions == _pendingActions && !failedHere) {
+        _apply(pending);
+      } else if (state.actions == _pendingActions) {
+        // The rest of the entry (page, view, picks, test) still applies, to
+        // the run on screen, with its test mapped to that run's closest. A
+        // Back's entry then holds what is shown, so Back from the next page
+        // returns here; a pasted link stays in the address bar, so a reload
+        // tries its run again.
+        // Nothing is lost: the picks on screen stay, and the entry's picks
+        // and framework this run lacks are set aside, as on any run change.
+        _crossedRun = true;
+        _beforeCross = [...state.compareKeys, ...state.parkedCompare];
+        final shown = state.shownEntry ?? state.entry;
+        final query = {...pending.uri.queryParameters}..remove('run');
+        if (shown != null && shown != state.index.firstOrNull) {
+          query['run'] = shown.id;
+        }
+        final parts = pending.uri.pathSegments;
+        final test = query['s'];
+        if (test != null) {
+          // History always lists the current tests.
+          query['s'] =
+              (state.run?.isLegacy ?? false) && parts.firstOrNull != 'history'
+              ? legacyScenario(test)
+              : currentScenario(test);
+        }
+        final saved = pending.state;
+        final wanted = [
+          if (parts.firstOrNull == 'compare' && parts.length > 1)
+            ...parts[1].split(','),
+          if (saved is Map && saved['picks'] is List)
+            ...(saved['picks'] as List).whereType<String>(),
+        ];
+        final framework =
+            const {'one', 'f'}.contains(parts.firstOrNull) && parts.length > 1
+            ? parts[1]
+            : null;
+        final before = _beforeCross;
+        final here = Uri(
+          path: pending.uri.path,
+          queryParameters: query.isEmpty ? null : query,
+        );
+        _apply(
+          RouteInformation(uri: here, state: pending.state),
+          openedAs: pending.state == null ? pending.uri : null,
+          replace: pending.state != null,
+          after: () {
+            // A link replaces the picks; those on screen are set aside.
+            state.setAside(before);
+            state.setAsideMissing(wanted);
+            if (framework != null && state.run?.backend(framework) == null) {
+              state.missingKey = framework;
+            }
+          },
+        );
+        // Try again replays the whole entry, as a Back that worked would,
+        // in place of the stand-in entry shown meanwhile.
+        _retrying = false;
+        final standIn = _added;
+        state.retryFailed = () {
+          // Still on the stand-in: replace it. Moved on since: the retry is
+          // a new entry, so the visitor's newer one is kept.
+          _retrying = _added == standIn;
+          _apply(pending);
+        };
+      } else {
+        // The visitor acted while it waited: their action wins. The waiting
+        // entry was never shown, so it is replaced by what is.
+        _retrying = false;
+        _crossedRun = false;
+        _beforeCross = const [];
+        _last = null;
+        _lastSide = null;
+        _replaceNext = true;
+      }
     }
     final now = locationOf(state);
-    if (now != _last) {
+    // Once the visitor moves on, the opened link is no longer what is
+    // shown, and must not come back into the address bar later.
+    if (now != _openedFor) _openedAs = null;
+    // A change the link does not show (Clear all of set-aside picks, say)
+    // still updates the entry: same link, so the browser replaces it.
+    final side = jsonEncode(state.sideState);
+    if (now != _last || side != _lastSide) {
+      // Choices on a page (Compare picks, or the test on any view) replace
+      // the entry; only moving to another page or run adds one, so Back
+      // always moves between pages.
+      final last = _last;
+      final sameRun =
+          last != null &&
+          last.queryParameters['run'] == now.queryParameters['run'];
+      final picksOnly =
+          sameRun &&
+          ((last.pathSegments.firstOrNull == 'compare' &&
+                  now.pathSegments.firstOrNull == 'compare') ||
+              last.path == now.path);
       _last = now;
-      notifyListeners();
+      _lastSide = side;
+      final replace = picksOnly || _replaceNext;
+      _replaceNext = false;
+      _report(replace: replace);
     }
   }
 
-  void _apply(Uri uri) {
+  void _apply(
+    RouteInformation info, {
+    Uri? openedAs,
+    bool replace = false,
+    VoidCallback? after,
+  }) {
+    final uri = info.uri;
     // The run first: load it, and apply the rest once it is in.
     final want = uri.queryParameters['run'];
     final target = want == null
         ? state.index.firstOrNull
         : state.index.where((e) => e.id == want).firstOrNull;
-    if (target != null && target != state.entry) {
-      _pending = uri;
-      state.selectRun(target);
+    // That run is still loading (a Back moments ago started it): this newer
+    // entry waits in place of the older one, and is applied once it is in.
+    if (target != null && target == state.entry && state.loading) {
+      _pending = info;
+      _pendingActions = state.actions;
+      // Still a run change if it leaves the run on screen (the visitor
+      // chose this run moments ago): its picks come back as for any other.
+      final crossing = target != state.shownEntry;
+      _crossedRun = crossing;
+      _beforeCross = crossing
+          ? [...state.compareKeys, ...state.parkedCompare]
+          : const [];
       return;
     }
+    if (target != null && target != state.entry) {
+      _pending = info;
+      _pendingActions = state.actions;
+      // A run change only counts as crossing if it leaves the run on screen
+      // (a second quick Back can land on the run still showing).
+      final crossing = target != (state.shownEntry ?? state.entry);
+      _crossedRun = crossing;
+      _beforeCross = crossing
+          ? [...state.compareKeys, ...state.parkedCompare]
+          : const [];
+      state.selectRun(target, byRouter: true);
+      return;
+    }
+    final crossed = _crossedRun;
+    final before = _beforeCross;
+    _crossedRun = false;
+    _beforeCross = const [];
+    final fromHistory = info.state != null;
+    // Compare picks are a choice, not a place: Back and Forward on one run
+    // keep them as they are, whatever the entry's link says.
+    final picks = [...state.compareKeys];
+    final parked = [...state.parkedCompare];
+    final away = state.awayForRun;
     _applying = true;
+    state.viaHistory = fromHistory;
     try {
       applyLocation(state, uri);
+      if (fromHistory) {
+        // Before any pick in this visit (a reload), the entry's picks are
+        // the only ones there are: bring them back.
+        final fresh = !state.comparePicked;
+        if (!crossed && !fresh) state.restoreCompare(picks, parked, away);
+        state.restoreSide(
+          info.state,
+          restorePicks: crossed || fresh,
+          keep: before,
+          // On History and Method the results underneath, test included,
+          // stay as the visitor left them, run change or not (the run
+          // change itself carries the test across).
+          linkHasTest:
+              uri.queryParameters.containsKey('s') ||
+              const {
+                'history',
+                'method',
+              }.contains(uri.pathSegments.firstOrNull),
+        );
+        // Picks Back put on screen are the visitor's from now on, so a
+        // later Forward to an entry saved without them keeps them.
+        if (fresh && state.compareKeys.isNotEmpty) state.comparePicked = true;
+      }
+      after?.call();
     } finally {
       _applying = false;
     }
     _last = locationOf(state);
-    notifyListeners();
+    _lastSide = jsonEncode(state.sideState);
+    if (fromHistory) {
+      // Shown as it is now; if that differs from the entry's link, the
+      // entry is replaced, never followed by a new one.
+      _openedAs = null;
+      _openedFor = null;
+      _report(replace: replace || _retrying || _last != uri);
+    } else {
+      _openedAs = openedAs ?? uri;
+      _openedFor = _last;
+      _report(replace: _retrying);
+    }
+    _retrying = false;
   }
 
   @override
-  Uri? get currentConfiguration =>
-      state.run == null || _pending != null ? null : locationOf(state);
+  RouteInformation? get currentConfiguration {
+    if (state.run == null || _pending != null) return null;
+    final now = locationOf(state);
+    return RouteInformation(
+      uri: _openedAs != null && now == _openedFor ? _openedAs! : now,
+      state: state.sideState,
+    );
+  }
 
   @override
-  Future<void> setNewRoutePath(Uri configuration) async {
+  Future<void> setNewRoutePath(RouteInformation configuration) async {
     if (state.run == null) {
       _pending = configuration;
+      _pendingActions = state.actions;
       return;
     }
     _apply(configuration);
@@ -170,9 +421,14 @@ class DashRouterDelegate extends RouterDelegate<Uri> with ChangeNotifier {
   }
 
   @override
-  Widget build(BuildContext context) => Navigator(
-    pages: const [MaterialPage<void>(child: HomeScreen())],
-    onDidRemovePage: (_) {},
+  Widget build(BuildContext context) => Builder(
+    builder: (context) {
+      _context = context;
+      return Navigator(
+        pages: const [MaterialPage<void>(child: HomeScreen())],
+        onDidRemovePage: (_) {},
+      );
+    },
   );
 
   @override

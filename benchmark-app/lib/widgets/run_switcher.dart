@@ -6,10 +6,15 @@ import '../state/dashboard_state.dart';
 import '../utils/theme_constants.dart';
 
 /// Short name of a run for the run lists: "Latest results · Apple M2 Pro".
-String runLabel(RunIndexEntry e) {
+/// A combined view other than [newest] is an older method's, and says so.
+String runLabel(RunIndexEntry e, {RunIndexEntry? newest}) {
   final date = longDate(e.date);
   return switch (e.kind) {
-    RunKind.latest => 'Latest results · ${e.machine.cpu}',
+    RunKind.latest when newest == null || e == newest =>
+      'Latest results · ${e.machine.cpu}',
+    RunKind.latest =>
+      'Combined results, older method (version ${methodNumber(e)}) · '
+          '${e.machine.cpu}',
     RunKind.legacy => 'Old method (v1) · $date',
     RunKind.run => [
       date,
@@ -23,12 +28,18 @@ String runLabel(RunIndexEntry e) {
   };
 }
 
+/// "2.1" from "v2.1".
+String methodNumber(RunIndexEntry e) =>
+    e.methodology.startsWith('v') ? e.methodology.substring(1) : e.methodology;
+
 /// Second line of a run in the lists: method, date, size.
 String runDetail(RunIndexEntry e) => [
-  e.isLegacy ? 'cannot be compared with newer runs' : 'method ${e.methodology}',
+  e.isLegacy
+      ? 'cannot be compared with newer runs'
+      : 'method version ${methodNumber(e)}',
   if (e.kind == RunKind.latest && e.date != null) 'up to ${longDate(e.date)}',
   if (e.kind == RunKind.latest && e.runs.length > 1)
-    'combined from ${e.runs.length} runs',
+    'combined from ${numberWord(e.runs.length)} runs',
   if (e.kind != RunKind.run) '${e.backends.length} frameworks',
 ].join(' · ');
 
@@ -44,7 +55,8 @@ class ChangeRunButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final entry = state.entry;
+    // The run on screen is the one marked "shown now", not one loading.
+    final entry = state.shownEntry ?? state.entry;
     return PopupMenuButton<String>(
       tooltip: 'Show the results of another run',
       position: PopupMenuPosition.under,
@@ -55,7 +67,7 @@ class ChangeRunButton extends StatelessWidget {
           return;
         }
         final e = state.index.where((x) => x.id == id).firstOrNull;
-        if (e != null && e != state.entry) state.selectRun(e);
+        if (e != null && e != state.entry) state.selectRun(e, inPlace: true);
       },
       itemBuilder: (context) => [
         PopupMenuItem<String>(
@@ -74,7 +86,7 @@ class ChangeRunButton extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        runLabel(e),
+                        runLabel(e, newest: state.index.firstOrNull),
                         style: body(
                           15,
                           color: p.text,
@@ -130,6 +142,68 @@ class ChangeRunButton extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Said when a run could not be loaded: the run on screen stays, and Try
+/// again asks for it again. It stays until the next run choice.
+///
+/// [inPlace]: shown only for a run picked from a run choice (true), only
+/// for one Back or a link asked for (false), or for both (null).
+class RunLoadFailedNote extends StatelessWidget {
+  final DashboardState state;
+  final bool? inPlace;
+
+  const RunLoadFailedNote({super.key, required this.state, this.inPlace});
+
+  @override
+  Widget build(BuildContext context) {
+    final failed = state.failedRun;
+    if (failed == null || (inPlace != null && inPlace != state.failedInPlace)) {
+      return const SizedBox.shrink();
+    }
+    final p = context.palette;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 10,
+        runSpacing: 4,
+        children: [
+          Text.rich(
+            TextSpan(
+              children: [
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Icon(Icons.error_outline, size: 16, color: p.danger),
+                  ),
+                ),
+                TextSpan(
+                  text:
+                      'Could not load '
+                      '${runLabel(failed, newest: state.index.firstOrNull)}.',
+                ),
+              ],
+            ),
+            style: body(13.5, color: p.text),
+          ),
+          TextButton(
+            onPressed: state.retryFailed,
+            style: TextButton.styleFrom(
+              foregroundColor: p.accent,
+              minimumSize: const Size(44, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+            child: Text(
+              'Try again',
+              style: body(13.5, color: p.accent, weight: FontWeight.w700),
+            ),
+          ),
+        ],
       ),
     );
   }

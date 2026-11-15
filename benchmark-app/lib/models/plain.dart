@@ -46,8 +46,12 @@ class Result {
   String get key => backend.key;
   String get name => backend.name;
 
-  /// The lowest-to-highest run ranges of the two overlap.
-  bool overlaps(Result o) => low <= o.high && o.low <= high;
+  /// About the same: each one's middle number falls within the other's
+  /// lowest-to-highest tries. (Ranges that merely touch are not enough:
+  /// one wide range would otherwise call clearly different bars "the
+  /// same".)
+  bool overlaps(Result o) =>
+      o.low <= value && value <= o.high && low <= o.value && o.value <= high;
 }
 
 /// Every framework with a result in [test], highest first (name order
@@ -85,8 +89,26 @@ List<Result> sortResults(Iterable<Result> rs) => [...rs]
 
 /// The others in [all] whose run range overlaps [r]'s: too close to call.
 /// Highest first.
-List<Result> closeTo(List<Result> all, Result r) =>
-    sortResults(all.where((o) => o.key != r.key && r.overlaps(o)));
+///
+/// Never across the top group's edge: if one is in the tie at the top and
+/// the other is not, the answer above the bars already told them apart.
+///
+/// Below the top, only the others in its own group of followers, so a
+/// bar's box never names a framework the sentence put in another group.
+List<Result> closeTo(List<Result> all, Result r) {
+  final top = {for (final x in topGroup(all)) x.key};
+  if (top.contains(r.key)) {
+    return sortResults(
+      all.where((o) => o.key != r.key && r.overlaps(o) && top.contains(o.key)),
+    );
+  }
+  final block = followerBlocks(
+    all,
+  ).where((b) => b.any((x) => x.key == r.key)).firstOrNull;
+  return sortResults(
+    (block ?? const <Result>[]).where((o) => o.key != r.key && r.overlaps(o)),
+  );
+}
 
 // ---------------------------------------------------------------- numbers
 
@@ -185,8 +207,10 @@ const kLimitSentence =
 String runsSentence(Result r) {
   if (r.reps <= 1) return 'We ran this test once.';
   final n = numberWord(r.reps);
-  if (whole(r.low) == whole(r.high)) return 'All $n runs gave the same result.';
-  return 'Across $n runs it ranged from ${whole(r.low)} to ${whole(r.high)}.';
+  if (whole(r.low) == whole(r.high)) {
+    return 'All $n tries gave the same result.';
+  }
+  return 'Across $n tries it ranged from ${whole(r.low)} to ${whole(r.high)}.';
 }
 
 /// "Too close to call with A and B." or "".
@@ -208,13 +232,16 @@ String restartSentence(Result r) => switch (r.restarts) {
 /// Where [r] sits among [all]: "3 of the other 11 handled more."
 String placeSentence(List<Result> all, Result r) {
   final n = all.length;
+  // "About the same" (equal numbers, or a close call by the same rule as
+  // the bar's box) is never counted as faster.
+  final close = {for (final o in closeTo(all, r)) o.key};
   var more = 0, same = 0;
   for (final o in all) {
     if (o.key == r.key) continue;
-    if (o.value > r.value) {
-      more++;
-    } else if (o.value == r.value) {
+    if (o.value == r.value || close.contains(o.key)) {
       same++;
+    } else if (o.value > r.value) {
+      more++;
     }
   }
   if (n <= 1) return 'The only framework measured here.';
@@ -224,7 +251,14 @@ String placeSentence(List<Result> all, Result r) {
         '${same == 1 ? 'other' : 'others'}.';
   }
   if (more == n - 1) return 'The slowest of the $n.';
-  return '$more of the other ${n - 1} were faster.';
+  final tie = same == 0
+      ? ''
+      : same == 1
+      ? ', and one was about the same'
+      : ', and ${numberWord(same)} were about the same';
+  if (more == 1) return 'One of the other ${n - 1} was faster$tie.';
+  return '${capFirst(numberWord(more))} of the other ${n - 1} were '
+      'faster$tie.';
 }
 
 /// What the inline reveal and the profile rows say after the number: the
@@ -313,27 +347,87 @@ List<Band> bandsFor(List<Result> results) {
 /// [f] (a share of the fastest, 0..1) in words: "about three-quarters as
 /// fast". Readers compare words and bar lengths, not numbers.
 String asFast(double f) {
-  if (f >= 0.95) return 'about as fast';
+  // "About as fast" would read as a tie, which only overlapping runs are.
   if (f >= 0.85) return 'nearly as fast';
   if (f >= 0.7) return 'about three-quarters as fast';
   if (f >= 0.6) return 'about two-thirds as fast';
   if (f >= 0.42) return 'about half as fast';
   if (f >= 0.3) return 'about a third as fast';
-  if (f >= 0.18) return 'about a quarter as fast';
+  if (f >= 0.22) return 'about a quarter as fast';
+  if (f >= 0.16) return 'about a fifth as fast';
   if (f >= 0.1) return 'about a tenth as fast';
   return 'less than a tenth as fast';
+}
+
+/// The frameworks at the top of [results] that cannot be told apart: the
+/// fastest, those whose runs overlap it, and, when it hit our testing
+/// tool's limit, every other one that hit the limit too. Fastest first.
+///
+/// With [all] (every framework in the test, when [results] is a few picked
+/// ones), the tie is the one the whole test has, so Compare never calls two
+/// frameworks "about the same" that Who's fastest tells apart.
+List<Result> topGroup(List<Result> results, {List<Result>? all}) {
+  final own = _topGroupOf(results);
+  if (all == null || own.isEmpty) return own;
+  final full = {for (final r in _topGroupOf(all)) r.key};
+  if (!full.contains(own.first.key)) return own;
+  return [
+    for (final r in sortResults(results))
+      if (full.contains(r.key)) r,
+  ];
+}
+
+List<Result> _topGroupOf(List<Result> results) {
+  final sorted = sortResults(results);
+  if (sorted.isEmpty) return const [];
+  final leader = sorted.first;
+  bool joins(Result r) =>
+      r.value == leader.value ||
+      r.overlaps(leader) ||
+      (leader.capped && r.capped);
+  // Walk down from the top in blocks of equal numbers: a block joins only
+  // when every one in it does, so two frameworks with the same number are
+  // never split between "about the same" and "next"; the first block that
+  // does not join ends the group.
+  final out = <Result>[];
+  var i = 0;
+  while (i < sorted.length) {
+    var j = i;
+    while (j < sorted.length && sorted[j].value == sorted[i].value) {
+      j++;
+    }
+    final block = sorted.sublist(i, j);
+    if (i > 0 && !block.every(joins)) break;
+    out.addAll(block);
+    i = j;
+  }
+  return out;
 }
 
 /// The answer under a test, in words: who is fastest (or which ones are
 /// about the same at the top, the same rule Compare uses) and how the next
 /// one compares. Numbers are one tap away on the bars, not in the sentence.
-String answerFor(List<Result> results) => _ranked(results, followers: 1).$1;
+String answerFor(List<Result> results) {
+  final (words, limitSaid) = _ranked(results, followers: 1);
+  // A number at the top is a floor when it hit the tool's limit; name every
+  // one that did, as Compare does, unless the tie sentence already said so.
+  final capped = topGroup(results).where((r) => r.capped).toList();
+  if (!limitSaid && capped.isNotEmpty) {
+    return "$words ${capFirst(_names(capped))} hit our testing tool's "
+        "limit, so ${capped.length == 1 ? 'it' : 'they'} may be faster.";
+  }
+  return words;
+}
 
 /// Who is at the top of [results] in words, then up to [followers] of the
 /// rest as a share of the fastest: "Next is B, about half as fast. Then C,
 /// about a tenth as fast." The flag says whether it already named the
 /// testing tool's limit.
-(String, bool) _ranked(List<Result> results, {required int followers}) {
+(String, bool) _ranked(
+  List<Result> results, {
+  required int followers,
+  List<Result>? all,
+}) {
   if (results.isEmpty) {
     return ('No framework has a result in this test.', false);
   }
@@ -342,11 +436,7 @@ String answerFor(List<Result> results) => _ranked(results, followers: 1).$1;
   if (sorted.length == 1) {
     return ('${capFirst(leader.name)} is the only one.', false);
   }
-  final top = {
-    leader.key,
-    for (final r in sorted.skip(1))
-      if (r.value == leader.value || r.overlaps(leader)) r.key,
-  };
+  final top = {for (final r in topGroup(sorted, all: all)) r.key};
   final tied = [
     for (final r in sorted)
       if (top.contains(r.key)) r,
@@ -366,12 +456,77 @@ String answerFor(List<Result> results) => _ranked(results, followers: 1).$1;
   } else {
     out.add('${capFirst(leader.name)} is the fastest.');
   }
-  final rest = sorted.where((r) => !top.contains(r.key)).take(followers);
-  for (final (i, r) in rest.indexed) {
-    final how = leader.value <= 0 ? '' : ', ${asFast(r.value / leader.value)}';
-    out.add(i == 0 ? 'Next is ${r.name}$how.' : 'Then ${r.name}$how.');
+  final blocks = followerBlocks(sorted, all: all);
+  // Neighbouring blocks with the same speed word are said together, so a
+  // sentence never says "then" for frameworks it gives the same words.
+  String word(List<Result> b) =>
+      leader.value <= 0 ? '' : asFast(b.first.value / leader.value);
+  final said = <List<Result>>[];
+  for (final b in blocks) {
+    if (said.isNotEmpty && word(said.last) == word(b)) {
+      said.last = [...said.last, ...b];
+    } else {
+      said.add(b);
+    }
+  }
+  for (final (i, block) in said.take(followers).indexed) {
+    final how = leader.value <= 0 ? '' : ', ${word(block)}';
+    final who = _names(block);
+    out.add(
+      i == 0
+          ? 'Next ${block.length == 1 ? 'is' : 'are'} $who$how.'
+          : 'Then $who$how.',
+    );
   }
   return (out.join(' '), limitSaid);
+}
+
+/// The frameworks below the top group, in blocks named together: a block
+/// is one framework plus the ones with the same number or about the same
+/// as it, so "about the same" pairs never get two different speed words.
+/// "Next are A and B, about half as fast" takes its word from the first.
+List<List<Result>> followerBlocks(List<Result> results, {List<Result>? all}) {
+  final sorted = sortResults(results);
+  // A few picked from a whole test (Compare) keep the whole test's groups,
+  // so the sentence and each bar's box agree.
+  if (all != null && all.length > results.length) {
+    final top = {for (final r in topGroup(sorted, all: all)) r.key};
+    final byKey = {for (final r in sorted) r.key: r};
+    final place = {for (final (i, r) in sorted.indexed) r.key: i};
+    final blocks = <List<Result>>[
+      for (final b in followerBlocks(all))
+        [
+          for (final x in b)
+            if (byKey.containsKey(x.key) && !top.contains(x.key)) byKey[x.key]!,
+        ],
+    ].where((b) => b.isNotEmpty).toList();
+    final placed = {
+      ...top,
+      for (final b in blocks)
+        for (final x in b) x.key,
+    };
+    // Picks the whole test put in its top group, while the picks have
+    // another leader, stand on their own.
+    blocks.addAll([
+      for (final r in sorted)
+        if (!placed.contains(r.key)) [r],
+    ]);
+    blocks.sort((a, b) => place[a.first.key]!.compareTo(place[b.first.key]!));
+    return blocks;
+  }
+  final top = {for (final r in topGroup(sorted, all: all)) r.key};
+  final blocks = <List<Result>>[];
+  for (final r in sorted.where((r) => !top.contains(r.key))) {
+    // Joins only when it is about the same as every one already in the
+    // block, so a chain (A≈B, B≈C) never stretches one speed word over C.
+    if (blocks.isNotEmpty &&
+        blocks.last.every((m) => m.value == r.value || m.overlaps(r))) {
+      blocks.last.add(r);
+    } else {
+      blocks.add([r]);
+    }
+  }
+  return blocks;
 }
 
 /// Spearman's rank correlation of the frameworks both lists share; null
@@ -410,16 +565,22 @@ String kindsOfWork(int n) => '${numberWord(n)} ${n == 1 ? 'test' : 'tests'}';
 /// The comparison's answer in one plain sentence (or two): who handled the
 /// most in how many kinds of work, and where it was too close to call.
 /// [byTest] holds the picked frameworks' results per test, in test order.
-String compareVerdict(Map<String, List<Result>> byTest) {
+/// [full] holds every framework's results per test, for the tie rule.
+String compareVerdict(
+  Map<String, List<Result>> byTest, {
+  Map<String, List<Result>>? full,
+}) {
   final wins = <String, List<String>>{};
   final names = <String, String>{};
-  var contested = 0, close = 0;
+  var contested = 0;
+  final ties = <List<Result>>[];
   for (final e in byTest.entries) {
     final rs = sortResults(e.value);
     if (rs.length < 2) continue;
     contested++;
-    if (rs[0].overlaps(rs[1])) {
-      close++;
+    final top = topGroup(rs, all: full?[e.key]);
+    if (top.length > 1) {
+      ties.add(top);
       continue;
     }
     (wins[rs[0].key] ??= []).add(e.key);
@@ -435,11 +596,17 @@ String compareVerdict(Map<String, List<Result>> byTest) {
   }
   final most = wins.values.map((w) => w.length).reduce(math.max);
   final leaders = wins.keys.where((k) => wins[k]!.length == most).toList();
+  final close = ties.length;
+  // Said the way the test's own sentence says it: "the top three tie at our
+  // testing tool's limit", or "the top two were about the same".
+  String tieWords(List<Result> t) => t.every((r) => r.capped)
+      ? "the top ${numberWord(t.length)} tie at our testing tool's limit"
+      : 'the top ${numberWord(t.length)} were about the same';
   final closeNote = close == 0
       ? ''
       : close == 1
-      ? ' In one test, the top two were about the same.'
-      : ' In ${numberWord(close)} tests, the top two were about the same.';
+      ? ' In one test, ${tieWords(ties.single)}.'
+      : ' In ${numberWord(close)} tests, there was a tie at the top.';
   if (leaders.length > 1) {
     return '${capFirst(joinAnd([for (final k in leaders) names[k]!]))} each '
         'were fastest in ${kindsOfWork(most)}.$closeNote';
@@ -448,6 +615,8 @@ String compareVerdict(Map<String, List<Result>> byTest) {
   final head = most == contested
       ? (contested == 1
             ? '${capFirst(names[top]!)} was fastest.'
+            : contested == 2
+            ? '${capFirst(names[top]!)} was fastest in both tests.'
             : '${capFirst(names[top]!)} was fastest in all '
                   '${kindsOfWork(contested)}.')
       : '${capFirst(names[top]!)} was fastest in ${numberWord(most)} of '
@@ -455,20 +624,21 @@ String compareVerdict(Map<String, List<Result>> byTest) {
   final others = [
     for (final e in wins.entries)
       if (e.key != top)
-        '${capFirst(names[e.key]!)} led in '
-            '${joinAnd([for (final t in e.value) testInfo(t).inSentence])}.',
+        '${capFirst(names[e.key]!)} led in the '
+            '${joinAnd([for (final t in e.value) testInfo(t).short])} '
+            '${e.value.length == 1 ? 'test' : 'tests'}.',
   ];
   return [head, ...others].join(' ') + closeNote;
 }
 
 /// One test of a comparison in words, with no numbers: who is at the top
 /// and how far behind each of the others is, as a share of the fastest.
-String compareTestSentence(List<Result> results) {
+String compareTestSentence(List<Result> results, {List<Result>? all}) {
   final rs = sortResults(results);
   if (rs.isEmpty) return 'None of them was measured here.';
   if (rs.length == 1) return 'Only ${rs.first.name} was measured here.';
   final capped = rs.where((r) => r.capped).toList();
-  final (words, limitSaid) = _ranked(rs, followers: rs.length);
+  final (words, limitSaid) = _ranked(rs, followers: rs.length, all: all);
   return [
     words,
     if (capped.isNotEmpty && !limitSaid)
@@ -491,19 +661,20 @@ int appCoreCount(RunSummary run) {
   return 2;
 }
 
-/// 100 -> "a tenth of a second", 1000 -> "a second", 250 -> "250 ms".
-String _msPhrase(num ms) => switch (ms) {
-  100 => 'a tenth of a second',
-  1000 => 'a second',
-  500 => 'half a second',
-  _ => '${whole(ms)} ms',
-};
-
 /// The limit a reply had to meet, in words: "under a tenth of a second".
 String sloPhrase(RunSummary run) {
   final slo = run.params['slo'];
   final p99 = slo is Map && slo['p99_ms'] is num ? slo['p99_ms'] as num : 100;
-  return 'under ${_msPhrase(p99)}';
+  return 'within ${msText(p99.toDouble())}';
+}
+
+/// "95%": the share of the requests sent that a step must answer to pass.
+String keptUp(RunSummary run) {
+  final slo = run.params['slo'];
+  final r = slo is Map && slo['achieved_ratio'] is num
+      ? (slo['achieved_ratio'] as num).toDouble()
+      : 0.95;
+  return '${(r * 100).round()}%';
 }
 
 /// The most the load tool sent in this run, from the results it capped;
@@ -527,15 +698,15 @@ String ledeFor(RunSummary run) {
   if (run.isLegacy) {
     final users = run.params['users'];
     final secs = run.params['runtime_s'];
-    return 'An older test of the same small API, built in $n frameworks. It '
+    return 'An older test of the same small app, built in $n frameworks. It '
         'sent ${users is num ? whole(users) : 'thousands of'} simulated users '
         'at each one${secs is num ? ' for ${whole(secs)} seconds' : ''}. Its '
         'result is the average number of requests a second it handled. These '
         'numbers cannot be compared with newer runs.';
   }
   return 'We built the same small app in $n frameworks and sent each one '
-      'more and more traffic until it slowed down. Each number is the most '
-      'requests a second it handled before that.';
+      'more and more traffic until it slowed down. Each number is the '
+      'busiest rate we sent that it kept up with.';
 }
 
 /// The points of "How we tested", from the run's own settings.
@@ -557,7 +728,7 @@ List<String> howWeTested(RunSummary run) {
       if (reps != null && reps > 1)
         'We ran every test ${numberWord(reps)} times.'
       else
-        'Every test ran once, so there is no range of runs.',
+        'Every test ran once, so there is no range of tries.',
       'Everything ran on one $cpu computer. On other machines the numbers '
           'will be different.',
     ];
@@ -577,26 +748,33 @@ List<String> howWeTested(RunSummary run) {
       : null;
   final limit = toolLimit(run);
   return [
-    'Every framework ran the same small API on ${numberWord(cores)} '
+    'Every framework ran the same small app on ${numberWord(cores)} '
         'processor ${cores == 1 ? 'core' : 'cores'}'
         '${memText == null ? '' : ' with $memText of memory'}. A PostgreSQL '
         'database ran beside it on its own cores.',
-    'A load tool sent requests at a steady rate'
+    'Our testing tool sent requests at a steady rate'
         '${seconds == null ? '' : ' for $seconds seconds'}, then at a higher '
         'rate, and kept stepping up until replies got slow.',
     'The result is the highest rate at which 99 of every 100 replies still '
         'came back ${sloPhrase(run)}'
-        '${oneIn == null ? '' : ', and fewer than 1 in $oneIn failed'}.',
+        '${oneIn == null ? '' : ', fewer than 1 in $oneIn failed'}, and it '
+        'kept up with at least ${keptUp(run)} of the requests sent.',
     if (reps != null && reps > 1)
-      'We ran every test ${numberWord(reps)} times. The number we show is the '
-          'middle run. The lowest and highest runs are shown next to it '
+      'We tried every test ${numberWord(reps)} times. The number we show is '
+          'the middle try. The lowest and highest tries are shown next to it '
           'wherever you see a range.',
-    "When two frameworks' runs overlap, we call them about the same.",
+    'We call two frameworks about the same when each one\'s middle try '
+        "falls inside the other's lowest-to-highest tries. Frameworks with "
+        'the same number always stay together, so if one of them is not '
+        'about the same as the fastest, none of them is counted as tied '
+        'for fastest.',
     if (limit != null)
-      'The load tool itself has a limit (about '
+      'Our testing tool has its own limit: results stop at about '
           '${whole(limit < 1000 ? limit : (limit / 1000).round() * 1000)} '
-          'requests a second on this machine). A framework that reached the '
-          'limit may really be faster than its number.',
+          'requests a second on this computer, because it cannot send more '
+          'than that steadily, and less in the tests that use '
+          'the database, where it has more work per request. A framework that '
+          'hit the limit may really be faster than its number.',
     'Everything ran on one $cpu computer. On other machines the numbers will '
         'be different.',
   ];
@@ -610,11 +788,12 @@ const kFootLine =
 
 /// What the Every number table can show.
 enum Measure {
+  // The same names as every other table and Method's "Words we use".
   load('Requests a second', 'the main result'),
-  typical('Typical reply time', 'half of all replies were faster than this'),
-  slow('Slow reply time', '99 of every 100 replies were faster than this'),
-  processor('Processor use', 'how much of its processor cores it used'),
-  memory('Memory use', 'how much memory the framework used');
+  typical('Typical reply', 'half of all replies were faster than this'),
+  slow('Slow reply', '99 of every 100 replies were faster than this'),
+  processor('Processor', 'how much of its processor cores it used'),
+  memory('Memory', 'how much memory the framework used');
 
   final String label;
   final String meaning;
@@ -668,3 +847,52 @@ String plainMetricLabel(Metric m) => switch (m.id) {
 String unitFor(Metric headline) => headline == Metrics.avgRps
     ? 'requests a second, on average'
     : 'requests a second';
+
+/// What a measured number means, in plain words, for tooltips next to a
+/// number's name.
+String metricMeaning(Metric m, RunSummary run) {
+  final cores = appCoreCount(run);
+  return switch (m.id) {
+    'sustainable_rps' =>
+      'The main result: the busiest step it passed while 99 of every 100 '
+          'replies came back ${sloPhrase(run)}, ${errorPhrase(run)} and it '
+          'kept up with at least ${keptUp(run)} of the requests. '
+          'Higher is better.',
+    'peak_rps' =>
+      'The most requests a second it really answered at any step, however '
+          'slow the replies were. The result counts the rate we sent, so '
+          'this can sit just below it.',
+    'avg_rps' =>
+      'Old method: the average requests a second while more and more '
+          'visitors were added. Higher is better.',
+    'p50_ms' =>
+      'Typical reply: half of all replies came back faster than this.',
+    'p90_ms' => '9 in 10 replies came back faster than this.',
+    'p99_ms' => 'Slow reply: 99 of every 100 replies came back within this.',
+    'p999_ms' => '999 of every 1,000 replies came back within this.',
+    'error_rate' => 'The share of requests that failed.',
+    'app_cpu' =>
+      'How much of its ${numberWord(cores)} processor '
+          '${cores == 1 ? 'core' : 'cores'} the app used. 100% is '
+          '${cores == 1 ? 'that core' : 'all of them'}.',
+    'app_mem_mb' => 'How much memory the app used.',
+    'db_cpu' =>
+      "How much processor the database used while serving this framework. "
+          '100% is one core.',
+    'rps_per_core' =>
+      'Requests a second for each processor core it really used.',
+    'rps_per_100mb' => 'Requests a second for every 100 MB of memory it used.',
+    _ => plainMetricLabel(m),
+  };
+}
+
+/// "fewer than 1 in 100 failed": the error limit, said one way everywhere.
+String errorPhrase(RunSummary run) {
+  final slo = run.params['slo'];
+  final rate = slo is Map && slo['error_rate'] is num
+      ? (slo['error_rate'] as num).toDouble()
+      : 0.01;
+  return rate <= 0
+      ? 'none failed'
+      : 'fewer than 1 in ${(1 / rate).round()} failed';
+}

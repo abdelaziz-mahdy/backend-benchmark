@@ -12,6 +12,8 @@ import '../../widgets/calm.dart';
 import '../../widgets/charts.dart';
 import '../../widgets/common.dart';
 import '../../widgets/implementation.dart';
+import '../../widgets/race_replay.dart' show Slo;
+import '../history_screen.dart' show runDates;
 
 /// Picks the test the chart sections show (shared with History).
 class TestPicker extends StatelessWidget {
@@ -109,8 +111,8 @@ class FrameworkCharts extends StatelessWidget {
           ChartBlock(
             title: 'All numbers from this test',
             subtitle: r.reps > 1
-                ? 'The middle of ${numberWord(r.reps)} runs, with the lowest '
-                      'and highest run after it.'
+                ? 'The middle of ${numberWord(r.reps)} tries, with the lowest '
+                      'and highest try after it.'
                 : null,
             child: _AllNumbers(result: r, cores: appCoreCount(run)),
           ),
@@ -128,23 +130,28 @@ class FrameworkCharts extends StatelessWidget {
               subtitle:
                   'The dashed line is "handled everything it was asked". '
                   'Where the line drops below it, the framework stopped '
-                  'keeping up. Hollow points missed a limit.',
+                  'keeping up. Hollow points missed a limit.'
+                  "${StepSeries(b, r.steps, capped: r.loadgenBound).anyToolLimited ? " Amber squares stopped at our testing tool's limit, not the framework's." : ''}"
+                  '${r.reps > 1 ? ' From one of the ${numberWord(r.reps)} tries, so its numbers can differ a little from the table above.' : ''}',
               child: StepLoadChart(
-                series: [StepSeries(b, r.steps)],
+                series: [StepSeries(b, r.steps, capped: r.loadgenBound)],
                 mode: StepChartMode.throughput,
                 sustainable: Metrics.sustainable.value(r),
+                capped: r.loadgenBound,
               ),
             ),
             ChartBlock(
               title: 'Slow reply time at each step',
               subtitle:
                   '99 of every 100 replies were faster than this. Above the '
-                  "red line is too slow. Amber points stopped at our "
-                  "testing tool's limit, not the framework's.",
+                  'red line is too slow.'
+                  '${r.reps > 1 ? ' From one of the ${numberWord(r.reps)} tries, so it can differ a little from the table above.' : ''}'
+                  "${StepSeries(b, r.steps, capped: r.loadgenBound).anyToolLimited ? " Amber squares stopped at our testing tool's limit, not the framework's." : ''}",
               child: StepLoadChart(
-                series: [StepSeries(b, r.steps)],
+                series: [StepSeries(b, r.steps, capped: r.loadgenBound)],
                 mode: StepChartMode.p99,
                 sustainable: Metrics.sustainable.value(r),
+                capped: r.loadgenBound,
               ),
             ),
           ],
@@ -181,22 +188,24 @@ class FrameworkCharts extends StatelessWidget {
           child: TimeSeriesChart(
             series: [(b, ts)],
             field: 'rps',
-            format: formatNumber,
+            format: whole,
           ),
         ),
       ChartBlock(
         title: 'Processor over time',
         subtitle:
-            '100% is one core. It had ${numberWord(cores)} '
-            '${cores == 1 ? 'core' : 'cores'}'
-            '${run.isLegacy ? '' : ' (the dashed line)'}.'
+            'How much of its ${numberWord(cores)} processor '
+            '${cores == 1 ? 'core' : 'cores'} it used. 100% is '
+            '${cores == 1 ? 'that core' : 'all of them'}.'
             '${seconds is num ? ' Each step lasted ${whole(seconds)} seconds.' : ''}',
         child: TimeSeriesChart(
           series: [(b, ts)],
           field: 'app_cpu',
           format: (v) => '${v.toStringAsFixed(0)}%',
-          ceiling: run.isLegacy ? null : cores * 100.0,
-          ceilingLabel: '$cores ${cores == 1 ? 'core' : 'cores'}',
+          divideBy: cores.toDouble(),
+          maxValue: 100,
+          ceiling: 100,
+          ceilingLabel: cores == 1 ? 'its core' : 'all its cores',
         ),
       ),
       ChartBlock(
@@ -224,7 +233,7 @@ class _AllNumbers extends StatelessWidget {
     final p = context.palette;
     final t = Txt(p);
     final metrics = Metrics.available([result], Metrics.all);
-    String fmt(Metric m, double v) => switch (m.unit) {
+    String plain(Metric m, double v) => switch (m.unit) {
       Unit.rps || Unit.ratio => whole(v),
       Unit.ms => msText(v),
       // The app's share of its own cores, as in every other table.
@@ -233,6 +242,11 @@ class _AllNumbers extends StatelessWidget {
       Unit.mb => memText(v),
       Unit.percent => formatMetricShort(m, v),
     };
+    // "40,000+": the result hit our testing tool's limit.
+    String fmt(Metric m, double v) =>
+        m.id == 'sustainable_rps' && result.loadgenBound
+        ? '${whole(v)}+'
+        : plain(m, v);
     final style = t.body.copyWith(
       fontSize: 15,
       fontFeatures: const [FontFeature.tabularFigures()],
@@ -247,7 +261,7 @@ class _AllNumbers extends StatelessWidget {
               border: Border(top: BorderSide(color: p.line)),
             ),
             child: Tooltip(
-              message: m.help,
+              message: metricMeaning(m, context.read<DashboardState>().run!),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -260,11 +274,13 @@ class _AllNumbers extends StatelessWidget {
                         fmt(m, m.value(result)!),
                         style: style.copyWith(fontWeight: FontWeight.w700),
                       ),
+                      // The range without "+": only the result as a whole
+                      // is flagged as the tool's limit, as on other views.
                       if (m.stat(result) case final s?
                           when result.reps > 1 &&
-                              fmt(m, s.min) != fmt(m, s.max))
+                              plain(m, s.min) != plain(m, s.max))
                         Text(
-                          '${fmt(m, s.min)} to ${fmt(m, s.max)}',
+                          '${plain(m, s.min)} to ${plain(m, s.max)}',
                           style: t.small.copyWith(fontSize: 13),
                         ),
                     ],
@@ -278,7 +294,7 @@ class _AllNumbers extends StatelessWidget {
   }
 }
 
-/// Reply time percentiles as bars, with the 100 ms limit marked.
+/// Reply time percentiles as bars, with the reply-time limit marked.
 class _Percentiles extends StatelessWidget {
   final BackendResult backend;
   final ScenarioResult result;
@@ -290,23 +306,29 @@ class _Percentiles extends StatelessWidget {
     final p = context.palette;
     final t = Txt(p);
     final rows = [
-      (Metrics.p50, 'Half'),
-      (Metrics.p90, '9 in 10'),
-      (Metrics.p99, '99 in 100'),
-      (Metrics.p999, '999 in 1,000'),
+      // The same names as the table above and Method's "Words we use".
+      (Metrics.p50, 'Typical reply'),
+      (Metrics.p90, '9 in 10 replies'),
+      (Metrics.p99, 'Slow reply'),
+      (Metrics.p999, '999 in 1,000 replies'),
     ].where((e) => e.$1.value(result) != null).toList();
     if (rows.isEmpty) return const SizedBox.shrink();
     final top = rows
         .map((e) => e.$1.value(result)!)
         .reduce((a, b) => a > b ? a : b);
+    // The old method had no reply-time limit, so it gets no mark.
+    final run = context.read<DashboardState>().run!;
+    final double? limit = run.isLegacy ? null : Slo.of(run.params).p99Ms;
     // The scale always reaches past the limit so its mark is on the track.
-    final max = (top > 100 ? top : 100) * 1.15;
+    final max = (limit != null && limit > top ? limit : top) * 1.15;
     final color = identityColor(p, backend.key);
     return ChartBlock(
       title: 'Reply times',
       subtitle:
-          'How fast replies came back at its result: half of them were '
-          'faster than the first bar, and so on. The red mark is 100 ms.',
+          'How fast replies came back '
+          '${run.isLegacy ? 'during the old test' : 'at its result'}: half of '
+          'them were faster than the first bar, and so on.'
+          '${limit == null ? '' : ' The red mark is the ${msText(limit)} limit.'}',
       child: Column(
         children: [
           for (final (i, (m, label)) in rows.indexed)
@@ -314,7 +336,7 @@ class _Percentiles extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 children: [
-                  SizedBox(width: 96, child: Text(label, style: t.small)),
+                  SizedBox(width: 132, child: Text(label, style: t.small)),
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, c) => Stack(
@@ -327,15 +349,16 @@ class _Percentiles extends StatelessWidget {
                             height: 10,
                             stagger: i * 0.1,
                           ),
-                          Positioned(
-                            left: c.maxWidth * 100 / max - 1,
-                            top: -3,
-                            child: Container(
-                              width: 2,
-                              height: 16,
-                              color: p.danger,
+                          if (limit != null)
+                            Positioned(
+                              left: c.maxWidth * limit / max - 1,
+                              top: -3,
+                              child: Container(
+                                width: 2,
+                                height: 16,
+                                color: p.danger,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -368,7 +391,8 @@ class _FrameworkHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Txt.of(context);
-    final entry = state.entry;
+    // The run on screen, not one loading.
+    final entry = state.shownEntry ?? state.entry;
     final test = state.scenario;
     if (entry == null || test == null) return const SizedBox.shrink();
     final runs = state
@@ -380,9 +404,13 @@ class _FrameworkHistory extends StatelessWidget {
         title: 'History',
         child: Text(
           runs.isEmpty
-              ? 'No earlier runs of ${backend.name} on this machine.'
-              : 'Only one run of ${backend.name} on this machine so far; '
-                    'later runs will show up here.',
+              ? 'No earlier runs of ${backend.name} with this method on '
+                    'this computer.'
+              : entry.isLegacy
+              ? 'The old method ran once; newer runs use a different method, '
+                    'so they are not mixed in here.'
+              : 'Only one run of ${backend.name} with this method on this '
+                    'computer so far; later runs will show up here.',
           style: t.small,
         ),
       );
@@ -394,7 +422,7 @@ class _FrameworkHistory extends StatelessWidget {
           'Every run of ${backend.name} on ${entry.machine.cpu} with the same '
           'method, in ${unitFor(metric)}.',
       child: HistoryChart(
-        labels: runAxisLabels(runs),
+        labels: runDates(runs),
         lines: [
           (
             backend.key,
@@ -402,7 +430,11 @@ class _FrameworkHistory extends StatelessWidget {
             [for (final r in runs) r.headline[backend.key]![test]![metric.id]],
           ),
         ],
-        format: (v) => formatMetricShort(metric, v),
+        format: (v) => switch (metric.unit) {
+          Unit.rps || Unit.ratio => whole(v),
+          Unit.ms => msText(v),
+          _ => formatMetricShort(metric, v),
+        },
       ),
     );
   }

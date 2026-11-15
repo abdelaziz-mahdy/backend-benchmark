@@ -3,9 +3,9 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../models/plain.dart';
 import '../models/results.dart';
 import '../utils/colors.dart';
-import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
 
 // Styling shared by every chart: no frame, faint horizontal rules, quiet
@@ -51,8 +51,22 @@ class StepSeries {
   final BackendResult backend;
   final List<LoadStep> steps;
 
-  StepSeries(this.backend, this.steps)
+  /// Its result hit our testing tool's limit: a step that only fell short
+  /// of answering enough (fast replies, few errors) is the tool's limit too.
+  final bool capped;
+
+  StepSeries(this.backend, this.steps, {this.capped = false})
     : assert(steps.every((s) => s.targetRps > 0));
+
+  /// The testing tool, not the app, was the limit at [step]: flagged so, or
+  /// it only fell short of answering enough (fast replies, few errors)
+  /// while the result hit the tool's limit. One rule for colour and words.
+  bool toolLimited(LoadStep step) =>
+      step.k6Bound ||
+      (capped && !step.pass && step.p99 < _sloMs && step.errorRate < 0.01);
+
+  /// Any of its steps stopped at the testing tool's limit.
+  bool get anyToolLimited => steps.any(toolLimited);
 }
 
 enum StepChartMode { throughput, p99 }
@@ -69,12 +83,16 @@ class StepLoadChart extends StatelessWidget {
   final double height;
   final double? sustainable;
 
+  /// The result hit our testing tool's limit: its pin reads "40,000+".
+  final bool capped;
+
   const StepLoadChart({
     super.key,
     required this.series,
     required this.mode,
     this.height = 270,
     this.sustainable,
+    this.capped = false,
   });
 
   @override
@@ -112,9 +130,10 @@ class StepLoadChart extends StatelessWidget {
     minY = minY.floorToDouble();
     maxY = maxY.ceilToDouble();
 
-    String fmtX(double v) => compactRps(base * math.pow(2, v));
+    // Full numbers ("4,000") as everywhere else on the site.
+    String fmtX(double v) => whole(base * math.pow(2, v));
     String fmtY(double v) {
-      if (throughput) return compactRps(base * math.pow(2, v));
+      if (throughput) return whole(base * math.pow(2, v));
       final ms = math.pow(10, v).toDouble();
       if (ms >= 1000) return '${(ms / 1000).round()} s';
       return ms >= 1 ? '${ms.round()} ms' : '${ms.toStringAsFixed(1)} ms';
@@ -152,13 +171,21 @@ class StepLoadChart extends StatelessWidget {
             show: true,
             getDotPainter: (spot, _, bar, index) {
               final step = s.steps[index];
+              // A hollow amber square: the load generator, not the app, was
+              // the limit. The shape tells it apart from a line coloured
+              // near amber.
+              if (!step.pass && s.toolLimited(step)) {
+                return FlDotSquarePainter(
+                  size: 7,
+                  color: p.surface,
+                  strokeColor: p.warn,
+                  strokeWidth: 2,
+                );
+              }
               return FlDotCirclePainter(
                 radius: step.pass ? 2.8 : 4,
                 color: step.pass ? bar.color ?? p.text : p.surface,
-                // Amber: the load generator, not the app, was the limit.
-                strokeColor: step.pass
-                    ? p.surface
-                    : (step.k6Bound ? p.warn : p.danger),
+                strokeColor: step.pass ? p.surface : p.danger,
                 strokeWidth: step.pass ? 1 : 2,
               );
             },
@@ -224,7 +251,7 @@ class StepLoadChart extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 4, top: 2),
                     style: mono(10.5, color: p.accent, weight: FontWeight.w700),
                     labelResolver: (_) =>
-                        'result ${formatNumber(sustainable!)}',
+                        'result ${whole(sustainable!)}${capped ? '+' : ''}',
                   ),
                 ),
             ],
@@ -242,10 +269,17 @@ class StepLoadChart extends StatelessWidget {
                 showTitles: true,
                 interval: 1,
                 reservedSize: 22,
-                getTitlesWidget: (v, meta) => v != v.roundToDouble()
+                // A phone labels every other doubling, counted back from the
+                // last, so labels never run together and the last one shows.
+                getTitlesWidget: (v, meta) =>
+                    v != v.roundToDouble() ||
+                        (MediaQuery.sizeOf(context).width < 480 &&
+                            (maxX.round() - v.round()).isOdd)
                     ? const SizedBox.shrink()
                     : SideTitleWidget(
                         meta: meta,
+                        // The last label stays inside the chart.
+                        fitInside: SideTitleFitInsideData.fromTitleMeta(meta),
                         child: Text(fmtX(v), style: _axisStyle(p)),
                       ),
               ),
@@ -274,13 +308,13 @@ class StepLoadChart extends StatelessWidget {
             if (s.barIndex - offset < 0) return '';
             final st = series[s.barIndex - offset].steps[s.spotIndex];
             final name = series[s.barIndex - offset].backend.name;
-            return '$name, asked for ${formatNumber(st.targetRps)} a second\n'
-                'handled ${formatNumber(st.achievedRps)} · slow reply '
-                '${formatMs(st.p99)}'
+            return '$name, asked for ${whole(st.targetRps)} a second\n'
+                'handled ${whole(st.achievedRps)} · slow reply '
+                '${msText(st.p99)}'
                 '${st.errorRate > 0 ? ' · ${(st.errorRate * 100).toStringAsFixed(2)}% failed' : ''}'
                 '${st.pass
                     ? ''
-                    : st.k6Bound
+                    : series[s.barIndex - offset].toolLimited(st)
                     ? " · stopped at our testing tool's limit"
                     : ' · missed the limits'}';
           }),
@@ -307,6 +341,14 @@ class TimeSeriesChart extends StatelessWidget {
   final double? ceiling;
   final String? ceilingLabel;
 
+  /// Divides every value: the app processor is recorded per core (100% is
+  /// one core) and shown as a share of the app's cores.
+  final double divideBy;
+
+  /// Caps every value: a share of cores never reads above 100%, as in the
+  /// tables (short readings can poke a little past the limit).
+  final double? maxValue;
+
   const TimeSeriesChart({
     super.key,
     required this.series,
@@ -316,6 +358,8 @@ class TimeSeriesChart extends StatelessWidget {
     this.height = 230,
     this.ceiling,
     this.ceilingLabel,
+    this.divideBy = 1,
+    this.maxValue,
   }) : assert(format != null || formatFor != null);
 
   @override
@@ -331,8 +375,11 @@ class TimeSeriesChart extends StatelessWidget {
       if (values == null) continue;
       final spots = <FlSpot>[];
       for (var i = 0; i < ts.t.length && i < values.length; i++) {
-        final v = values[i];
-        if (v == null) continue;
+        final raw = values[i];
+        if (raw == null) continue;
+        final v = maxValue == null
+            ? raw / divideBy
+            : math.min(maxValue!, raw / divideBy);
         spots.add(FlSpot(ts.t[i], v));
         maxT = math.max(maxT, ts.t[i]);
         maxY = math.max(maxY, v);
@@ -435,7 +482,9 @@ class TimeSeriesChart extends StatelessWidget {
           ),
           lineTouchData: _touch(
             p,
-            (s) => '${names[s.barIndex]}: ${format(s.y)} @ ${s.x.toInt()}s',
+            (s) =>
+                '${names[s.barIndex]}: ${format(s.y)} at ${s.x.toInt()} '
+                'seconds',
           ),
         ),
       ),
@@ -453,24 +502,6 @@ double _niceInterval(double max) {
   return 10 * mag;
 }
 
-/// X-axis labels for a list of runs: the date, plus the commit when two
-/// runs share a date ("2026-10-04 · 3ae75a8").
-List<String> runAxisLabels(List<RunIndexEntry> runs) {
-  final dates = [for (final r in runs) r.date ?? '?'];
-  return [
-    for (var i = 0; i < runs.length; i++)
-      dates.where((d) => d == dates[i]).length > 1
-          ? '${dates[i]} · ${_shortRun(runs[i].id)}'
-          : dates[i],
-  ];
-}
-
-/// "2026-10-04_m2pro-10c-32g_3ae75a8_cea6" → "3ae75a8".
-String _shortRun(String id) {
-  final parts = id.split('_');
-  return parts.length >= 3 ? parts[2] : id;
-}
-
 /// Metric value per run, one line per backend (History). Frameworks with a
 /// single run are dots; [highlight] dims every other line.
 class HistoryChart extends StatelessWidget {
@@ -485,7 +516,16 @@ class HistoryChart extends StatelessWidget {
     required this.lines,
     required this.format,
     this.highlight,
+    this.top,
+    this.capped = const {},
   });
+
+  /// A fixed top for the value axis (100 for a share of cores).
+  final double? top;
+
+  /// Frameworks whose newest point hit our testing tool's limit: that
+  /// point's tooltip reads "40,000+".
+  final Set<String> capped;
 
   @override
   Widget build(BuildContext context) {
@@ -493,16 +533,43 @@ class HistoryChart extends StatelessWidget {
     var maxY = 0.0;
     final bars = <LineChartBarData>[];
     final names = <String>[];
-    for (final (key, name, values) in lines) {
+    final keys = <String>[];
+    final lastSpot = <int>[];
+    // Frameworks with equal numbers at one run would hide each other's
+    // dots: nudge them apart sideways, in a fixed order.
+    final shared = <(int, double), List<String>>{};
+    for (final (key, _, values) in lines) {
+      for (var i = 0; i < values.length; i++) {
+        final v = values[i];
+        if (v != null) (shared[(i, v)] ??= []).add(key);
+      }
+    }
+    double nudge(String key, int i, double v) {
+      final same = shared[(i, v)]!;
+      if (same.length < 2) return 0;
+      return (same.indexOf(key) - (same.length - 1) / 2) * 0.07;
+    }
+
+    // The highlighted line is drawn last, on top of the faded ones.
+    final ordered = [
+      for (final l in lines)
+        if (l.$1 != highlight) l,
+      for (final l in lines)
+        if (l.$1 == highlight) l,
+    ];
+    for (final (key, name, values) in ordered) {
       final spots = <FlSpot>[
         for (var i = 0; i < values.length; i++)
-          if (values[i] != null) FlSpot(i.toDouble(), values[i]!),
+          if (values[i] != null)
+            FlSpot(i + nudge(key, i, values[i]!), values[i]!),
       ];
       if (spots.isEmpty) continue;
       for (final s in spots) {
         maxY = math.max(maxY, s.y);
       }
       names.add(name);
+      keys.add(key);
+      lastSpot.add(spots.length - 1);
       final dim = highlight != null && highlight != key;
       final color = identityColor(p, key).withValues(alpha: dim ? 0.18 : 1);
       bars.add(
@@ -531,8 +598,10 @@ class HistoryChart extends StatelessWidget {
       );
     }
     // Headroom above the highest point, so it sits under a labelled line.
-    final interval = _niceInterval(maxY * 1.1);
-    final top = ((maxY * 1.1) / interval).ceil() * interval;
+    final interval = this.top != null
+        ? this.top! / 4
+        : _niceInterval(maxY * 1.1);
+    final top = this.top ?? ((maxY * 1.1) / interval).ceil() * interval;
     final single = labels.length == 1;
     return SizedBox(
       height: 260,
@@ -581,7 +650,9 @@ class HistoryChart extends StatelessWidget {
           ),
           lineTouchData: _touch(
             p,
-            (s) => '${names[s.barIndex]}: ${format(s.y)}',
+            (s) =>
+                '${names[s.barIndex]}: ${format(s.y)}'
+                '${capped.contains(keys[s.barIndex]) && s.spotIndex == lastSpot[s.barIndex] ? '+' : ''}',
           ),
         ),
       ),

@@ -81,19 +81,14 @@ class EveryNumberView extends StatelessWidget {
               value: m,
               options: [
                 for (final x in Measure.values)
-                  (
-                    x,
-                    x == Measure.load
-                        ? '${x.label} (the main result)'
-                        : x.label,
-                  ),
+                  (x, x == Measure.load ? '${x.label} (the result)' : x.label),
               ],
               onChanged: state.setMeasure,
             ),
             if (m == Measure.load && !legacy)
               _Check(
                 value: state.showRange,
-                label: 'Also show the lowest and highest run',
+                label: 'Also show the lowest and highest try',
                 onChanged: state.setShowRange,
               ),
           ],
@@ -115,20 +110,35 @@ class EveryNumberView extends StatelessWidget {
               'Each number is the average requests a second during the old '
                   'test. Higher is better.'
             else
-              'Each number is requests a second: the most the framework '
-                  'handled while 99 of every 100 replies came back '
-                  '${sloPhrase(run)}. Higher is better.',
+              'Each number is requests a second: the busiest rate we sent '
+                  'that the framework kept up with, while 99 of every 100 '
+                  'replies came back '
+                  '${sloPhrase(run)}, ${errorPhrase(run)}, and it kept up with at '
+                  'least ${keptUp(run)} of the requests sent. Higher is '
+                  'better.',
             if (anyCapped)
-              'A plus sign (+) means the framework reached the most our test '
+              'A plus sign (+) means the framework reached the most our testing '
                   'tool could send. Its real figure may be higher.',
           ] else ...[
-            '${m.label}: ${m == Measure.processor ? 'how much of its ${numberWord(cores)} processor ${cores == 1 ? 'core' : 'cores'} the framework used' : m.meaning}. Lower is better.',
-            'Each framework was measured at its own top load (its requests-'
-                'a-second result), so this is not a like-for-like race.',
+            '${m.label}: ${m == Measure.processor ? 'how much of its ${numberWord(cores)} processor ${cores == 1 ? 'core' : 'cores'} the framework used' : m.meaning}.',
+            if (legacy)
+              'Each framework was measured during the old test, which sent '
+                  'the same traffic to every framework.'
+            else
+              'Each framework was measured at its own top load (its '
+                  'requests-a-second result), so this is not a like-for-like '
+                  'race.',
             if (m == Measure.typical || m == Measure.slow)
               '"ms" means milliseconds. 1,000 ms is one second.',
           ],
-          'A dash means the framework was not measured in that test.',
+          if (rows.any(
+            (b) => tests.any(
+              (s) =>
+                  b.scenarios[s] == null ||
+                  m.value(b.scenarios[s]!, state.headline) == null,
+            ),
+          ))
+            'A dash means the framework was not measured in that test.',
           'Select a framework name to see everything about it. The last '
               'column adds it to Compare (up to ${DashboardState.maxCompare}).',
           if (state.selectedKey != null &&
@@ -257,7 +267,7 @@ class _Table extends StatelessWidget {
           final s = r == null ? null : state.headline.stat(r);
           if (s == null) return null;
           return whole(s.min) == whole(s.max)
-              ? 'all runs equal'
+              ? 'all tries equal'
               : '${whole(s.min)} to ${whole(s.max)}';
         }
 
@@ -279,19 +289,32 @@ class _Table extends StatelessWidget {
           defaultVerticalAlignment: TableCellVerticalAlignment.top,
           children: [
             TableRow(
+              // Every heading sits on the same baseline, at the bottom.
               children: [
-                head(DashboardState.sortByName, 'Framework', left: true),
-                for (final s in tests) head(s, testInfo(s).short),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
-                  child: ExcludeSemantics(
-                    child: narrow
-                        ? Icon(Icons.compare_arrows, size: 16, color: p.muted)
-                        : Text(
-                            'Compare',
-                            textAlign: TextAlign.center,
-                            style: cell.copyWith(fontSize: 12, color: p.muted),
-                          ),
+                for (final cell in [
+                  head(DashboardState.sortByName, 'Framework', left: true),
+                  for (final s in tests) head(s, testInfo(s).short),
+                ])
+                  TableCell(
+                    verticalAlignment: TableCellVerticalAlignment.bottom,
+                    child: cell,
+                  ),
+                TableCell(
+                  verticalAlignment: TableCellVerticalAlignment.bottom,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 8, 8, 8),
+                    child: ExcludeSemantics(
+                      child: narrow
+                          ? Icon(Icons.compare_arrows, size: 16, color: p.muted)
+                          : Text(
+                              'Compare',
+                              textAlign: TextAlign.center,
+                              style: cell.copyWith(
+                                fontSize: 12,
+                                color: p.muted,
+                              ),
+                            ),
+                    ),
                   ),
                 ),
               ],
@@ -455,25 +478,39 @@ class _Table extends StatelessWidget {
 }
 
 /// The last column: add the framework to Compare, or take it out.
-class _CompareToggle extends StatelessWidget {
+class _CompareToggle extends StatefulWidget {
   final DashboardState state;
   final BackendResult backend;
 
   const _CompareToggle({required this.state, required this.backend});
 
   @override
+  State<_CompareToggle> createState() => _CompareToggleState();
+}
+
+class _CompareToggleState extends State<_CompareToggle> {
+  final _tip = GlobalKey<TooltipState>();
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
+    final backend = widget.backend;
     final p = context.palette;
     final on = state.compareKeys.contains(backend.key);
     final can = state.canAddCompare(backend.key);
     return Tooltip(
+      key: _tip,
       message: on
           ? 'Remove from compare'
           : can
           ? 'Add to compare'
-          : 'Compare is full (${DashboardState.maxCompare})',
+          : 'Compare holds up to ${DashboardState.maxCompare}. Remove one '
+                'there to add this one.',
       child: Pressable(
-        onTap: can ? () => state.toggleCompare(backend.key) : null,
+        // When Compare is full a tap still answers, right at the button.
+        onTap: can
+            ? () => state.toggleCompare(backend.key)
+            : () => _tip.currentState?.ensureTooltipVisible(),
         radius: 22,
         minWidth: 44,
         selected: on,

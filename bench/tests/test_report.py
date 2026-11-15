@@ -183,8 +183,24 @@ def test_without_pyyaml_the_fallback_is_skipped(tmp_path, monkeypatch):
     report._manifests.clear()
     assert report.describe_backend(backends, "go-mux", {}) == {
         "path": "go/mux", "api_style": "rest", "implementation": None, "implementation_from": None,
+        "notes": None,
     }
     report._manifests.clear()
+
+
+def test_todays_manifest_note_wins_and_a_variant_note_beats_the_shared_one(tmp_path):
+    backends = tmp_path / "backends"
+    write_manifest(
+        backends,
+        "java/foam3",
+        'name: foam3\nnotes: "shared"\nvariants:\n  - id: embedded\n    notes: "own"\n  - id: postgres\n',
+    )
+    report._manifests.clear()
+    own = report.describe_backend(backends, "java-foam3-embedded", {"variant": "embedded", "notes": "old"})
+    shared = report.describe_backend(backends, "java-foam3-postgres", {"variant": "postgres", "notes": "old"})
+    report._manifests.clear()
+    assert own["notes"] == "own"
+    assert shared["notes"] == "shared"
 
 
 def test_variant_names_are_distinct():

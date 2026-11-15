@@ -130,6 +130,7 @@ class _MethodScreenState extends State<MethodScreen> {
                         'the details.',
               onBack: () => state.setPage(DashboardPage.home),
             ),
+            RunLoadFailedNote(state: state, inPlace: false),
             if (!run.isLegacy) ...[
               const SizedBox(height: kSectionGap),
               _keyFacts(run),
@@ -251,8 +252,8 @@ class _MethodScreenState extends State<MethodScreen> {
         run.isLegacy ? 'What the old numbers are' : 'What the result means',
         run.isLegacy
             ? 'The average requests a second while users were added.'
-            : 'The busiest step it handled while staying fast and '
-                  'error-free.',
+            : 'The busiest step it handled while replies stayed fast, few '
+                  'failed and it kept up.',
         Icons.flag_outlined,
         _sustainable(run),
       ),
@@ -269,15 +270,14 @@ class _MethodScreenState extends State<MethodScreen> {
         section(
           'fairness',
           'Fairness rules',
-          'Same processor, memory, data and database connections for every '
-              'framework.',
+          'Same processor, memory and data for every framework.',
           Icons.balance,
           _fairness(run),
         ),
       section(
         'run',
         'This run and the computer',
-        '${run.machine.cpu} · ${longDate(run.date)} · change the run here.',
+        '${run.machine.cpu} · ${_when(state)} · change the run here.',
         Icons.computer,
         _thisRun(state, run),
       ),
@@ -334,10 +334,11 @@ class _MethodScreenState extends State<MethodScreen> {
         FactCard(
           icon: Icons.check_circle_outline,
           label: 'To pass a step',
-          value: 'Fast and error-free',
+          value: 'Fast, few errors, keeping up',
           detail:
-              '99 of every 100 replies within ${msText(slo.p99Ms)}, and fewer '
-              'than ${_pct(slo.errorRate)} errors.',
+              '99 of every 100 replies within ${msText(slo.p99Ms)}, '
+              '${errorPhrase(run)}, and at least '
+              '${_pct(slo.servedRatio)} of requests answered.',
         ),
         FactCard(
           icon: Icons.stairs_outlined,
@@ -348,8 +349,8 @@ class _MethodScreenState extends State<MethodScreen> {
         FactCard(
           icon: Icons.repeat,
           label: 'Every result is',
-          value: 'Middle of $reps runs',
-          detail: 'Every test runs ${numberWord(reps)} times.',
+          value: 'Middle of $reps tries',
+          detail: 'Every test is tried ${numberWord(reps)} times.',
         ),
       ],
     );
@@ -475,11 +476,7 @@ class _MethodScreenState extends State<MethodScreen> {
             '99 of every 100 replies came back within ${msText(slo.p99Ms)}.',
             leading: tick(),
           ),
-          Point(
-            'Errors:',
-            'fewer than ${_pct(slo.errorRate)} of requests failed.',
-            leading: tick(),
-          ),
+          Point('Errors:', '${errorPhrase(run)}.', leading: tick()),
           Point(
             'Kept up:',
             'the app answered at least ${_pct(slo.servedRatio)} of the '
@@ -528,6 +525,7 @@ class _MethodScreenState extends State<MethodScreen> {
   }
 
   Widget _fairness(RunSummary run) {
+    bool has(String key) => run.backends.any((b) => b.key == key);
     final cpusets = run.params['cpusets'] as Map? ?? const {};
     final mem = run.params['memory'] as Map? ?? const {};
     final cores = appCoreCount(run);
@@ -548,34 +546,52 @@ class _MethodScreenState extends State<MethodScreen> {
           ),
           if (mem['app'] != null)
             Point('Memory:', 'each app may use up to ${_size(mem['app'])}.'),
-          const Point(
+          // Only the frameworks this run has are named.
+          Point(
             'Settings:',
-            'production mode and release builds. One worker per core where '
-                'the language runs on one thread. About 20 database '
-                'connections in total.',
+            'each app runs the way it would for real visitors, not in a '
+                'test or debug mode. Most frameworks whose language uses one '
+                'processor core at a time start one copy per core'
+                '${has('dart-server-pod') ? '; serverpod runs a single copy (see its page)' : ''}.',
+          ),
+          Point(
+            'Database connections:',
+            'about 20 kept open by each app.'
+                '${run.backends.any((b) => b.pgbouncer) ? ' ${capFirst(joinAnd([for (final b in run.backends)
+                        if (b.pgbouncer) b.name]))} instead ${run.backends.where((b) => b.pgbouncer).length == 1 ? 'goes' : 'go'} through a connection sharer (PgBouncer) with 50.' : ''}'
+                '${run.backends.any((b) => b.db == 'none') ? ' ${capFirst(joinAnd([for (final b in run.backends)
+                        if (b.db == 'none') b.name]))} ${run.backends.where((b) => b.db == 'none').length == 1 ? 'has' : 'have'} no database at all.' : ''}'
+                " Each one's page lists its own.",
           ),
           Point(
             'Data:',
             'before each database test the table is emptied and filled with '
                 '${whole(run.params['seed_rows'] as num? ?? 10000)} rows '
-                "through the app's own API.",
+                'by sending them to the app, the same way visitors would.',
           ),
           const Point(
             'Reads',
             'ask for rows near the start of the table, so the database is '
                 'not what slows things down.',
           ),
-          const Point(
-            'Serverpod and FOAM',
-            'have their own way of calling the server (RPC) instead of plain '
-                'web addresses. We call them that way, with the same four '
-                'operations.',
-          ),
+          if (run.backends.any((b) => b.apiStyle != 'rest'))
+            Point(
+              joinAnd(
+                {
+                  for (final b in run.backends)
+                    if (b.apiStyle != 'rest') b.framework ?? b.name,
+                }.toList(),
+              ),
+              '${run.backends.where((b) => b.apiStyle != 'rest').map((b) => b.framework ?? b.name).toSet().length == 1 ? 'has its' : 'have their'} '
+              'own way of calling the server (RPC) instead of plain web '
+              'addresses. We call ${run.backends.where((b) => b.apiStyle != 'rest').map((b) => b.framework ?? b.name).toSet().length == 1 ? 'it' : 'them'} '
+              'that way, with the same four operations.',
+            ),
           Point(
             'Repeats:',
-            'every test runs ${numberWord(reps)} times. We show the middle '
-                'run and keep the lowest and highest. If they differ by more '
-                'than 10%, the result is marked as noisy.',
+            'every test is tried ${numberWord(reps)} times. We show the '
+                'middle try; tap a bar to see the lowest and highest next to '
+                'it.',
           ),
         ]),
       ],
@@ -608,16 +624,18 @@ class _MethodScreenState extends State<MethodScreen> {
         ),
         const SizedBox(height: 8),
         RunPicker(state: state),
+        RunLoadFailedNote(state: state, inPlace: true),
         const SizedBox(height: 24),
         Points([
-          if (run.date != null) Point('Date:', longDate(run.date)),
+          if (run.date != null) Point('Date:', '${capFirst(_when(state))}.'),
           Point('Computer:', '${run.machine.label} memory.'),
           if (docker['cpus'] != null)
             Point(
-              'Docker setup:',
+              'Shared by the apps, database and testing tool:',
               '${docker['cpus']} processor cores and '
-                  '${docker['mem_gb'] ?? '?'} GB of memory for everything'
-                  '${docker['version'] != null ? ', Docker ${docker['version']}' : ''}.',
+                  '${docker['mem_gb'] ?? '?'} GB of memory. Each part runs in '
+                  'its own sealed-off box (a Docker container)'
+                  '${docker['version'] != null ? ', Docker version ${docker['version']}' : ''}.',
             ),
           Point('Method:', '$method.'),
           if (run.contributor != null) Point('Run by:', run.contributor!),
@@ -764,89 +782,78 @@ class _MethodScreenState extends State<MethodScreen> {
         Points([
           for (final m in metrics)
             Point('${_label(m)}:', _meaning(m, slo, cores, run)),
-          const Point(
-            'Asked for and answered:',
-            'our testing tool asks for a fixed number of requests a second. '
-                '"Answered" is what the app really replied to. Where the step '
-                'chart leaves the dashed diagonal, the app stopped keeping up.',
-          ),
-          const Point(
-            'Limits:',
-            'the reply-time and error limits a step must meet to pass. '
-                'Engineers call these an SLO (service level objective).',
-          ),
-          const Point(
-            'Place and share of the best:',
-            'the position among every framework in that test. Equal numbers '
-                'share a place. The share is this number divided by the best '
-                'one.',
-          ),
+          // The old method had no steps and no limits.
+          if (!run.isLegacy) ...[
+            const Point(
+              'Asked for and answered:',
+              'our testing tool asks for a fixed number of requests a second. '
+                  '"Answered" is what the app really replied to. Where the '
+                  'step chart leaves the dashed diagonal, the app stopped '
+                  'keeping up.',
+            ),
+            const Point(
+              'Limits:',
+              'the three limits a step must meet to pass: slow replies, '
+                  'errors and keeping up. Engineers call these an SLO '
+                  '(service level objective).',
+            ),
+          ],
         ]),
       ],
     );
   }
 
-  /// A number's short name in the glossary.
-  static String _label(Metric m) => switch (m.id) {
-    'sustainable_rps' => 'Requests a second (the result)',
-    'peak_rps' => 'Most at any step',
-    'avg_rps' => 'Average requests a second',
-    'p50_ms' => 'Typical reply',
-    'p90_ms' => '9 in 10 replies',
-    'p99_ms' => 'Slow reply',
-    'p999_ms' => '999 in 1,000 replies',
-    'error_rate' => 'Errors',
-    'app_cpu' => 'Processor',
-    'app_mem_mb' => 'Memory',
-    'db_cpu' => 'Database processor',
-    'rps_per_core' => 'Per processor core',
-    'rps_per_100mb' => 'Per 100 MB of memory',
-    _ => plainMetricLabel(m),
-  };
+  /// A number's name in the glossary: the same one the tables use.
+  static String _label(Metric m) => plainMetricLabel(m);
 
   /// What a number means, in plain words.
   String _meaning(Metric m, Slo slo, int cores, RunSummary run) =>
       capFirst(_meaningText(m, slo, cores, run));
 
-  String _meaningText(Metric m, Slo slo, int cores, RunSummary run) =>
-      switch (m.id) {
-        'sustainable_rps' =>
-          'the busiest step it passed: 99 of every 100 replies within '
-              '${msText(slo.p99Ms)}, fewer than ${_pct(slo.errorRate)} '
-              'errors, and at least ${_pct(slo.servedRatio)} of requests '
-              'answered. The middle of the ${numberWord(_reps(run))} runs.',
-        'peak_rps' =>
-          'the most requests a second it answered at any step, '
-              'however slow the replies were.',
-        'avg_rps' =>
-          'old method: the average requests a second while '
-              'simulated users were added.',
-        'p50_ms' =>
-          'half of all replies came back faster than this, at the '
-              'busiest step it passed.',
-        'p90_ms' => '9 in 10 replies came back faster than this.',
-        'p99_ms' =>
-          '99 of every 100 replies came back within this. Lower is '
-              'better.',
-        'p999_ms' => '999 of every 1,000 replies came back within this.',
-        'error_rate' =>
-          'the share of requests that failed, at the busiest '
-              'step it passed.',
-        'app_cpu' =>
-          'how much processor the app used. 100% is one full '
-              'core; each app had ${numberWord(cores)}.',
-        'app_mem_mb' => 'how much memory the app used, on average.',
-        'db_cpu' =>
-          'how much processor the database used while serving this '
-              'framework. 100% is one full core.',
-        'rps_per_core' =>
-          'requests a second divided by the processor cores '
-              'it really used.',
-        'rps_per_100mb' =>
-          'requests a second for every 100 MB of memory it '
-              'used.',
-        _ => m.help,
-      };
+  String _meaningText(
+    Metric m,
+    Slo slo,
+    int cores,
+    RunSummary run,
+  ) => switch (m.id) {
+    'sustainable_rps' =>
+      'the busiest step it passed: 99 of every 100 replies within '
+          '${msText(slo.p99Ms)}, ${errorPhrase(run)}, and at least '
+          '${_pct(slo.servedRatio)} of requests '
+          'answered. The middle of the ${numberWord(_reps(run))} tries.',
+    'peak_rps' =>
+      'the most requests a second it really answered at any step, '
+          'however slow the replies were. The result counts the rate we '
+          'sent, so this can sit just below it.',
+    'avg_rps' =>
+      'old method: the average requests a second while '
+          'simulated users were added.',
+    'p50_ms' =>
+      'half of all replies came back faster than this, '
+          '${run.isLegacy ? 'averaged over the whole test' : 'at the busiest step it passed'}.',
+    'p90_ms' => '9 in 10 replies came back faster than this.',
+    'p99_ms' => '99 of every 100 replies came back within this.',
+    'p999_ms' => '999 of every 1,000 replies came back within this.',
+    'error_rate' =>
+      'the share of requests that failed, '
+          '${run.isLegacy ? 'over the whole test' : 'at the busiest step it passed'}.',
+    'app_cpu' =>
+      'how much of its ${numberWord(cores)} processor '
+          '${cores == 1 ? 'core' : 'cores'} the app used. 100% is '
+          '${cores == 1 ? 'that core' : 'all of them'}.',
+    'app_mem_mb' =>
+      'how much memory the app used, at the busiest step it passed.',
+    'db_cpu' =>
+      'how much processor the database used while serving this '
+          'framework. 100% is one full core.',
+    'rps_per_core' =>
+      'requests a second divided by the processor cores '
+          'it really used.',
+    'rps_per_100mb' =>
+      'requests a second for every 100 MB of memory it '
+          'used.',
+    _ => m.help,
+  };
 
   Widget _limits(RunSummary run) {
     final limit = toolLimit(run);
@@ -859,31 +866,40 @@ class _MethodScreenState extends State<MethodScreen> {
         const Lead('Read the numbers with these limits in mind.'),
         const SizedBox(height: 14),
         Points([
-          if (!run.isLegacy)
+          // Only when something in this run hit it.
+          if (!run.isLegacy && limit != null)
             Point(
               "Our testing tool's limit:",
-              'it tops out around $around requests a second on this computer, '
-                  'so the fastest frameworks tie in No database (marked with '
-                  "the tool's limit). Their real limit is higher.",
+              'results stop at about $around requests a second on this '
+                  'computer in No database (it cannot send more than that '
+                  'steadily), and lower in the tests that use the database, '
+                  'where it has more work per request. Frameworks '
+                  "that hit it get a striped bar end; they may be faster than "
+                  'their number.',
             ),
           const Point(
             'One computer:',
-            'the numbers belong to this computer and its Docker setup. Only '
+            'the numbers belong to this computer and how it was set up. Only '
                 'runs on the same computer with the same method can be '
                 'compared, which is why History never mixes them.',
           ),
-          const Point(
-            'Storage options',
-            'of one framework (such as FOAM3 with its own built-in store, or '
-                'with PostgreSQL) only differ where storage is what slows '
-                'things down. Where handling requests is the limit, they show '
-                'similar numbers.',
-          ),
-          const Point(
+          // Only when this run has a framework in two storage options.
+          if (run.backends.any((b) => b.db == 'none'))
+            const Point(
+              'Storage options',
+              'of one framework (such as foam3 with its own built-in store, or '
+                  'with PostgreSQL) only differ where storage is what slows '
+                  'things down. Where handling requests is the limit, they show '
+                  'similar numbers.',
+            ),
+          Point(
             'The slow reply',
-            "is measured at each framework's own result. A slower framework "
-                'can show a quicker slow reply simply because it served less '
-                'traffic.',
+            run.isLegacy
+                ? 'is an average over the whole old test, which sent the same '
+                      'traffic to every framework.'
+                : "is measured at each framework's own result. A slower "
+                      'framework can show a quicker slow reply simply because '
+                      'it served less traffic.',
           ),
           const Point(
             'Older runs:',
@@ -1154,9 +1170,10 @@ String _why(LoadStep s, Slo slo) {
     if (s.errorRate >= slo.errorRate)
       '${(s.errorRate * 100).toStringAsFixed(1)}% errors',
     if (s.targetRps > 0 && s.achievedRps / s.targetRps < slo.servedRatio)
-      'answered ${(s.achievedRps / s.targetRps * 100).round()}%',
+      'answered ${(s.achievedRps / s.targetRps * 100).floor()}%',
   ];
-  return parts.isEmpty ? 'failed a limit' : parts.join(', ');
+  // One reason per line, so each fits under its bar in full.
+  return parts.isEmpty ? 'failed a limit' : parts.join('\n');
 }
 
 /// The same in a full sentence, for the lines under the chart.
@@ -1172,7 +1189,7 @@ String _whySentence(LoadStep s, Slo slo) {
     if (s.errorRate >= slo.errorRate)
       '${(s.errorRate * 100).toStringAsFixed(1)}% of requests failed',
     if (s.targetRps > 0 && s.achievedRps / s.targetRps < slo.servedRatio)
-      'it answered only ${(s.achievedRps / s.targetRps * 100).round()}% of '
+      'it answered only ${(s.achievedRps / s.targetRps * 100).floor()}% of '
           'the requests',
   ];
   return parts.isEmpty ? 'it failed a limit' : joinAnd(parts);
@@ -1226,9 +1243,26 @@ class _RunStaircase extends StatelessWidget {
         : 3;
     final p = context.palette;
     final t = Txt(p);
+    // Others it ties with (the same number, or about the same by Who's
+    // fastest's rule) are named, so the example never claims a lead that
+    // the results page does not back.
+    final results = resultsFor(run, s);
+    final mine = results.where((x) => x.key == b.key).firstOrNull;
+    final topKeys = {for (final x in topGroup(results)) x.key};
+    final tied = [
+      for (final x in results)
+        if (mine != null &&
+            x.key != b.key &&
+            (x.value == mine.value ||
+                (topKeys.contains(b.key) && topKeys.contains(x.key))))
+          x.name,
+    ];
+    final tieNote = tied.isEmpty ? '' : ' (about the same as ${joinAnd(tied)})';
     final pick = b == ranked.first
-        ? 'the fastest framework in this test'
-        : "the fastest framework that did not hit our testing tool's limit";
+        ? '${tied.isEmpty ? 'the fastest framework' : 'one of the fastest frameworks'} '
+              'in this test$tieNote'
+        : "the fastest framework that did not hit our testing tool's "
+              'limit$tieNote';
     final ticks = [
       for (var v = 1000.0; v <= top; v *= 10)
         if (v > base) v,
@@ -1253,13 +1287,13 @@ class _RunStaircase extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('How a run works', style: t.small),
+          Text('How one try works', style: t.small),
           const SizedBox(height: 4),
-          const SubHead(Icons.stairs_outlined, 'One real run, step by step'),
+          const SubHead(Icons.stairs_outlined, 'One real try, step by step'),
           const SizedBox(height: 12),
           Lead(
             'This is what our testing tool did to ${b.name} in the '
-            '"${test.title}" test. ${b.name} is $pick.',
+            '"${test.title}" test. ${capFirst(b.name)} is $pick.',
           ),
           const SizedBox(height: 20),
           Text('Requests a second', style: t.small.copyWith(fontSize: 13.5)),
@@ -1274,14 +1308,32 @@ class _RunStaircase extends StatelessWidget {
               // Rate labels need about 46 px each; the result's label
               // always shows, the others where they do not collide.
               final stride = math.max(1, (46 / (barW + gap)).ceil());
-              final labelled = <int>{if (lastPass >= 0) lastPass};
+              // The result (last passed) and the first failed step are both
+              // named in the text under the chart, so both bars are always
+              // labelled. Side by side on a phone they would collide, so
+              // the failed one's label drops to a second line.
+              final labelled = <int>{
+                if (lastPass >= 0) lastPass,
+                if (firstFail >= 0) firstFail,
+              };
+              final secondRow =
+                  lastPass >= 0 &&
+                      firstFail >= 0 &&
+                      (firstFail - lastPass).abs() < stride
+                  ? firstFail
+                  : -1;
               for (var i = 0; i < steps.length; i++) {
                 if (labelled.every((j) => (i - j).abs() >= stride)) {
                   labelled.add(i);
                 }
               }
               return SizedBox(
-                height: barArea + 26 + (wide ? 30 : 0) + 20,
+                height:
+                    barArea +
+                    26 +
+                    (wide ? 44 : 0) +
+                    20 +
+                    (secondRow >= 0 ? 14 : 0),
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -1291,7 +1343,7 @@ class _RunStaircase extends StatelessWidget {
                       Positioned(
                         left: 0,
                         right: 0,
-                        bottom: 26 + (wide ? 30 : 0) + barArea * h(v) - 7,
+                        bottom: 26 + (wide ? 44 : 0) + barArea * h(v) - 7,
                         child: Row(
                           children: [
                             SizedBox(
@@ -1332,6 +1384,8 @@ class _RunStaircase extends StatelessWidget {
                                           : _why(steps[i], slo))
                                     : null,
                                 showRate: labelled.contains(i),
+                                rateRows: secondRow >= 0 ? 2 : 1,
+                                rateOnSecondRow: i == secondRow,
                                 slo: slo,
                               ),
                             ),
@@ -1367,7 +1421,7 @@ class _RunStaircase extends StatelessWidget {
             if (sustainable != null)
               Point(
                 'The result: ${whole(sustainable)} requests a second.',
-                'That is the middle of the ${numberWord(reps)} runs, so it '
+                'That is the middle of the ${numberWord(reps)} tries, so it '
                     'can differ a little from this one.',
                 leading: Icon(Icons.flag, size: 20, color: p.accent),
               ),
@@ -1378,7 +1432,7 @@ class _RunStaircase extends StatelessWidget {
           Points(lead: 28, [
             Point(
               'Teal: passed.',
-              'Fast enough, with few enough errors.',
+              'Fast enough, few enough errors, and it kept up.',
               leading: Swatch(p.accent, fill: 0.45),
             ),
             if (anyFail || !anyToolLimit)
@@ -1395,13 +1449,18 @@ class _RunStaircase extends StatelessWidget {
               ),
             Point(
               'Flag:',
-              'the busiest step it passed. Its bar is the darkest.',
+              'the busiest step it passed. Its bar is solid and stands out.',
               leading: Icon(Icons.flag, size: 18, color: p.accent),
             ),
-            const Point(
-              'Filled part',
-              'is what the app answered. The outline is what we asked for.',
-            ),
+            // Only when a gap between asked and answered is big enough to
+            // see on the squeezed scale.
+            if (steps.any(
+              (x) => x.targetRps > 0 && x.achievedRps / x.targetRps < 0.8,
+            ))
+              const Point(
+                'Filled part',
+                'is what the app answered. The outline is what we asked for.',
+              ),
             const Point(
               'Left to right,',
               'each step sends more requests. Bars are squeezed so small and '
@@ -1432,6 +1491,11 @@ class _StepBar extends StatelessWidget {
   final bool showRate;
   final Slo slo;
 
+  /// Lines kept under every bar for rate labels (2 when two labels would
+  /// collide), and whether this bar's label sits on the second one.
+  final int rateRows;
+  final bool rateOnSecondRow;
+
   const _StepBar({
     required this.step,
     required this.index,
@@ -1441,6 +1505,8 @@ class _StepBar extends StatelessWidget {
     required this.color,
     required this.reason,
     required this.showRate,
+    this.rateRows = 1,
+    this.rateOnSecondRow = false,
     required this.slo,
   });
 
@@ -1522,32 +1588,40 @@ class _StepBar extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           SizedBox(
-            height: 14,
+            height: 14.0 * rateRows,
             child: showRate
                 // May spill past a narrow bar into its unlabelled
                 // neighbours' room.
-                ? OverflowBox(
-                    maxWidth: 64,
-                    child: Text(
-                      whole(step.targetRps),
-                      maxLines: 1,
-                      softWrap: false,
-                      textAlign: TextAlign.center,
-                      style: t.num(
-                        11,
-                        weight: held ? FontWeight.w700 : FontWeight.w400,
-                      ).copyWith(color: held ? p.text : p.muted),
+                ? Align(
+                    alignment: rateOnSecondRow
+                        ? Alignment.bottomCenter
+                        : Alignment.topCenter,
+                    child: SizedBox(
+                      height: 14,
+                      child: OverflowBox(
+                        maxWidth: 64,
+                        child: Text(
+                          whole(step.targetRps),
+                          maxLines: 1,
+                          softWrap: false,
+                          textAlign: TextAlign.center,
+                          style: t.num(
+                            11,
+                            weight: held ? FontWeight.w700 : FontWeight.w400,
+                          ).copyWith(color: held ? p.text : p.muted),
+                        ),
+                      ),
                     ),
                   )
                 : null,
           ),
           if (reason != null)
             SizedBox(
-              height: 30,
+              height: 44,
               child: Text(
                 reason!,
                 textAlign: TextAlign.center,
-                maxLines: 2,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: t.small.copyWith(
                   fontSize: 11,
@@ -1563,6 +1637,9 @@ class _StepBar extends StatelessWidget {
 }
 
 /// Which run the site shows. Lives on the Method page.
+/// The one run picker on the page, so it can be scrolled back into view.
+final _runPickerKey = GlobalKey(debugLabel: 'run picker');
+
 class RunPicker extends StatelessWidget {
   final DashboardState state;
 
@@ -1573,6 +1650,7 @@ class RunPicker extends StatelessWidget {
     final p = context.palette;
     final selected = state.entry;
     return Container(
+      key: _runPickerKey,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: p.bg,
@@ -1588,47 +1666,101 @@ class RunPicker extends StatelessWidget {
             dropdownColor: p.surface,
             icon: Icon(Icons.expand_more, color: p.text, size: 22),
             style: Txt(p).body.copyWith(fontSize: 15.5),
-            itemHeight: 48,
+            // Two lines per run, wrapping instead of "…", so runs on the
+            // same computer can be told apart on a phone too.
+            itemHeight: null,
+            selectedItemBuilder: (context) => [
+              for (final e in state.index)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: _runLines(context, e),
+                  ),
+                ),
+            ],
             items: [
               for (final e in state.index)
                 DropdownMenuItem(
                   value: e.id,
-                  child: Row(
-                    children: [
-                      Icon(
-                        switch (e.kind) {
-                          RunKind.latest => Icons.auto_awesome,
-                          RunKind.legacy => Icons.history,
-                          RunKind.run => Icons.play_circle_outline,
-                        },
-                        size: 17,
-                        color: e.kind == RunKind.latest ? p.accent : p.muted,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          runLabel(e),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (e.dirty) ...[
-                        const SizedBox(width: 6),
-                        const Flag(
-                          text: 'modified',
-                          tooltip: 'Made from code with changes not yet saved.',
-                        ),
-                      ],
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: _runLines(context, e),
                   ),
                 ),
             ],
-            onChanged: (id) {
+            onChanged: (id) async {
               final e = state.index.where((x) => x.id == id).firstOrNull;
-              if (e != null) state.selectRun(e);
+              if (e == null) return;
+              await state.selectRun(e, inPlace: true);
+              // Sections above come and go with the run; keep the picker
+              // (and the facts it just changed) on screen.
+              bringIntoView(_runPickerKey);
             },
           ),
         ),
       ),
     );
   }
+
+  /// A run's icon, its name and, under it, its method and size.
+  Widget _runLines(BuildContext context, RunIndexEntry e) {
+    final p = context.palette;
+    final t = Txt(p);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(
+            switch (e.kind) {
+              RunKind.latest => Icons.auto_awesome,
+              RunKind.legacy => Icons.history,
+              RunKind.run => Icons.play_circle_outline,
+            },
+            size: 17,
+            color: e.kind == RunKind.latest ? p.accent : p.muted,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                runLabel(e, newest: state.index.firstOrNull),
+                style: t.body.copyWith(fontSize: 15.5, height: 1.25),
+              ),
+              Text(
+                runDetail(e),
+                style: t.small.copyWith(fontSize: 13.5, height: 1.25),
+              ),
+            ],
+          ),
+        ),
+        if (e.dirty) ...[
+          const SizedBox(width: 6),
+          const Flag(
+            text: 'modified',
+            tooltip: 'Made from code with changes not yet saved.',
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// When the shown numbers were measured: one date for a single run; for a
+/// combined view, "up to 5 October 2026, combined from 2 runs", since each
+/// framework keeps its own newest run.
+String _when(DashboardState state) {
+  // The run on screen, not one loading.
+  final e = state.shownEntry ?? state.entry;
+  final date = longDate(e?.date ?? state.run?.date);
+  if (e == null || e.kind != RunKind.latest) return date;
+  return [
+    'up to $date',
+    if (e.runs.length > 1) 'combined from ${numberWord(e.runs.length)} runs',
+  ].join(', ');
 }

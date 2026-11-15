@@ -64,7 +64,7 @@ class FactList extends StatelessWidget {
   final List<(String, Widget)> facts;
   final double labelWidth;
 
-  const FactList({super.key, required this.facts, this.labelWidth = 96});
+  const FactList({super.key, required this.facts, this.labelWidth = 150});
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +89,7 @@ class FactList extends StatelessWidget {
                         style: body(14.5, color: context.palette.muted),
                       ),
                     ),
+                    const SizedBox(width: 12),
                     Expanded(child: value),
                   ],
                 ),
@@ -104,31 +105,6 @@ Widget factText(String text) => Builder(
   builder: (context) =>
       Text(text, style: body(14.5, color: context.palette.text, height: 1.45)),
 );
-
-/// One muted line under a framework name: "server · db access".
-class ImplLine extends StatelessWidget {
-  final BackendResult backend;
-
-  const ImplLine({super.key, required this.backend});
-
-  @override
-  Widget build(BuildContext context) {
-    final impl = backend.implementation;
-    if (impl == null) return const SizedBox.shrink();
-    return Tooltip(
-      message: [
-        for (final (label, value) in impl.facts) '$label: $value',
-      ].join('\n'),
-      waitDuration: const Duration(milliseconds: 300),
-      child: Text(
-        impl.summary,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: context.palette.muted, fontSize: 11),
-      ),
-    );
-  }
-}
 
 /// Fact sheet of one backend: identity, how it is run, how it talks to the
 /// database, where its source is. Shown on the Framework tab.
@@ -155,34 +131,21 @@ class ImplementationCard extends StatelessWidget {
     final source = b.sourceUrl;
     final atSha = runDirty ? null : b.sourceUrlAt(runSha);
     final facts = <(String, Widget)>[
-      for (final (label, value) in impl?.facts ?? const <(String, String)>[])
-        (label, factText(value)),
-      ('API', factText(b.apiLabel)),
-      ('Database', factText(b.storageLabel)),
-      if (b.version != null || b.runtime != null)
-        (
-          'Versions',
-          factText(
-            [
-              if (b.version != null) '${b.framework ?? b.name} ${b.version}',
-              ?b.runtime,
-            ].join(' · '),
-          ),
-        ),
+      for (final (label, value) in b.builtFacts)
+        if (value != null) (label, factText(value)),
       (
-        'Source',
+        'Code',
         source == null
-            ? factText('No longer in the repository')
+            ? factText('No longer in the project')
             : Wrap(
                 spacing: 12,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  SourceLink(url: source, label: 'backends/${b.path}'),
+                  SourceLink(url: source, label: 'Code on GitHub'),
                   if (atSha != null)
                     SourceLink(
                       url: atSha,
-                      label:
-                          'at run commit ${runSha!.substring(0, runSha!.length.clamp(0, 7))}',
+                      label: 'Code at the time of this run',
                     ),
                 ],
               ),
@@ -213,9 +176,9 @@ class ImplementationCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (b.subtitle.isNotEmpty)
+              if (b.formerName != null)
                 Text(
-                  b.subtitle,
+                  'Called "${b.formerName}" in older runs',
                   style: TextStyle(
                     color: context.palette.muted,
                     fontSize: 14.5,
@@ -231,8 +194,8 @@ class ImplementationCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
-                'No implementation details recorded for this backend. '
-                'Check its source folder for how it is run.',
+                'How it is built was not recorded for this framework. Its '
+                'code shows how it is run.',
                 style: TextStyle(color: context.palette.muted, fontSize: 14.5),
               ),
             ),
@@ -251,8 +214,8 @@ class ImplementationCard extends StatelessWidget {
           if (b.implementationFrom == 'manifest') ...[
             const SizedBox(height: 10),
             Text(
-              'Implementation details come from the current source, not from '
-              'this run: the run predates the field.',
+              "These details come from today's code: this run did not record "
+              'them.',
               style: TextStyle(color: context.palette.muted, fontSize: 13.5),
             ),
           ],

@@ -184,10 +184,7 @@ class _Profile extends StatelessWidget {
     final tests = testsOf(run).where(b.scenarios.containsKey).toList();
     final about = [
       languageLabel(b.language),
-      [
-        [b.framework ?? b.name, ?b.version].join(' '),
-        if (b.runtime != null) 'on ${b.runtime}',
-      ].join(' '),
+      ?b.versionLine,
       if (b.formerName != null) 'named "${b.formerName}" in this run',
     ].join(' · ');
     final cores = appCoreCount(run);
@@ -241,14 +238,21 @@ class _Profile extends StatelessWidget {
           key: ValueKey('extra-${run.id}-${b.key}'),
           title: 'Reply times, processor and memory',
           topLine: true,
-          child: _ExtraTable(backend: b, tests: tests, cores: cores),
+          child: _ExtraTable(
+            backend: b,
+            tests: tests,
+            cores: cores,
+            legacy: run.isLegacy,
+          ),
         ),
         Fold(
           key: ValueKey('charts-${run.id}-${b.key}'),
           title: 'Charts from the test',
-          subtitle:
-              'Every step of the load, reply times, processor and '
-              'memory over time, how it is built, and its history.',
+          subtitle: run.isLegacy
+              ? 'Reply times, processor and memory over time, how it is '
+                    'built, and its history.'
+              : 'Every step of the load, reply times, processor and '
+                    'memory over time, how it is built, and its history.',
           child: FrameworkCharts(backend: b),
         ),
         const SizedBox(height: 30),
@@ -299,13 +303,8 @@ class _ProfileActions extends StatelessWidget {
             label: 'Open compare (${state.compareKeys.length})',
             onTap: () => nav.go(HomeView.compare),
           ),
-        TextLink(
-          label: 'Copy a link',
-          onTap: () => copyToClipboard(
-            context,
-            '${Uri.base.removeFragment()}#${locationOf(state)}',
-            'Link copied',
-          ),
+        CopyLink(
+          link: () => '${Uri.base.removeFragment()}#${locationOf(state)}',
         ),
         if (full)
           Text(
@@ -344,11 +343,26 @@ class _TestRow extends StatelessWidget {
     final info = testInfo(test);
     if (r == null) return const SizedBox.shrink();
     final max = all.first.value;
-    final fastest = all.first.key == r.key;
+    // Fastest by the same rule as Who's fastest: a tie at the top (overlapping
+    // runs, or several at our testing tool's limit) counts as fastest.
+    final top = topGroup(all);
+    final fastest = top.any((x) => x.key == r.key);
+    final others = all.where((x) => x.key != r.key);
     final pair = [
-      if (fastest) ...[r, ?all.skip(1).firstOrNull] else ...[all.first, r],
+      if (fastest) ...[r, ?others.firstOrNull] else ...[all.first, r],
     ];
-    final share = max <= 0 ? 0.0 : (r.value / max).clamp(0.0, 1.0);
+    final tieNote = top.length < 2
+        ? ''
+        : ' ${capFirst(numberWord(top.length))} frameworks tie for fastest'
+              "${top.every((x) => x.capped) ? " at our testing tool's limit" : ''}"
+              '${fastest ? '' : '; the top bar is one of them'}.';
+    // The speed word of its block, so frameworks that are about the same
+    // read the same as in Who's fastest ("Next are A and B, …").
+    final block = followerBlocks(
+      all,
+    ).where((bl) => bl.any((x) => x.key == r.key)).firstOrNull;
+    final ref = block?.first.value ?? r.value;
+    final share = max <= 0 ? 0.0 : (ref / max).clamp(0.0, 1.0);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
@@ -369,14 +383,21 @@ class _TestRow extends StatelessWidget {
           ),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
-            child: Text(info.what, style: t.small),
+            child: Text(
+              info.whatFor(noDatabase: backend.db == 'none'),
+              style: t.small,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
-            [
-              placeSentence(all, r),
-              if (!fastest) '${capFirst(asFast(share))} as the fastest.',
-            ].join(' '),
+            fastest
+                ? (top.length < 2
+                      ? placeSentence(all, r)
+                      : 'Tied for fastest with ${numberWord(top.length - 1)} '
+                            "${top.length == 2 ? 'other' : 'others'}"
+                            "${top.every((x) => x.capped) ? " at our testing tool's limit" : ''}.")
+                : '${placeSentence(all, r)} '
+                      '${capFirst(asFast(share))} as the fastest.$tieNote',
             style: t.body.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
@@ -388,6 +409,7 @@ class _TestRow extends StatelessWidget {
             unit: unit,
             mine: backend.key,
             onOpen: nav.open,
+            page: backend.key,
             legend: false,
           ),
         ],
@@ -402,11 +424,13 @@ class _ExtraTable extends StatelessWidget {
   final BackendResult backend;
   final List<String> tests;
   final int cores;
+  final bool legacy;
 
   const _ExtraTable({
     required this.backend,
     required this.tests,
     required this.cores,
+    required this.legacy,
   });
 
   @override
@@ -417,7 +441,14 @@ class _ExtraTable extends StatelessWidget {
       fontSize: 14.5,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
-    final head = cell.copyWith(color: p.muted, height: 1.2);
+    // Phones: a smaller header and a narrower first column, so a heading
+    // like "Processor" never breaks mid-word.
+    final narrow = MediaQuery.sizeOf(context).width < 480;
+    final head = cell.copyWith(
+      color: p.muted,
+      height: 1.2,
+      fontSize: narrow ? 12.5 : null,
+    );
     Widget c(String s, TextStyle st, {bool left = false}) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       child: Text(
@@ -436,7 +467,7 @@ class _ExtraTable extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Table(
-          columnWidths: const {0: FlexColumnWidth(1.4)},
+          columnWidths: {0: FlexColumnWidth(narrow ? 1.1 : 1.4)},
           defaultVerticalAlignment: TableCellVerticalAlignment.bottom,
           children: [
             TableRow(
@@ -466,14 +497,24 @@ class _ExtraTable extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Bullets([
-          'All of these were measured while the framework was handling the '
-              'number of requests shown above.',
+          legacy
+              ? 'All of these were measured during the old test, which sent '
+                    'the same traffic to every framework.'
+              : 'All of these were measured at its result: the busiest step '
+                    'it passed (tap its bar above for that number).',
           'Typical reply: ${Measure.typical.meaning}.',
           'Slow reply: ${Measure.slow.meaning}.',
           'Processor: how much of its ${numberWord(cores)} processor '
               '${cores == 1 ? 'core' : 'cores'} the framework used.',
           '"ms" means milliseconds. 1,000 ms is one second.',
-          'A dash means it was not measured.',
+          if (tests.any(
+            (test) => measures.any(
+              (m) =>
+                  m.value(backend.scenarios[test]!, Metrics.sustainable) ==
+                  null,
+            ),
+          ))
+            'A dash means it was not measured.',
         ]),
       ],
     );

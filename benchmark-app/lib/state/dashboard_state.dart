@@ -36,11 +36,46 @@ class DashboardState extends ChangeNotifier {
   Object? error;
   bool loading = true;
 
+  /// A run that could not be loaded while another stayed on screen; the
+  /// visitor is told next to the run choice and can pick it again.
+  RunIndexEntry? failedRun;
+
+  /// Whether that run was picked from a run choice (its note sits there);
+  /// otherwise Back or a link asked for it, and [runFailures] counts it so
+  /// the page can say so wherever the visitor is.
+  bool failedInPlace = false;
+  int runFailures = 0;
+
+  /// What is shown came from Back or Forward, so each view keeps its scroll
+  /// and open boxes; any visitor action clears it.
+  bool viaHistory = false;
+
+  /// Where each results view was scrolled, for Back and Forward only.
+  final viewScroll = <HomeView, double>{};
+
+  /// Counts Compare pick sets: Clear all starts a new one, whose boxes and
+  /// folds start closed even for the same frameworks.
+  int compareSet = 0;
+
+  void _act() {
+    actions++;
+    viaHistory = false;
+  }
+
+  /// Tries the failed run again: the run choice again, or (set by the
+  /// router) the whole history entry or link that asked for it.
+  VoidCallback? retryFailed;
+
   DashboardPage page = DashboardPage.home;
   HomeView view = HomeView.short;
 
   /// Test the chart sections (and History) show.
   String? scenario;
+
+  /// The test History shows. History offers the newest runs' tests even
+  /// while an old run is loaded, so it keeps its own choice (and its own
+  /// place in the URL) instead of changing [scenario].
+  String? historyTest;
 
   /// Framework open in One framework.
   String? selectedKey;
@@ -54,6 +89,12 @@ class DashboardState extends ChangeNotifier {
   /// Picks hidden because the loaded run lacks them; they come back when a
   /// run that has them is loaded again (see [selectRun]).
   final List<String> parkedCompare = [];
+
+  /// The set-aside picks that were set aside because a run lacked them:
+  /// only these come back by themselves on a run change (as Compare
+  /// promises). Picks set aside for lack of room wait for "Bring back", so
+  /// switching runs never swaps a pick the visitor made for another.
+  final Set<String> _awayForRun = {};
 
   /// Every number: what the cells show, which column sorts (a test, or
   /// [sortByName]), the direction, and whether run ranges are shown.
@@ -69,7 +110,7 @@ class DashboardState extends ChangeNotifier {
       if (index.isEmpty) {
         throw StateError('No benchmark runs found');
       }
-      await selectRun(index.first);
+      await selectRun(index.first, byRouter: true);
     } catch (e) {
       error = e;
       loading = false;
@@ -77,23 +118,83 @@ class DashboardState extends ChangeNotifier {
     }
   }
 
-  Future<void> selectRun(RunIndexEntry next) async {
+  /// Shows [next]. [inPlace]: picked from a run choice, so a failure is told
+  /// next to it.
+  Future<void> selectRun(
+    RunIndexEntry next, {
+    bool byRouter = false,
+    bool inPlace = false,
+  }) async {
+    if (!byRouter) _act();
+    // The test (and sort column) chosen on a current-method run, kept for
+    // the way back from an old-method run with other tests.
+    final leaving = run;
+    if (leaving != null && !leaving.isLegacy) {
+      _currentMethodTest = scenario;
+      _currentMethodSort = sortTest;
+      _currentMethodSortDesc = sortDesc;
+    }
     entry = next;
     loading = true;
+    failedRun = null;
+    retryFailed = null;
     notifyListeners();
     try {
       var loaded = await _service.loadRun(next);
       if (entry != next) return; // a newer selection won
       if (loaded.isLegacy) loaded = _withCurrentNames(loaded);
       run = loaded;
+      shownEntry = next;
       error = null;
       final tests = loaded.scenarios;
-      if (!tests.contains(scenario)) {
-        scenario = tests.isEmpty ? null : tests.first;
+      // A test this run lacks becomes its closest match (an old-method run
+      // has other tests), and the way back restores the test chosen before.
+      String? fit(String? want, String? remembered) {
+        if (want != null && tests.contains(want)) return want;
+        // The test chosen before the old-method run, only while the old
+        // run still shows its match (no newer choice made there).
+        if (!loaded.isLegacy &&
+            remembered != null &&
+            tests.contains(remembered) &&
+            want != null &&
+            legacyScenario(remembered) == want) {
+          return remembered;
+        }
+        if (want != null) {
+          final near = loaded.isLegacy
+              ? legacyScenario(want)
+              : currentScenario(want);
+          if (tests.contains(near)) return near;
+        }
+        return tests.firstOrNull;
       }
-      if (sortTest != sortByName && !tests.contains(sortTest)) {
-        sortTest = tests.isEmpty ? sortByName : tests.first;
-        sortDesc = true;
+
+      scenario = fit(scenario, _currentMethodTest);
+      if (sortTest == null) {
+        sortTest = tests.firstOrNull ?? sortByName;
+        sortDesc = measure == Measure.load;
+      } else if (sortTest case final was?
+          when was != sortByName && !tests.contains(was)) {
+        final next = fit(was, _currentMethodSort);
+        sortTest = next ?? sortByName;
+        // The direction goes with the column: the one chosen before when
+        // that column comes back, kept when the column carries across by
+        // its closest match, the default only for a fallback.
+        final back =
+            !loaded.isLegacy &&
+            next != null &&
+            next == _currentMethodSort &&
+            legacyScenario(next) == was;
+        final near = loaded.isLegacy
+            ? legacyScenario(was)
+            : currentScenario(was);
+        // A direction or measure changed on the old run clears the saved
+        // direction: that newer choice is kept as it is.
+        if (back && _currentMethodSortDesc != null) {
+          sortDesc = _currentMethodSortDesc!;
+        } else if (!back && next != near) {
+          sortDesc = measure == Measure.load;
+        }
       }
       final keys = loaded.backends.map((b) => b.key).toSet();
       // Picks the run lacks are parked, not dropped, and parked picks the
@@ -101,9 +202,14 @@ class DashboardState extends ChangeNotifier {
       for (final k in compareKeys.where((k) => !keys.contains(k)).toList()) {
         compareKeys.remove(k);
         if (!parkedCompare.contains(k)) parkedCompare.add(k);
+        _awayForRun.add(k);
       }
-      for (final k in parkedCompare.where(keys.contains).toList()) {
+      for (final k
+          in parkedCompare
+              .where((k) => keys.contains(k) && _awayForRun.contains(k))
+              .toList()) {
         if (compareKeys.length >= maxCompare) break;
+        _awayForRun.remove(k);
         parkedCompare.remove(k);
         if (!compareKeys.contains(k)) compareKeys.add(k);
       }
@@ -119,7 +225,17 @@ class DashboardState extends ChangeNotifier {
         missingKey = null;
       }
     } catch (e) {
-      error = e;
+      if (entry != next) return; // a newer selection is loading
+      if (run == null) {
+        error = e;
+      } else {
+        // The run on screen stays, and says so; the choice can be retried.
+        failedRun = next;
+        failedInPlace = inPlace;
+        retryFailed = () => selectRun(next, inPlace: inPlace);
+        if (!inPlace) runFailures++;
+        entry = shownEntry;
+      }
     }
     loading = false;
     notifyListeners();
@@ -128,6 +244,7 @@ class DashboardState extends ChangeNotifier {
   // ------------------------------------------------------------ navigation
 
   void setPage(DashboardPage next) {
+    _act();
     if (page == next) return;
     page = next;
     notifyListeners();
@@ -135,6 +252,7 @@ class DashboardState extends ChangeNotifier {
 
   /// Back to the short answer (the site name and the logo do this).
   void goHome() {
+    _act();
     if (page == DashboardPage.home && view == HomeView.short) return;
     page = DashboardPage.home;
     view = HomeView.short;
@@ -142,6 +260,7 @@ class DashboardState extends ChangeNotifier {
   }
 
   void setView(HomeView next) {
+    _act();
     if (page == DashboardPage.home && view == next) return;
     page = DashboardPage.home;
     view = next;
@@ -150,6 +269,7 @@ class DashboardState extends ChangeNotifier {
 
   /// Opens One framework on [key]; null shows the picker.
   void selectFramework(String? key) {
+    _act();
     final r = run;
     if (key != null && r?.backend(key) == null) return;
     selectedKey = key;
@@ -159,17 +279,30 @@ class DashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Only a test the loaded run has; anything else would leave the views
+  /// showing "not measured" for a test that does not exist here.
   void setScenario(String next) {
+    _act();
     if (scenario == next) return;
+    if (run != null && !run!.scenarios.contains(next)) return;
     scenario = next;
+    notifyListeners();
+  }
+
+  void setHistoryTest(String next) {
+    _act();
+    if (historyTest == next) return;
+    historyTest = next;
     notifyListeners();
   }
 
   // ---------------------------------------------------------- every number
 
   void setMeasure(Measure next) {
+    _act();
     if (measure == next) return;
     measure = next;
+    if (run?.isLegacy ?? false) _currentMethodSortDesc = null;
     // Best first: most requests a second, but the lowest reply time,
     // processor and memory.
     if (sortTest != sortByName) sortDesc = next == Measure.load;
@@ -179,11 +312,14 @@ class DashboardState extends ChangeNotifier {
   /// Sorts by [test] (or [sortByName]); the same column again flips the
   /// direction.
   void sortBy(String test) {
+    _act();
+    if (run?.isLegacy ?? false) _currentMethodSortDesc = null;
     if (sortTest == test) {
       sortDesc = !sortDesc;
     } else {
       sortTest = test;
-      sortDesc = true;
+      // Best first: most requests a second, lowest of everything else.
+      sortDesc = test == sortByName || measure == Measure.load;
     }
     notifyListeners();
   }
@@ -201,18 +337,204 @@ class DashboardState extends ChangeNotifier {
 
   /// Adds [key] to the comparison, or removes it. Never drops a pick to
   /// make room: a full comparison ignores a new key.
-  void toggleCompare(String key) {
+  /// Adds or removes [key]. With [restore] (Compare's own remove, where the
+  /// set-aside picks are explained), a freed place brings one back.
+  void toggleCompare(String key, {bool restore = false}) {
+    _act();
+    comparePicked = true;
     parkedCompare.remove(key);
     if (!compareKeys.remove(key)) {
       if (compareKeys.length >= maxCompare) return;
       compareKeys.add(key);
+    } else if (restore) {
+      final r = run;
+      final back = parkedCompare
+          .where((k) => r?.backend(k) != null)
+          .firstOrNull;
+      if (back != null) {
+        parkedCompare.remove(back);
+        compareKeys.add(back);
+      }
     }
     notifyListeners();
   }
 
+  /// Brings set-aside picks this run has back into Compare, while there is
+  /// room.
+  void restoreParked() {
+    _act();
+    comparePicked = true;
+    final r = run;
+    for (final k
+        in parkedCompare.where((k) => r?.backend(k) != null).toList()) {
+      if (compareKeys.length >= maxCompare) break;
+      parkedCompare.remove(k);
+      compareKeys.add(k);
+    }
+    notifyListeners();
+  }
+
+  /// Puts back what "Clear all" took, set-aside picks included (Undo),
+  /// with [away]: which of them came back by themselves on a run change.
+  void restoreCompare(
+    List<String> picks,
+    List<String> parked, [
+    Iterable<String> away = const [],
+  ]) {
+    compareKeys
+      ..clear()
+      ..addAll(picks);
+    parkedCompare
+      ..clear()
+      ..addAll(parked);
+    _awayForRun
+      ..clear()
+      ..addAll(away);
+    notifyListeners();
+  }
+
+  /// Counts the visitor's own actions (taps, picks, run changes), so the
+  /// router can tell that a Back still waiting for its run is stale: the
+  /// newest thing the visitor did wins.
+  int actions = 0;
+
+  /// The run entry on screen (the loaded run), which lags [entry] while a
+  /// run change loads; labels describe this one.
+  RunIndexEntry? shownEntry;
+
+  String? _currentMethodTest;
+  String? _currentMethodSort;
+  bool? _currentMethodSortDesc;
+
+  /// The visitor has picked (or cleared) Compare frameworks in this visit.
+  /// Until then, as after a reload, Back may bring back a history entry's
+  /// saved picks: there is no choice of theirs to keep.
+  bool comparePicked = false;
+
+  /// The visitor's Undo of "Clear all": their own action, so it wins over
+  /// a Back still waiting for its run.
+  void undoClear(
+    List<String> picks,
+    List<String> parked,
+    Iterable<String> away,
+  ) {
+    _act();
+    comparePicked = true;
+    restoreCompare(picks, parked, away);
+  }
+
+  /// Which set-aside picks return by themselves on a run change.
+  Set<String> get awayForRun => Set.unmodifiable(_awayForRun);
+
+  /// What a URL does not hold but a history entry must: set-aside picks,
+  /// which of them return on a run change, and a looked-up framework the
+  /// run lacks. Saved with each entry so Back and Forward restore it.
+  Map<String, Object?> get sideState => {
+    'picks': [...compareKeys],
+    'parked': [...parkedCompare],
+    'away': [..._awayForRun],
+    'missing': missingKey,
+    'test': scenario,
+    'historyTest': historyTest,
+  };
+
+  /// Restores [sideState] saved with a history entry (Back, Forward).
+  ///
+  /// Compare picks are a choice, not a place: with [restorePicks] false
+  /// (Back or Forward on the same run) they and the set-aside picks stay as
+  /// they are. With it (Back across a run change) the entry's picks come
+  /// back, and every other pick in [keep] is set aside, never dropped. The
+  /// test comes back when the entry's link did not hold one ([linkHasTest]).
+  void restoreSide(
+    Object? saved, {
+    bool restorePicks = false,
+    Iterable<String> keep = const [],
+    bool linkHasTest = false,
+  }) {
+    if (saved is! Map) return;
+    List<String> list(Object? v) => [
+      if (v is List)
+        for (final x in v)
+          if (x is String) x,
+    ];
+    final r = run;
+    final test = saved['test'];
+    if (!linkHasTest &&
+        test is String &&
+        (r?.scenarios.contains(test) ?? false)) {
+      scenario = test;
+    }
+    if (restorePicks) {
+      compareKeys
+        ..clear()
+        ..addAll(
+          list(
+            saved['picks'],
+          ).where((k) => r?.backend(k) != null).take(maxCompare),
+        );
+      parkedCompare
+        ..clear()
+        ..addAll(list(saved['parked']).where((k) => !compareKeys.contains(k)));
+      _awayForRun
+        ..clear()
+        ..addAll(list(saved['away']));
+      // Nothing is lost: another pick stays picked while there is room,
+      // else it is set aside (and comes back by itself if this run lacks
+      // it).
+      for (final k in keep) {
+        if (compareKeys.contains(k) || parkedCompare.contains(k)) continue;
+        if (r?.backend(k) != null && compareKeys.length < maxCompare) {
+          compareKeys.add(k);
+          continue;
+        }
+        parkedCompare.add(k);
+        if (r?.backend(k) == null) _awayForRun.add(k);
+      }
+    }
+    // History's own test: as chosen, or none (it then follows the main
+    // test), never taken from History's link alone.
+    if (saved.containsKey('historyTest')) {
+      final h = saved['historyTest'];
+      historyTest = h is String ? h : null;
+    }
+    final missing = saved['missing'];
+    missingKey = selectedKey == null && missing is String ? missing : null;
+    notifyListeners();
+  }
+
+  /// Sets aside [keys] that are neither picked nor set aside (those the run
+  /// on screen lacks come back by themselves on a run that has them).
+  void setAside(Iterable<String> keys) {
+    for (final k in keys) {
+      if (compareKeys.contains(k) || parkedCompare.contains(k)) continue;
+      parkedCompare.add(k);
+      if (run?.backend(k) == null) _awayForRun.add(k);
+    }
+  }
+
+  /// Sets aside [keys] the run on screen lacks (and that are not picked or
+  /// set aside already), so they come back on a run that has them.
+  void setAsideMissing(Iterable<String> keys) {
+    final r = run;
+    if (r == null) return;
+    for (final k in keys) {
+      if (r.backend(k) != null ||
+          compareKeys.contains(k) ||
+          parkedCompare.contains(k)) {
+        continue;
+      }
+      parkedCompare.add(k);
+      _awayForRun.add(k);
+    }
+  }
+
   void clearCompare() {
+    _act();
+    compareSet++;
+    comparePicked = true;
     compareKeys.clear();
     parkedCompare.clear();
+    _awayForRun.clear();
     notifyListeners();
   }
 
@@ -228,14 +550,20 @@ class DashboardState extends ChangeNotifier {
     final r = run;
     if (r == null) return;
     final keys = {for (final b in r.backends) b.key};
-    if (scenario != null && r.scenarios.contains(scenario)) {
+    // History's test is its own choice and never changes the main test.
+    if (page != DashboardPage.history &&
+        scenario != null &&
+        r.scenarios.contains(scenario)) {
       this.scenario = scenario;
     }
+    if (page == DashboardPage.history) historyTest = scenario;
     if (page == DashboardPage.home && view == HomeView.one) {
       selectedKey = selected != null && keys.contains(selected)
           ? selected
           : null;
-      missingKey = null;
+      // Back or Forward to the picker keeps a framework the run lacks,
+      // so changing run can still bring it back.
+      if (selected != null) missingKey = null;
     }
     if (compare != null) {
       final picked = <String>[];
@@ -245,7 +573,9 @@ class DashboardState extends ChangeNotifier {
       compareKeys
         ..clear()
         ..addAll(picked.take(maxCompare));
-      parkedCompare.clear();
+      // Set-aside picks survive Back and Forward; only those now picked
+      // leave the list.
+      parkedCompare.removeWhere(compareKeys.contains);
     }
     this.page = page;
     this.view = view;

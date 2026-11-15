@@ -16,6 +16,12 @@ class TestInfo {
 
   const TestInfo(this.id, this.title, this.short, this.what);
 
+  /// [what] for a framework that keeps its data in its own store instead
+  /// of a database ([noDatabase]): "Every request reads data from its own
+  /// store."
+  String whatFor({required bool noDatabase}) =>
+      noDatabase ? what.replaceAll('the database', 'its own store') : what;
+
   /// The title inside a sentence: "a typical app", "only reading".
   String get inSentence => title[0].toLowerCase() + title.substring(1);
 }
@@ -69,4 +75,16 @@ TestInfo testInfo(String id) => switch (id) {
     'The old test: the server sent back a small fixed reply.',
   ),
   _ => TestInfo(id, id, id, ''),
+};
+
+/// v1 runs used different tests; this is the closest match.
+String legacyScenario(String scenario) =>
+    scenario.startsWith('no_db') ? 'no_db_test' : 'db_test';
+
+/// The current test closest to a v1 one (a v1 run may be loaded while
+/// History shows current runs).
+String currentScenario(String scenario) => switch (scenario) {
+  'no_db_test' => 'no_db',
+  'db_test' => 'db_mixed',
+  _ => scenario,
 };

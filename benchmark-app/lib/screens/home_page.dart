@@ -26,7 +26,33 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final _scroll = ScrollController();
+  /// The scroll of the view shown, replaced when the view changes. Back and
+  /// Forward start a view where it was left; any other change starts where
+  /// the page is (then moves to the switch), and a new page at the top.
+  ScrollController? _scroll;
+  HomeView? _scrollView;
+
+  ScrollController _scrollFor(DashboardState s) {
+    final now = _scroll;
+    if (now != null && _scrollView == s.view) return now;
+    final from = now != null && now.hasClients ? now.offset : 0.0;
+    final view = s.view;
+    final c = ScrollController(
+      initialScrollOffset: s.viaHistory ? s.viewScroll[view] ?? 0 : from,
+      keepScrollOffset: false,
+    );
+    c.addListener(() {
+      if (c.hasClients) s.viewScroll[view] = c.offset;
+    });
+    // The old one is still attached until this frame swaps the views.
+    if (now != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => now.dispose());
+    }
+    _scroll = c;
+    _scrollView = view;
+    return c;
+  }
+
   final _switchKey = GlobalKey(debugLabel: 'show-me');
   final _profileHeading = FocusNode(debugLabel: 'profile heading');
   final _switchFocus = {
@@ -35,7 +61,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    _scroll.dispose();
+    _scroll?.dispose();
     _profileHeading.dispose();
     for (final f in _switchFocus.values) {
       f.dispose();
@@ -81,8 +107,9 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final state = context.watch<DashboardState>();
     // A view changed from elsewhere (the logo, the footer, a link) starts
-    // at the switch, not wherever the last view was scrolled to.
-    if (_shown != null && _shown != state.view) _toTop();
+    // at the switch, not wherever the last view was scrolled to; Back and
+    // Forward return to where that view was left.
+    if (_shown != null && _shown != state.view && !state.viaHistory) _toTop();
     _shown = state.view;
     final run = state.run!;
     final p = context.palette;
@@ -99,7 +126,8 @@ class _HomePageState extends State<HomePage> {
       picker: widget.picker,
       profileHeading: _profileHeading,
       child: SingleChildScrollView(
-        controller: _scroll,
+        key: ValueKey(state.view),
+        controller: _scrollFor(state),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -123,9 +151,11 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 12),
                   _RunLine(state: state),
-                  if (state.entry != null &&
+                  // Described by the run on screen, which lags the chosen
+                  // one while that loads.
+                  if ((state.shownEntry ?? state.entry) != null &&
                       state.index.isNotEmpty &&
-                      state.entry != state.index.first)
+                      (state.shownEntry ?? state.entry) != state.index.first)
                     _LegacyNote(state: state),
                   const SizedBox(height: 26),
                   SizedBox(key: _switchKey),
@@ -192,22 +222,42 @@ class _RunLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Txt.of(context);
-    final entry = state.entry;
+    // The run on screen, not the one loading: label and numbers agree.
+    final entry = state.shownEntry ?? state.entry;
     final run = state.run!;
+    // The icon sits inline at the start of the text, so it always shares
+    // the text's first line at every width; "Change run" wraps after it.
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
+      runSpacing: 2,
       children: [
-        Icon(
-          Icons.calendar_today_outlined,
-          size: 16,
-          color: context.palette.muted,
-        ),
-        const SizedBox(width: 6),
-        Text(
-          // The latest view combines each framework's newest run.
-          '${entry?.kind == RunKind.latest ? 'Latest results, up to' : 'Results from'} '
-          '${longDate(entry?.date ?? run.date)}'
-          '${run.isLegacy ? ' (old method)' : ''}',
+        Text.rich(
+          TextSpan(
+            children: [
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Icon(
+                    Icons.calendar_today_outlined,
+                    size: 16,
+                    color: context.palette.muted,
+                  ),
+                ),
+              ),
+              TextSpan(
+                // The latest view combines each framework's newest run.
+                text:
+                    '${entry?.kind != RunKind.latest
+                        ? 'Results from'
+                        : entry == state.index.firstOrNull
+                        ? 'Latest results, up to'
+                        : 'Combined results of an older method, up to'} '
+                    '${longDate(entry?.date ?? run.date)}'
+                    '${run.isLegacy ? ' (old method)' : ''}',
+              ),
+            ],
+          ),
           style: t.small,
         ),
         const SizedBox(width: 10),
@@ -219,6 +269,15 @@ class _RunLine extends StatelessWidget {
               width: 14,
               height: 14,
               child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        // Full width, so it sits on its own line under the run choice.
+        if (state.failedRun != null)
+          SizedBox(
+            width: double.infinity,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: RunLoadFailedNote(state: state),
             ),
           ),
       ],
@@ -241,7 +300,13 @@ class _LegacyNote extends StatelessWidget {
         spacing: 12,
         children: [
           Text(
-            'You are looking at an old run.',
+            // Said for what it is: the newest single run is not "old".
+            switch ((state.shownEntry ?? state.entry)?.kind) {
+              RunKind.legacy => 'You are looking at a run from the old method.',
+              RunKind.latest => "You are looking at an older method's results.",
+              _ =>
+                'You are looking at one run, not the latest combined results.',
+            },
             style: Txt.of(context).body.copyWith(fontWeight: FontWeight.w700),
           ),
           if (latest != null)

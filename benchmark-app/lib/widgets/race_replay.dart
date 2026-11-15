@@ -2,9 +2,9 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../models/plain.dart';
 import '../models/results.dart';
 import '../utils/colors.dart';
-import '../utils/formatters.dart';
 import '../utils/theme_constants.dart';
 import 'calm.dart';
 import 'motion.dart';
@@ -28,20 +28,32 @@ class Slo {
     );
   }
 
-  /// Why [s] failed, from its recorded numbers: "p99 412 ms", "errors 3.1%",
-  /// "served 88%", "load generator limit"; "" when it passed.
-  String reason(LoadStep s) {
+  /// Why [s] failed, from its recorded numbers, in plain words: "slow
+  /// reply 412 ms", "3.1% errors", "answered 88%", "our testing tool's
+  /// limit"; "" when it passed.
+  String reason(LoadStep s, {bool resultCapped = false}) {
     if (s.pass) return '';
     final parts = [
-      if (s.p99 >= p99Ms) 'p99 ${formatMs(s.p99)}',
+      if (s.p99 >= p99Ms) 'slow reply ${msText(s.p99)}',
       if (s.errorRate >= errorRate)
-        'errors ${(s.errorRate * 100).toStringAsFixed(1)}%',
+        '${(s.errorRate * 100).toStringAsFixed(1)}% errors',
+      // Rounded down, so 94.7% never reads as the 95% that passes.
       if (s.targetRps > 0 && s.achievedRps / s.targetRps < servedRatio)
-        'served ${(s.achievedRps / s.targetRps * 100).round()}%',
+        'answered ${(s.achievedRps / s.targetRps * 100).floor()}%',
     ];
-    if (s.k6Bound) return 'load generator limit';
+    if (toolLimited(s, resultCapped: resultCapped)) {
+      return "our testing tool's limit";
+    }
     return parts.isEmpty ? 'failed a limit' : parts.join(', ');
   }
+
+  /// The testing tool, not the app, was the limit: flagged so, or the
+  /// step only fell short of answering enough while the framework's result
+  /// hit the tool's limit (fast replies, few errors: the tool could not
+  /// send the rate steadily).
+  bool toolLimited(LoadStep s, {bool resultCapped = false}) =>
+      s.k6Bound ||
+      (resultCapped && !s.pass && s.p99 < p99Ms && s.errorRate < errorRate);
 }
 
 /// Replays the recorded load steps (the median repetition of each
@@ -70,7 +82,10 @@ class _Lane {
   final BackendResult backend;
   final List<LoadStep> steps; // by requested rate
 
-  _Lane(this.backend, this.steps);
+  /// The framework's result in this test hit our testing tool's limit.
+  final bool capped;
+
+  _Lane(this.backend, this.steps, {this.capped = false});
 
   /// The step at [rate], or the last one below it once this framework had
   /// stopped climbing; null before its first step.
@@ -94,6 +109,9 @@ class _Lane {
   }
 
   double get top => steps.isEmpty ? 0 : steps.last.targetRps;
+
+  /// It has already failed a step at or below [rate]: out of the race.
+  bool outBy(double rate) => steps.any((s) => s.targetRps <= rate && !s.pass);
 }
 
 class _RaceReplayState extends State<RaceReplay>
@@ -136,6 +154,7 @@ class _RaceReplayState extends State<RaceReplay>
           _Lane(
             b,
             [...steps]..sort((a, c) => a.targetRps.compareTo(c.targetRps)),
+            capped: b.scenarios[widget.scenario]!.loadgenBound,
           ),
     ];
     _rates = {
@@ -175,7 +194,7 @@ class _RaceReplayState extends State<RaceReplay>
   Widget build(BuildContext context) {
     if (_lanes.isEmpty || _rates.isEmpty) {
       return Text(
-        'No recorded load steps for this scenario.',
+        'No recorded steps for this test.',
         style: body(13, color: context.palette.muted),
       );
     }
@@ -187,9 +206,15 @@ class _RaceReplayState extends State<RaceReplay>
         : (math.log(math.max(rps, base) / base) / math.log(top / base) * 0.94 +
                   0.06)
               .clamp(0.0, 1.0);
-    // Best held so far first: lanes overtake as the replay climbs.
+    // Still climbing first, then best held so far: a framework that has
+    // already failed never leads one that has not, even when its extra
+    // steps passed a rate the other simply never tried.
     final order = [..._lanes]
       ..sort((a, b) {
+        final out = a.outBy(rate) == b.outBy(rate)
+            ? 0
+            : (a.outBy(rate) ? 1 : -1);
+        if (out != 0) return out;
         final c = (b.heldUpTo(rate) ?? 0).compareTo(a.heldUpTo(rate) ?? 0);
         return c != 0 ? c : a.backend.name.compareTo(b.backend.name);
       });
@@ -197,9 +222,9 @@ class _RaceReplayState extends State<RaceReplay>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            IconButton.filled(
+        LayoutBuilder(
+          builder: (context, c) {
+            final playButton = IconButton.filled(
               tooltip: playing ? 'Pause the replay' : 'Replay the race',
               onPressed: _toggle,
               style: IconButton.styleFrom(
@@ -207,45 +232,66 @@ class _RaceReplayState extends State<RaceReplay>
                 foregroundColor: context.palette.accentInk,
               ),
               icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('REQUESTED', style: caps(10.5)),
-                Text(
-                  '${formatRps(rate)} req/s',
-                  style: mono(18, weight: FontWeight.w700),
-                ),
-              ],
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: context.palette.accent,
-                  inactiveTrackColor: context.palette.line,
-                  thumbColor: context.palette.accent,
-                  overlayColor: context.palette.accent.withValues(alpha: 0.12),
-                  trackHeight: 3,
-                ),
-                child: Slider(
-                  value: _step.toDouble(),
-                  min: 0,
-                  max: math.max(1, _rates.length - 1).toDouble(),
-                  divisions: math.max(1, _rates.length - 1),
-                  label: '${compactRps(rate)} req/s',
-                  semanticFormatterCallback: (v) =>
-                      '${formatRps(_rates[v.round().clamp(0, _rates.length - 1)])} '
-                      'requests per second requested',
-                  onChanged: (v) {
-                    _play.stop();
-                    setState(() => _step = v.round());
-                  },
-                ),
+            );
+            // A fixed width, so the slider never moves while it is dragged.
+            final readout = SizedBox(
+              width: 170,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Asked for', style: caps(10.5)),
+                  Text(
+                    '${whole(rate)} a second',
+                    style: mono(18, weight: FontWeight.w700),
+                  ),
+                ],
               ),
-            ),
-          ],
+            );
+            final slider = SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: context.palette.accent,
+                inactiveTrackColor: context.palette.line,
+                thumbColor: context.palette.accent,
+                overlayColor: context.palette.accent.withValues(alpha: 0.12),
+                trackHeight: 3,
+              ),
+              child: Slider(
+                value: _step.toDouble(),
+                min: 0,
+                max: math.max(1, _rates.length - 1).toDouble(),
+                divisions: math.max(1, _rates.length - 1),
+                label: '${whole(rate)} a second',
+                semanticFormatterCallback: (v) =>
+                    '${whole(_rates[v.round().clamp(0, _rates.length - 1)])} '
+                    'requests a second asked for',
+                onChanged: (v) {
+                  _play.stop();
+                  setState(() => _step = v.round());
+                },
+              ),
+            );
+            // Phones: the slider gets the whole width on its own line.
+            if (c.maxWidth < 480) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [playButton, const SizedBox(width: 12), readout],
+                  ),
+                  slider,
+                ],
+              );
+            }
+            return Row(
+              children: [
+                playButton,
+                const SizedBox(width: 12),
+                readout,
+                const SizedBox(width: 8),
+                Expanded(child: slider),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 6),
         RepaintBoundary(
@@ -261,6 +307,7 @@ class _RaceReplayState extends State<RaceReplay>
                     rate: rate,
                     slo: widget.slo,
                     scale: scale,
+                    last: _step == _rates.length - 1,
                   ),
                 ),
             ],
@@ -274,11 +321,19 @@ class _RaceReplayState extends State<RaceReplay>
               spacing: 14,
               runSpacing: 4,
               children: [
-                _key(context.palette.accent, 'flag: highest step held so far'),
-                _key(context.palette.danger, 'broke a limit', hatched: true),
+                _key(
+                  context.palette.accent,
+                  'flag: the busiest step passed so far',
+                ),
+                _key(
+                  context.palette.danger,
+                  'failed: too slow, too many errors '
+                  'or could not keep up',
+                  hatched: true,
+                ),
                 _key(
                   context.palette.warn,
-                  'the load generator was the limit',
+                  "hit our testing tool's limit",
                   hatched: true,
                 ),
               ],
@@ -309,11 +364,16 @@ class _ReplayLane extends StatelessWidget {
   final Slo slo;
   final double Function(double) scale;
 
+  /// The final frame: every lane shows its result, so the one that went
+  /// furthest is not left reading "failed".
+  final bool last;
+
   const _ReplayLane({
     required this.lane,
     required this.rate,
     required this.slo,
     required this.scale,
+    required this.last,
   });
 
   @override
@@ -321,27 +381,30 @@ class _ReplayLane extends StatelessWidget {
     final b = lane.backend;
     final step = lane.at(rate);
     final held = lane.heldUpTo(rate);
-    final done = rate > lane.top; // stopped climbing earlier
+    final done = rate > lane.top || last; // stopped climbing, or the end
     final failed = step != null && !step.pass;
     final exact = step != null && step.targetRps == rate;
     final status = step == null
         ? 'not started'
         : done
-        ? 'held ${formatRps(held ?? 0)} · stopped at ${formatRps(lane.top)}'
+        ? 'passed ${whole(held ?? 0)} · stopped at ${whole(lane.top)}'
         : failed
-        ? 'out at ${formatRps(step.targetRps)}: ${slo.reason(step)}'
+        ? 'failed at ${whole(step.targetRps)}: '
+              '${slo.reason(step, resultCapped: lane.capped)}'
         : exact
-        ? 'served ${formatRps(step.achievedRps)}'
-        : 'held ${formatRps(step.targetRps)}, no step here';
+        ? 'answered ${whole(step.achievedRps)} a second'
+        : 'passed ${whole(step.targetRps)}; no step at this rate';
     final barColor = step == null
         ? context.palette.line
         : !failed
         ? identityColor(context.palette, b.key)
-        : step.k6Bound
+        : slo.toolLimited(step, resultCapped: lane.capped)
         ? context.palette.warn
         : context.palette.danger;
     final statusColor = failed && !done
-        ? (step.k6Bound ? context.palette.warn : context.palette.danger)
+        ? (slo.toolLimited(step, resultCapped: lane.capped)
+              ? context.palette.warn
+              : context.palette.danger)
         : context.palette.text;
     return Semantics(
       label: '${b.name}: $status',
@@ -426,10 +489,10 @@ class _ReplayLane extends StatelessWidget {
                 },
               ),
             );
+            // Two lines, never cut: the reason is what dragging shows.
             final label = Text(
               status,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
               style: mono(11.5, color: statusColor),
             );
             if (narrow) {

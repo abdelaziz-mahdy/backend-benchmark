@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
@@ -23,12 +24,24 @@ class ResultsService {
     ];
   }
 
-  /// Run summaries are loaded on demand and cached.
-  Future<RunSummary> loadRun(RunIndexEntry entry) => _runs.putIfAbsent(
-    entry.id,
-    () async {
+  /// Run summaries are loaded on demand and cached; a failed load is not
+  /// kept, so picking the run again tries again.
+  Future<RunSummary> loadRun(RunIndexEntry entry) {
+    final cached = _runs[entry.id];
+    if (cached != null) return cached;
+    final load = () async {
       final raw = await bundle.loadString('$_base/${entry.file}', cache: false);
       return RunSummary.fromJson(jsonDecode(raw) as Map<String, dynamic>);
-    },
-  );
+    }();
+    _runs[entry.id] = load;
+    unawaited(
+      load.then<void>(
+        (_) {},
+        onError: (Object _) {
+          if (identical(_runs[entry.id], load)) _runs.remove(entry.id);
+        },
+      ),
+    );
+    return load;
+  }
 }
