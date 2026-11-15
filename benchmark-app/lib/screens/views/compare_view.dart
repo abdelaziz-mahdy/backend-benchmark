@@ -82,35 +82,57 @@ class CompareView extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         _Picked(state: state, picked: picked),
-        // Set-aside picks, said for what they are: missing from this run,
-        // or in it but past the most Compare holds.
-        for (final (keys, why) in [
-          (
-            [
+        // Set-aside picks, said for what they are: missing from this run;
+        // over the most Compare holds; or, once a place is free, ready to
+        // come back with one tap.
+        if ([
               for (final k in parked)
                 if (run.backend(k) == null) k,
-            ],
-            'not in this run',
+            ]
+            case final gone when gone.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              '${capFirst(joinAnd([for (final k in gone) state.nameOf(k)]))} '
+              '${gone.length == 1 ? 'is' : 'are'} not in this run, so '
+              '${gone.length == 1 ? 'it is' : 'they are'} set aside. '
+              '${gone.length == 1 ? 'It comes' : 'They come'} back when you '
+              'change to a run that has ${gone.length == 1 ? 'it' : 'them'}.',
+              style: t.small,
+            ),
           ),
-          (
-            [
+        if ([
               for (final k in parked)
                 if (run.backend(k) != null) k,
-            ],
-            'over the ${numberWord(DashboardState.maxCompare)} Compare holds',
-          ),
-        ])
-          if (keys.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                '${capFirst(joinAnd([for (final k in keys) state.nameOf(k)]))} '
-                '${keys.length == 1 ? 'is' : 'are'} $why, so '
-                '${keys.length == 1 ? 'it is' : 'they are'} set aside. '
-                '${why.startsWith('not') ? '${keys.length == 1 ? 'It comes' : 'They come'} back when you change to a run that has ${keys.length == 1 ? 'it' : 'them'}.' : 'Remove a pick to bring ${keys.length == 1 ? 'it' : 'them'} back.'}',
-                style: t.small,
-              ),
+            ]
+            case final here when here.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Wrap(
+              spacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  picked.length >= DashboardState.maxCompare
+                      ? '${capFirst(joinAnd([for (final k in here) state.nameOf(k)]))} '
+                            '${here.length == 1 ? 'is' : 'are'} set aside: Compare '
+                            'holds ${numberWord(DashboardState.maxCompare)}. Remove a '
+                            'pick to bring ${here.length == 1 ? 'it' : 'them'} back.'
+                      : '${capFirst(joinAnd([for (final k in here) state.nameOf(k)]))} '
+                            '${here.length == 1 ? 'was' : 'were'} set aside when '
+                            'Compare was full. There is room now.',
+                  style: t.small,
+                ),
+                if (picked.length < DashboardState.maxCompare)
+                  TextLink(
+                    label: here.length == 1
+                        ? 'Bring it back'
+                        : 'Bring them back',
+                    onTap: state.restoreParked,
+                  ),
+              ],
             ),
+          ),
         if (picked.length < 2) ...[
           const SizedBox(height: 18),
           Text(

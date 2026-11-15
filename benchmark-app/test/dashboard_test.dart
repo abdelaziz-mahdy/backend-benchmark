@@ -774,6 +774,12 @@ void main() {
       state.toggleCompare(keys[0], restore: true);
       expect(state.compareKeys, contains(keys[4]));
       expect(state.parkedCompare, isEmpty);
+      // With room free, one tap brings set-aside picks back.
+      state.toggleCompare(keys[1]);
+      state.parkedCompare.add(keys[1]);
+      state.restoreParked();
+      expect(state.compareKeys, contains(keys[1]));
+      expect(state.parkedCompare, isEmpty);
       // Clear all, then Undo, puts back picks and set-aside picks.
       final picks = [...state.compareKeys];
       state.parkedCompare.add('gone-framework');

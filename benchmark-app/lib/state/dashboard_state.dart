@@ -236,6 +236,19 @@ class DashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Brings set-aside picks this run has back into Compare, while there is
+  /// room.
+  void restoreParked() {
+    final r = run;
+    for (final k
+        in parkedCompare.where((k) => r?.backend(k) != null).toList()) {
+      if (compareKeys.length >= maxCompare) break;
+      parkedCompare.remove(k);
+      compareKeys.add(k);
+    }
+    notifyListeners();
+  }
+
   /// Puts back what "Clear all" took, set-aside picks included (Undo).
   void restoreCompare(List<String> picks, List<String> parked) {
     compareKeys
