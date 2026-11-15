@@ -269,8 +269,7 @@ class _MethodScreenState extends State<MethodScreen> {
         section(
           'fairness',
           'Fairness rules',
-          'Same processor, memory, data and database connections for every '
-              'framework.',
+          'Same processor, memory and data for every framework.',
           Icons.balance,
           _fairness(run),
         ),
@@ -554,8 +553,14 @@ class _MethodScreenState extends State<MethodScreen> {
             'each app runs the way it would for real visitors, not in a '
                 'test or debug mode. Most frameworks whose language uses one '
                 'processor core at a time start one copy per core; serverpod '
-                'runs a single copy (see its page). About 20 database '
-                'connections in total.',
+                'runs a single copy (see its page).',
+          ),
+          const Point(
+            'Database connections:',
+            'about 20 kept open by each app. The two django apps instead go '
+                'through a connection sharer (PgBouncer) with 50, and foam3 '
+                '(embedded) has no database at all. Each one\'s page lists '
+                'its own.',
           ),
           Point(
             'Data:',

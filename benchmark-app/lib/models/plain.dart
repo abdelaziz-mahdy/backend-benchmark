@@ -732,11 +732,12 @@ const kFootLine =
 
 /// What the Every number table can show.
 enum Measure {
+  // The same names as every other table and Method's "Words we use".
   load('Requests a second', 'the main result'),
-  typical('Typical reply time', 'half of all replies were faster than this'),
-  slow('Slow reply time', '99 of every 100 replies were faster than this'),
-  processor('Processor use', 'how much of its processor cores it used'),
-  memory('Memory use', 'how much memory the framework used');
+  typical('Typical reply', 'half of all replies were faster than this'),
+  slow('Slow reply', '99 of every 100 replies were faster than this'),
+  processor('Processor', 'how much of its processor cores it used'),
+  memory('Memory', 'how much memory the framework used');
 
   final String label;
   final String meaning;

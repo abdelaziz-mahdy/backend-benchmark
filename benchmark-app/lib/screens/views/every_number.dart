@@ -81,12 +81,7 @@ class EveryNumberView extends StatelessWidget {
               value: m,
               options: [
                 for (final x in Measure.values)
-                  (
-                    x,
-                    x == Measure.load
-                        ? '${x.label} (the main result)'
-                        : x.label,
-                  ),
+                  (x, x == Measure.load ? '${x.label} (the result)' : x.label),
               ],
               onChanged: state.setMeasure,
             ),

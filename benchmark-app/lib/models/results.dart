@@ -445,7 +445,14 @@ class BackendResult {
     ('Web server', _plain(implementation?.server)),
     ('How it handles many requests', _plain(implementation?.concurrency)),
     ('Database access', _plain(implementation?.dbAccess)),
-    ('Database connections', _plain(implementation?.pool, allBrackets: true)),
+    // A framework with no database has no connections, whatever its
+    // manifest says for a sibling variant.
+    (
+      'Database connections',
+      db == 'none'
+          ? 'None (no database)'
+          : _plain(implementation?.pool, allBrackets: true),
+    ),
     ('How it is called', apiLabel),
     ('Storage', storageLabel),
     ('Versions', versionLine),
