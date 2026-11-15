@@ -145,27 +145,31 @@ class CompareView extends StatelessWidget {
             ),
           BarsNote(capped: byTest.values.expand((x) => x).any((r) => r.capped)),
           const SizedBox(height: 26),
-          Fold(
-            key: ValueKey('replay-${run.id}'),
-            title: 'Watch the load climb',
-            subtitle:
-                'Replays each framework\'s recorded steps, one rate at a '
-                'time.',
-            topLine: true,
-            child: _WithTestPicker(
-              child: _Replay(state: state, picked: picked),
+          // The old method recorded no load steps, so the two step-based
+          // sections would only open onto "nothing recorded".
+          if (!run.isLegacy) ...[
+            Fold(
+              key: ValueKey('replay-${run.id}'),
+              title: 'Watch the load climb',
+              subtitle:
+                  'Replays each framework\'s recorded steps, one rate at a '
+                  'time.',
+              topLine: true,
+              child: _WithTestPicker(
+                child: _Replay(state: state, picked: picked),
+              ),
             ),
-          ),
-          Fold(
-            key: ValueKey('shared-${run.id}'),
-            title: 'At a shared load',
-            subtitle:
-                'Reply times, processor and memory at a rate all of them '
-                'handled.',
-            child: _WithTestPicker(
-              child: _Shared(state: state, picked: picked),
+            Fold(
+              key: ValueKey('shared-${run.id}'),
+              title: 'At a shared load',
+              subtitle:
+                  'Reply times, processor and memory at a rate all of them '
+                  'handled.',
+              child: _WithTestPicker(
+                child: _Shared(state: state, picked: picked),
+              ),
             ),
-          ),
+          ],
           Fold(
             key: ValueKey('charts-${run.id}'),
             title: 'Charts and all numbers',

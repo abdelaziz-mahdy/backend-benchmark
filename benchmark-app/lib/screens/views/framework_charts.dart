@@ -394,6 +394,9 @@ class _FrameworkHistory extends StatelessWidget {
           runs.isEmpty
               ? 'No earlier runs of ${backend.name} with this method on '
                     'this computer.'
+              : entry.isLegacy
+              ? 'The old method ran once; newer runs use a different method, '
+                    'so they are not mixed in here.'
               : 'Only one run of ${backend.name} with this method on this '
                     'computer so far; later runs will show up here.',
           style: t.small,

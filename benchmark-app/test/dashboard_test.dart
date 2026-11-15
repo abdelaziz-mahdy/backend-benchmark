@@ -447,6 +447,17 @@ void main() {
       );
     });
 
+    test('equal numbers join the top together or not at all', () {
+      // express (bun) overlaps the leader, express (node) has the same
+      // number but does not: neither is called "about the same".
+      final top = topGroup([
+        res('rust', 32000, low: 24000, high: 32000, capped: true),
+        res('bun', 24000, low: 24000, high: 32000),
+        res('node', 24000, low: 16000, high: 24000),
+      ]);
+      expect(top.map((r) => r.key), ['rust']);
+    });
+
     test('everyone at the tool limit ties, and a fifth is a fifth', () {
       final answer = answerFor([
         res('a', 48000, capped: true),

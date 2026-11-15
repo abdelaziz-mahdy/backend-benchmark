@@ -125,8 +125,13 @@ class EveryNumberView extends StatelessWidget {
                   'tool could send. Its real figure may be higher.',
           ] else ...[
             '${m.label}: ${m == Measure.processor ? 'how much of its ${numberWord(cores)} processor ${cores == 1 ? 'core' : 'cores'} the framework used' : m.meaning}. Lower is better.',
-            'Each framework was measured at its own top load (its requests-'
-                'a-second result), so this is not a like-for-like race.',
+            if (legacy)
+              'Each framework was measured during the old test, which sent '
+                  'the same traffic to every framework.'
+            else
+              'Each framework was measured at its own top load (its '
+                  'requests-a-second result), so this is not a like-for-like '
+                  'race.',
             if (m == Measure.typical || m == Measure.slow)
               '"ms" means milliseconds. 1,000 ms is one second.',
           ],

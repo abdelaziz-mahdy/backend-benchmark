@@ -345,14 +345,27 @@ List<Result> topGroup(List<Result> results) {
   final sorted = sortResults(results);
   if (sorted.isEmpty) return const [];
   final leader = sorted.first;
-  return [
-    leader,
-    for (final r in sorted.skip(1))
-      if (r.value == leader.value ||
-          r.overlaps(leader) ||
-          (leader.capped && r.capped))
-        r,
-  ];
+  bool joins(Result r) =>
+      r.value == leader.value ||
+      r.overlaps(leader) ||
+      (leader.capped && r.capped);
+  // Walk down from the top in blocks of equal numbers: a block joins only
+  // when every one in it does, so two frameworks with the same number are
+  // never split between "about the same" and "next"; the first block that
+  // does not join ends the group.
+  final out = <Result>[];
+  var i = 0;
+  while (i < sorted.length) {
+    var j = i;
+    while (j < sorted.length && sorted[j].value == sorted[i].value) {
+      j++;
+    }
+    final block = sorted.sublist(i, j);
+    if (i > 0 && !block.every(joins)) break;
+    out.addAll(block);
+    i = j;
+  }
+  return out;
 }
 
 /// The answer under a test, in words: who is fastest (or which ones are

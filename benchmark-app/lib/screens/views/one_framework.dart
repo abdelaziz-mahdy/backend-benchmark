@@ -238,14 +238,21 @@ class _Profile extends StatelessWidget {
           key: ValueKey('extra-${run.id}-${b.key}'),
           title: 'Reply times, processor and memory',
           topLine: true,
-          child: _ExtraTable(backend: b, tests: tests, cores: cores),
+          child: _ExtraTable(
+            backend: b,
+            tests: tests,
+            cores: cores,
+            legacy: run.isLegacy,
+          ),
         ),
         Fold(
           key: ValueKey('charts-${run.id}-${b.key}'),
           title: 'Charts from the test',
-          subtitle:
-              'Every step of the load, reply times, processor and '
-              'memory over time, how it is built, and its history.',
+          subtitle: run.isLegacy
+              ? 'Reply times, processor and memory over time, how it is '
+                    'built, and its history.'
+              : 'Every step of the load, reply times, processor and '
+                    'memory over time, how it is built, and its history.',
           child: FrameworkCharts(backend: b),
         ),
         const SizedBox(height: 30),
@@ -408,11 +415,13 @@ class _ExtraTable extends StatelessWidget {
   final BackendResult backend;
   final List<String> tests;
   final int cores;
+  final bool legacy;
 
   const _ExtraTable({
     required this.backend,
     required this.tests,
     required this.cores,
+    required this.legacy,
   });
 
   @override
@@ -472,8 +481,11 @@ class _ExtraTable extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Bullets([
-          'All of these were measured at its result: the busiest step it '
-              'passed (tap its bar above for that number).',
+          legacy
+              ? 'All of these were measured during the old test, which sent '
+                    'the same traffic to every framework.'
+              : 'All of these were measured at its result: the busiest step '
+                    'it passed (tap its bar above for that number).',
           'Typical reply: ${Measure.typical.meaning}.',
           'Slow reply: ${Measure.slow.meaning}.',
           'Processor: how much of its ${numberWord(cores)} processor '

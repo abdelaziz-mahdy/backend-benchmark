@@ -1379,7 +1379,7 @@ class _RunStaircase extends StatelessWidget {
           Points(lead: 28, [
             Point(
               'Teal: passed.',
-              'Fast enough, with few enough errors.',
+              'Fast enough, few enough errors, and it kept up.',
               leading: Swatch(p.accent, fill: 0.45),
             ),
             if (anyFail || !anyToolLimit)
