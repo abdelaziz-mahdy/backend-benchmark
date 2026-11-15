@@ -5,10 +5,10 @@
 class TestInfo {
   final String id;
 
-  /// "A typical app".
+  /// "Reading and saving to the database".
   final String title;
 
-  /// "Typical app": table headings and tabs.
+  /// "Read + save": table headings and tabs.
   final String short;
 
   /// One line on what the requests do.
@@ -22,7 +22,7 @@ class TestInfo {
   String whatFor({required bool noDatabase}) =>
       noDatabase ? what.replaceAll('the database', 'its own store') : what;
 
-  /// The title inside a sentence: "a typical app", "only reading".
+  /// The title inside a sentence: "only reading from the database".
   String get inSentence => title[0].toLowerCase() + title.substring(1);
 }
 
@@ -39,20 +39,21 @@ const kTestOrder = [
 TestInfo testInfo(String id) => switch (id) {
   'db_mixed' => const TestInfo(
     'db_mixed',
-    'A typical app',
-    'Typical app',
-    '8 in 10 requests read data and 2 in 10 save new data.',
+    'Reading and saving to the database',
+    'Read + save',
+    '8 in 10 requests read from the database and 2 in 10 save new data '
+        'to it, like a typical app.',
   ),
   'db_read' => const TestInfo(
     'db_read',
-    'Only reading',
-    'Only reading',
+    'Only reading from the database',
+    'Read only',
     'Every request reads data from the database.',
   ),
   'db_write' => const TestInfo(
     'db_write',
-    'Only saving',
-    'Only saving',
+    'Only saving to the database',
+    'Save only',
     'Every request saves new data to the database.',
   ),
   'no_db' => const TestInfo(

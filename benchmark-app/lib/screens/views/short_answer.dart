@@ -8,8 +8,9 @@ import '../../utils/theme_constants.dart';
 import '../../widgets/calm.dart';
 import 'home_nav.dart';
 
-/// Who's fastest: the main test with its answer in words and a bar per
-/// framework, the other tests folded underneath, and where to go next.
+/// Who's fastest: the main test with a bar and number per framework, the
+/// other tests folded underneath, and where to go next. What each test
+/// does sits behind an (i) by its name.
 class ShortAnswerView extends StatelessWidget {
   const ShortAnswerView({super.key});
 
@@ -29,24 +30,8 @@ class ShortAnswerView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Semantics(
-          header: true,
-          child: Row(
-            children: [
-              Icon(testIcon(main.id), size: 24, color: context.palette.accent),
-              const SizedBox(width: 8),
-              Flexible(child: Text(main.title, style: t.h2)),
-            ],
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(main.what, style: t.muted),
-        const SizedBox(height: 14),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 580),
-          child: Text(answerFor(mainResults), style: t.answer),
-        ),
-        const SizedBox(height: 18),
+        TestHeading(id: main.id),
+        const SizedBox(height: 12),
         SpeedBars(
           key: ValueKey('bars-${run.id}-${main.id}'),
           test: main.id,
@@ -67,27 +52,15 @@ class ShortAnswerView extends StatelessWidget {
               key: ValueKey('other-${run.id}-$id'),
               title: testInfo(id).title,
               icon: testIcon(id),
-              subtitle: otherSummary(resultsFor(run, id), mainResults, main),
+              info: testInfo(id).what,
               topLine: i == 0,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      testInfo(id).what,
-                      style: t.small.copyWith(fontSize: 15.5),
-                    ),
-                  ),
-                  SpeedBars(
-                    key: ValueKey('bars-${run.id}-$id'),
-                    test: id,
-                    results: resultsFor(run, id),
-                    unit: unit,
-                    mine: state.selectedKey,
-                    onOpen: nav.open,
-                  ),
-                ],
+              child: SpeedBars(
+                key: ValueKey('bars-${run.id}-$id'),
+                test: id,
+                results: resultsFor(run, id),
+                unit: unit,
+                mine: state.selectedKey,
+                onOpen: nav.open,
               ),
             ),
         ],
@@ -118,9 +91,69 @@ class ShortAnswerView extends StatelessWidget {
   }
 }
 
-/// One bar per framework, longest first: its language badge and name, and
-/// a bar whose length is its share of the fastest. No numbers until a bar
-/// is tapped; then its number, run range and notes open under the list.
+/// A test's icon and name, with what it does behind an (i).
+class TestHeading extends StatelessWidget {
+  final String id;
+  final TextStyle? style;
+
+  /// [TestInfo.whatFor] for a framework without a database.
+  final bool noDatabase;
+
+  const TestHeading({
+    super.key,
+    required this.id,
+    this.style,
+    this.noDatabase = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = Txt(p);
+    final info = testInfo(id);
+    final st = style ?? t.h2;
+    return Semantics(
+      header: true,
+      child: Row(
+        children: [
+          Icon(testIcon(id), size: (st.fontSize ?? 20) + 2, color: p.accent),
+          const SizedBox(width: 8),
+          Flexible(child: Text(info.title, style: st)),
+          if (info.what.isNotEmpty)
+            InfoTip(info.whatFor(noDatabase: noDatabase)),
+        ],
+      ),
+    );
+  }
+}
+
+/// A result's number: "40,000", or "40,000+" at the testing tool's limit,
+/// where the "+" says why on hover or tap.
+class ResultNumber extends StatelessWidget {
+  final Result result;
+  final TextStyle style;
+
+  const ResultNumber(this.result, {super.key, required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    final n = Text(
+      '${whole(result.value)}${result.capped ? '+' : ''}',
+      style: style,
+      textAlign: TextAlign.right,
+    );
+    if (!result.capped) return n;
+    return Tooltip(
+      message: "+ = it hit our testing tool's limit, so it may be faster.",
+      triggerMode: TooltipTriggerMode.longPress,
+      child: n,
+    );
+  }
+}
+
+/// One bar per framework, longest first: its language badge and name, a
+/// bar whose length is its share of the fastest, and its number. Tapping a
+/// row opens its range of tries and notes under it.
 class SpeedBars extends StatefulWidget {
   final String test;
   final List<Result> results;
@@ -131,9 +164,6 @@ class SpeedBars extends StatefulWidget {
   /// Every result in the test, for the close calls and place in a bar's
   /// box when [results] shows only some of them; defaults to [results].
   final List<Result>? all;
-
-  /// Shows the "Longer bar = …" note under the bars.
-  final bool legend;
 
   /// The framework whose page this is: its box offers no "More about" (it
   /// would only lead back to the same page).
@@ -147,7 +177,6 @@ class SpeedBars extends StatefulWidget {
     required this.mine,
     required this.onOpen,
     this.all,
-    this.legend = true,
     this.page,
   });
 
@@ -196,7 +225,6 @@ class _SpeedBarsState extends State<SpeedBars> {
     if (rs.isEmpty) return const SizedBox.shrink();
     final max = rs.first.value;
     final open = rs.where((r) => r.key == _open).firstOrNull;
-    final anyCapped = rs.any((r) => r.capped);
     return LayoutBuilder(
       builder: (context, c) {
         // Phones put the name above its bar, so names are never cut off.
@@ -204,6 +232,14 @@ class _SpeedBarsState extends State<SpeedBars> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Padding(
+              padding: const EdgeInsets.only(right: 36, bottom: 2),
+              child: Text(
+                capFirst(widget.unit),
+                textAlign: TextAlign.right,
+                style: t.small.copyWith(fontSize: 13),
+              ),
+            ),
             for (final r in rs) ...[
               Padding(
                 padding: const EdgeInsets.only(bottom: 2),
@@ -226,12 +262,6 @@ class _SpeedBarsState extends State<SpeedBars> {
                   ),
                 ),
             ],
-            if (widget.legend)
-              BarsNote(
-                capped: anyCapped,
-                mine:
-                    widget.mine != null && rs.any((r) => r.key == widget.mine),
-              ),
           ],
         );
       },
@@ -251,7 +281,7 @@ class _SpeedBarsState extends State<SpeedBars> {
       semanticLabel:
           '${r.name}, '
           '${topGroup(widget.results, all: widget.all).any((x) => x.key == r.key) ? (topGroup(widget.results, all: widget.all).length > 1 ? 'tied for fastest' : 'the fastest') : '${asFast(share)} as the fastest'}. '
-          'Show its number.',
+          '${numberText(r)} ${widget.unit}. Show its tries and notes.',
       builder: (context, hovered) => Container(
         constraints: const BoxConstraints(minHeight: 44),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
@@ -284,10 +314,41 @@ class _SpeedBarsState extends State<SpeedBars> {
               ],
             );
             final bar = SpeedBar(share: share, color: color, capped: r.capped);
+            final number = SizedBox(
+              width: 76,
+              child: ResultNumber(
+                r,
+                style: t.body.copyWith(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            );
+            // Says the row opens: down when closed, up when open.
+            final more = Icon(
+              isOpen ? Icons.expand_less : Icons.expand_more,
+              size: 20,
+              color: hovered || isOpen ? p.accent : p.muted,
+            );
             if (nameWidth == null) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [label, const SizedBox(height: 6), bar],
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: label),
+                      number,
+                      const SizedBox(width: 4),
+                      more,
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 24),
+                    child: bar,
+                  ),
+                ],
               );
             }
             return Row(
@@ -295,6 +356,10 @@ class _SpeedBarsState extends State<SpeedBars> {
                 SizedBox(width: nameWidth, child: label),
                 const SizedBox(width: 12),
                 Expanded(child: bar),
+                const SizedBox(width: 10),
+                number,
+                const SizedBox(width: 4),
+                more,
               ],
             );
           },
@@ -374,40 +439,6 @@ class Reveal extends StatelessWidget {
               onTap: () => open(result.key),
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-/// The note under a set of bars: how to read them and how to get a number.
-class BarsNote extends StatelessWidget {
-  final bool capped;
-  final bool mine;
-
-  const BarsNote({super.key, this.capped = true, this.mine = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 1),
-            child: Icon(Icons.straighten, size: 18, color: p.muted),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              'Longer bar = more traffic handled. Tap a bar for its number.'
-              "${capped ? " Striped end = hit our testing tool's limit, so it may be faster." : ''}"
-              '${mine ? ' The outlined row is the one you looked up.' : ''}',
-              style: Txt(p).small,
-            ),
-          ),
         ],
       ),
     );

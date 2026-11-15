@@ -7,6 +7,7 @@ import '../state/dashboard_state.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/calm.dart';
 import '../widgets/run_switcher.dart';
+import '../widgets/setup_diagram.dart';
 import '../widgets/site_frame.dart';
 import 'views/compare_view.dart';
 import 'views/home_nav.dart';
@@ -144,11 +145,6 @@ class _HomePageState extends State<HomePage> {
                       style: t.h1,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 600),
-                    child: Text(ledeFor(run), style: t.muted),
-                  ),
                   const SizedBox(height: 12),
                   _RunLine(state: state),
                   // Described by the run on screen, which lags the chosen
@@ -169,6 +165,8 @@ class _HomePageState extends State<HomePage> {
                       HomeView.all: Icons.table_rows_outlined,
                       HomeView.compare: Icons.compare_arrows,
                     },
+                    // How many are picked for Compare, from any view.
+                    counts: {HomeView.compare: state.compareKeys.length},
                     selected: state.view,
                     onSelected: state.setView,
                   ),
@@ -190,8 +188,16 @@ class _HomePageState extends State<HomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // The setup, the steps and the pass rule drawn; the
+                        // rest in a few lines.
+                        if (!run.isLegacy) ...[
+                          SetupDiagram(run: run),
+                          const SizedBox(height: 16),
+                        ],
                         Bullets(
-                          howWeTested(run),
+                          run.isLegacy
+                              ? howWeTested(run)
+                              : howWeTested(run).skip(3).toList(),
                           style: t.body.copyWith(fontSize: 15.5),
                         ),
                         const SizedBox(height: 12),

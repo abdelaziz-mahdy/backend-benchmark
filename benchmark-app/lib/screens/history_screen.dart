@@ -249,8 +249,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   ]),
                   const SizedBox(height: kSectionGap),
-                  label('Test'),
-                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      label('Test'),
+                      InfoTip(testInfo(scenario).what, size: 17),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
                   SegmentSwitch<String>(
                     label: 'Test',
                     // The short names every other test switch uses.
@@ -261,8 +266,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     // shows the same test.
                     onSelected: state.setHistoryTest,
                   ),
-                  const SizedBox(height: 8),
-                  Text(testInfo(scenario).what, style: t.small),
                   const SizedBox(height: 24),
                   label('Number to show'),
                   const SizedBox(height: 8),
