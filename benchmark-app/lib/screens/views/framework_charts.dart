@@ -130,7 +130,8 @@ class FrameworkCharts extends StatelessWidget {
               subtitle:
                   'The dashed line is "handled everything it was asked". '
                   'Where the line drops below it, the framework stopped '
-                  'keeping up. Hollow points missed a limit.',
+                  'keeping up. Hollow points missed a limit.'
+                  '${r.reps > 1 ? ' From one of the ${numberWord(r.reps)} tries, so its numbers can differ a little from the table above.' : ''}',
               child: StepLoadChart(
                 series: [StepSeries(b, r.steps)],
                 mode: StepChartMode.throughput,
@@ -143,6 +144,7 @@ class FrameworkCharts extends StatelessWidget {
               subtitle:
                   '99 of every 100 replies were faster than this. Above the '
                   'red line is too slow.'
+                  '${r.reps > 1 ? ' From one of the ${numberWord(r.reps)} tries, so it can differ a little from the table above.' : ''}'
                   "${r.steps.any((s) => !s.pass && s.k6Bound) ? " Amber points stopped at our testing tool's limit, not the framework's." : ''}",
               child: StepLoadChart(
                 series: [StepSeries(b, r.steps)],

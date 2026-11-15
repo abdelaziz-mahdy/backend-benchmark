@@ -27,14 +27,15 @@ final _historyMetrics = [
 
 String _metricMeaning(Metric m) => switch (m.id) {
   'sustainable_rps' =>
-    'The main result: the most requests a second it handled while replies '
-        'stayed fast, few failed and it kept up. Higher is better.',
+    'The main result: the busiest rate we sent that it kept up with, while '
+        'replies stayed fast and few failed. Higher is better.',
   'avg_rps' =>
     'Old method: the average requests a second while users were added. '
         'Higher is better.',
   'peak_rps' =>
-    'The most requests a second it answered at any step, however slow the '
-        'replies were. Higher is better.',
+    'The most requests a second it really answered at any step, however '
+        'slow the replies were. It can sit just below the result, which '
+        'counts the rate we sent.',
   'p99_ms' => 'Slow reply: 99 of every 100 replies came back within this time.',
   'app_cpu' =>
     'How much of its processor cores it used. 100% is all of them (in the '
@@ -271,7 +272,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   const SizedBox(height: 8),
                   SegmentSwitch<String>(
                     label: 'Test',
-                    options: [for (final s in tests) (s, testInfo(s).title)],
+                    // The short names every other test switch uses.
+                    options: [for (final s in tests) (s, testInfo(s).short)],
                     icons: {for (final s in tests) s: testIcon(s)},
                     selected: scenario,
                     // Kept in the URL, so Back, a reload or a shared link
@@ -478,6 +480,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               format: (v) => _fmt(g.metric, v),
               // A share of its cores never passes 100%.
               top: g.metric.id == 'app_cpu' && !legacy ? 100 : null,
+              capped: g.capped,
             ),
           ],
         ],

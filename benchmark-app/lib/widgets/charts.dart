@@ -481,10 +481,15 @@ class HistoryChart extends StatelessWidget {
     required this.format,
     this.highlight,
     this.top,
+    this.capped = const {},
   });
 
   /// A fixed top for the value axis (100 for a share of cores).
   final double? top;
+
+  /// Frameworks whose newest point hit our testing tool's limit: that
+  /// point's tooltip reads "40,000+".
+  final Set<String> capped;
 
   @override
   Widget build(BuildContext context) {
@@ -492,6 +497,8 @@ class HistoryChart extends StatelessWidget {
     var maxY = 0.0;
     final bars = <LineChartBarData>[];
     final names = <String>[];
+    final keys = <String>[];
+    final lastSpot = <int>[];
     // Frameworks with equal numbers at one run would hide each other's
     // dots: nudge them apart sideways, in a fixed order.
     final shared = <(int, double), List<String>>{};
@@ -525,6 +532,8 @@ class HistoryChart extends StatelessWidget {
         maxY = math.max(maxY, s.y);
       }
       names.add(name);
+      keys.add(key);
+      lastSpot.add(spots.length - 1);
       final dim = highlight != null && highlight != key;
       final color = identityColor(p, key).withValues(alpha: dim ? 0.18 : 1);
       bars.add(
@@ -605,7 +614,9 @@ class HistoryChart extends StatelessWidget {
           ),
           lineTouchData: _touch(
             p,
-            (s) => '${names[s.barIndex]}: ${format(s.y)}',
+            (s) =>
+                '${names[s.barIndex]}: ${format(s.y)}'
+                '${capped.contains(keys[s.barIndex]) && s.spotIndex == lastSpot[s.barIndex] ? '+' : ''}',
           ),
         ),
       ),

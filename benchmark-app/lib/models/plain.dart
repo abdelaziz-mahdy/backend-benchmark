@@ -653,8 +653,8 @@ String ledeFor(RunSummary run) {
         'numbers cannot be compared with newer runs.';
   }
   return 'We built the same small app in $n frameworks and sent each one '
-      'more and more traffic until it slowed down. Each number is the most '
-      'requests a second it handled before that.';
+      'more and more traffic until it slowed down. Each number is the '
+      'busiest rate we sent that it kept up with.';
 }
 
 /// The points of "How we tested", from the run's own settings.
@@ -803,8 +803,9 @@ String metricMeaning(Metric m, RunSummary run) {
           'and it kept up with at least ${keptUp(run)} of the requests. '
           'Higher is better.',
     'peak_rps' =>
-      'The most requests a second it answered at any step, however slow the '
-          'replies were. Higher is better.',
+      'The most requests a second it really answered at any step, however '
+          'slow the replies were. The result counts the rate we sent, so '
+          'this can sit just below it.',
     'avg_rps' =>
       'Old method: the average requests a second while more and more '
           'visitors were added. Higher is better.',

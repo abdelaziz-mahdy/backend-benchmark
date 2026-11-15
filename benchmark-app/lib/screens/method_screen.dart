@@ -813,8 +813,9 @@ class _MethodScreenState extends State<MethodScreen> {
           'errors, and at least ${_pct(slo.servedRatio)} of requests '
           'answered. The middle of the ${numberWord(_reps(run))} tries.',
     'peak_rps' =>
-      'the most requests a second it answered at any step, '
-          'however slow the replies were.',
+      'the most requests a second it really answered at any step, '
+          'however slow the replies were. The result counts the rate we '
+          'sent, so this can sit just below it.',
     'avg_rps' =>
       'old method: the average requests a second while '
           'simulated users were added.',
@@ -831,7 +832,8 @@ class _MethodScreenState extends State<MethodScreen> {
       'how much of its ${numberWord(cores)} processor '
           '${cores == 1 ? 'core' : 'cores'} the app used. 100% is '
           '${cores == 1 ? 'that core' : 'all of them'}.',
-    'app_mem_mb' => 'how much memory the app used, on average.',
+    'app_mem_mb' =>
+      'how much memory the app used, at the busiest step it passed.',
     'db_cpu' =>
       'how much processor the database used while serving this '
           'framework. 100% is one full core.',
