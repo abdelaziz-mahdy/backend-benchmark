@@ -90,25 +90,29 @@ void applyLocation(DashboardState state, Uri uri) {
   }
 }
 
-class DashRouteParser extends RouteInformationParser<Uri> {
+/// Hands the router whole history entries: the link, plus what a link does
+/// not hold (set-aside picks and the like, saved per entry).
+class DashRouteParser extends RouteInformationParser<RouteInformation> {
   const DashRouteParser();
 
   @override
-  Future<Uri> parseRouteInformation(RouteInformation routeInformation) async =>
-      routeInformation.uri;
+  Future<RouteInformation> parseRouteInformation(
+    RouteInformation routeInformation,
+  ) async => routeInformation;
 
   @override
-  RouteInformation? restoreRouteInformation(Uri configuration) =>
-      RouteInformation(uri: configuration);
+  RouteInformation? restoreRouteInformation(RouteInformation configuration) =>
+      configuration;
 }
 
 /// Keeps the URL and [DashboardState] in step: state changes become browser
 /// history entries, and Back, Forward or a pasted link set the state.
-class DashRouterDelegate extends RouterDelegate<Uri> with ChangeNotifier {
+class DashRouterDelegate extends RouterDelegate<RouteInformation>
+    with ChangeNotifier {
   final DashboardState state;
 
-  /// A link that arrived before the data did.
-  Uri? _pending;
+  /// An entry that arrived before the data (or its run) did.
+  RouteInformation? _pending;
   Uri? _last;
 
   /// The link last opened (pasted, Back, Forward) and the location it
@@ -133,26 +137,32 @@ class DashRouterDelegate extends RouterDelegate<Uri> with ChangeNotifier {
       _apply(pending);
     }
     final now = locationOf(state);
+    // Once the visitor moves on, the opened link is no longer what is
+    // shown, and must not come back into the address bar later.
+    if (now != _openedFor) _openedAs = null;
     if (now != _last) {
       _last = now;
       notifyListeners();
     }
   }
 
-  void _apply(Uri uri) {
+  void _apply(RouteInformation info) {
+    final uri = info.uri;
     // The run first: load it, and apply the rest once it is in.
     final want = uri.queryParameters['run'];
     final target = want == null
         ? state.index.firstOrNull
         : state.index.where((e) => e.id == want).firstOrNull;
     if (target != null && target != state.entry) {
-      _pending = uri;
+      _pending = info;
       state.selectRun(target);
       return;
     }
     _applying = true;
     try {
       applyLocation(state, uri);
+      // Back and Forward bring back what the entry had beyond its link.
+      if (info.state != null) state.restoreSide(info.state);
     } finally {
       _applying = false;
     }
@@ -163,14 +173,17 @@ class DashRouterDelegate extends RouterDelegate<Uri> with ChangeNotifier {
   }
 
   @override
-  Uri? get currentConfiguration {
+  RouteInformation? get currentConfiguration {
     if (state.run == null || _pending != null) return null;
     final now = locationOf(state);
-    return _openedAs != null && now == _openedFor ? _openedAs : now;
+    return RouteInformation(
+      uri: _openedAs != null && now == _openedFor ? _openedAs! : now,
+      state: state.sideState,
+    );
   }
 
   @override
-  Future<void> setNewRoutePath(Uri configuration) async {
+  Future<void> setNewRoutePath(RouteInformation configuration) async {
     if (state.run == null) {
       _pending = configuration;
       return;

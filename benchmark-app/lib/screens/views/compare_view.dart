@@ -244,6 +244,7 @@ class CompareView extends StatelessWidget {
                 onTap: () {
                   final was = [...state.compareKeys];
                   final aside = [...state.parkedCompare];
+                  final away = state.awayForRun;
                   final n = was.length + aside.length;
                   state.clearCompare();
                   ScaffoldMessenger.maybeOf(context)
@@ -258,7 +259,8 @@ class CompareView extends StatelessWidget {
                         behavior: SnackBarBehavior.floating,
                         action: SnackBarAction(
                           label: 'Undo',
-                          onPressed: () => state.restoreCompare(was, aside),
+                          onPressed: () =>
+                              state.restoreCompare(was, aside, away),
                         ),
                       ),
                     );

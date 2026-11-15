@@ -260,14 +260,53 @@ class DashboardState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Puts back what "Clear all" took, set-aside picks included (Undo).
-  void restoreCompare(List<String> picks, List<String> parked) {
+  /// Puts back what "Clear all" took, set-aside picks included (Undo),
+  /// with [away]: which of them came back by themselves on a run change.
+  void restoreCompare(
+    List<String> picks,
+    List<String> parked, [
+    Iterable<String> away = const [],
+  ]) {
     compareKeys
       ..clear()
       ..addAll(picks);
     parkedCompare
       ..clear()
       ..addAll(parked);
+    _awayForRun
+      ..clear()
+      ..addAll(away);
+    notifyListeners();
+  }
+
+  /// Which set-aside picks return by themselves on a run change.
+  Set<String> get awayForRun => Set.unmodifiable(_awayForRun);
+
+  /// What a URL does not hold but a history entry must: set-aside picks,
+  /// which of them return on a run change, and a looked-up framework the
+  /// run lacks. Saved with each entry so Back and Forward restore it.
+  Map<String, Object?> get sideState => {
+    'parked': [...parkedCompare],
+    'away': [..._awayForRun],
+    'missing': missingKey,
+  };
+
+  /// Restores [sideState] saved with a history entry (Back, Forward).
+  void restoreSide(Object? saved) {
+    if (saved is! Map) return;
+    List<String> list(Object? v) => [
+      if (v is List)
+        for (final x in v)
+          if (x is String) x,
+    ];
+    parkedCompare
+      ..clear()
+      ..addAll(list(saved['parked']).where((k) => !compareKeys.contains(k)));
+    _awayForRun
+      ..clear()
+      ..addAll(list(saved['away']));
+    final missing = saved['missing'];
+    missingKey = selectedKey == null && missing is String ? missing : null;
     notifyListeners();
   }
 

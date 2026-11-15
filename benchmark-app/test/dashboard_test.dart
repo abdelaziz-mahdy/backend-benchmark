@@ -784,7 +784,8 @@ void main() {
       final picks = [...state.compareKeys];
       state.parkedCompare.add('gone-framework');
       state.clearCompare();
-      state.restoreCompare(picks, ['gone-framework']);
+      state.restoreCompare(picks, ['gone-framework'], {'gone-framework'});
+      expect(state.awayForRun, {'gone-framework'});
       expect(state.compareKeys, picks);
       expect(state.parkedCompare, ['gone-framework']);
     });
@@ -815,15 +816,55 @@ void main() {
       // An old-style link is reported as it was opened, so it adds no
       // new history entry for Back to land on.
       final old = Uri.parse('/f/$key');
-      await router.setNewRoutePath(old);
-      expect(router.currentConfiguration, old);
+      await router.setNewRoutePath(RouteInformation(uri: old));
+      expect(router.currentConfiguration?.uri, old);
       // A change the visitor makes is reported as itself.
       state.setView(HomeView.all);
-      expect(router.currentConfiguration, Uri(path: '/all'));
+      expect(router.currentConfiguration?.uri, Uri(path: '/all'));
       // Back to plain /compare means no picks, so it can leave Compare.
       state.toggleCompare(key);
-      await router.setNewRoutePath(Uri.parse('/compare'));
+      await router.setNewRoutePath(
+        RouteInformation(uri: Uri.parse('/compare')),
+      );
       expect(state.compareKeys, isEmpty);
+      router.dispose();
+    });
+
+    testWidgets('Back and Forward bring back what an entry held', (t) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      final keys = [for (final b in state.run!.backends) b.key];
+      // A Compare entry saved with a set-aside pick.
+      state.setView(HomeView.compare);
+      for (final k in keys.take(2)) {
+        state.toggleCompare(k);
+      }
+      state.parkedCompare.add('gone-framework');
+      final saved = router.currentConfiguration!;
+      expect(saved.state, isA<Map<String, Object?>>());
+      // The visitor moves on; the set-aside pick is lost here...
+      state.clearCompare();
+      expect(state.parkedCompare, isEmpty);
+      // ...and Back to the saved entry restores it.
+      await router.setNewRoutePath(saved);
+      expect(state.parkedCompare, ['gone-framework']);
+      expect(state.compareKeys, keys.take(2).toList());
+      router.dispose();
+    });
+
+    testWidgets('an opened old link never comes back after moving on', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      final key = state.run!.backends.first.key;
+      await router.setNewRoutePath(RouteInformation(uri: Uri.parse('/f/$key')));
+      final tidy = locationOf(state);
+      final other = state.run!.scenarios.last;
+      state.setScenario(other);
+      state.setScenario(tidy.queryParameters['s']!);
+      // Back at the same view, it shows its own tidy link, not the old one.
+      expect(router.currentConfiguration?.uri, tidy);
       router.dispose();
     });
 
@@ -857,7 +898,9 @@ void main() {
       final router = DashRouterDelegate(state);
       final old = state.index[1].id;
       await t.runAsync(
-        () => router.setNewRoutePath(Uri.parse('/all?run=$old')),
+        () => router.setNewRoutePath(
+          RouteInformation(uri: Uri.parse('/all?run=$old')),
+        ),
       );
       await t.runAsync(() => Future<void>.delayed(Duration.zero));
       await settle(t);
