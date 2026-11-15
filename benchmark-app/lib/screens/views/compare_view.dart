@@ -117,17 +117,22 @@ class CompareView extends StatelessWidget {
                       ? '${capFirst(joinAnd([for (final k in here) state.nameOf(k)]))} '
                             '${here.length == 1 ? 'is' : 'are'} set aside: Compare '
                             'holds ${numberWord(DashboardState.maxCompare)}. Remove a '
-                            'pick to bring ${here.length == 1 ? 'it' : 'them'} back.'
+                            'pick to bring ${here.length == 1 ? 'it' : 'one'} back.'
                       : '${capFirst(joinAnd([for (final k in here) state.nameOf(k)]))} '
                             '${here.length == 1 ? 'was' : 'were'} set aside when '
-                            'Compare was full. There is room now.',
+                            'Compare was full. There is room now'
+                            '${here.length > DashboardState.maxCompare - picked.length ? ' for ${numberWord(DashboardState.maxCompare - picked.length)}' : ''}.',
                   style: t.small,
                 ),
                 if (picked.length < DashboardState.maxCompare)
                   TextLink(
+                    // Promise only what the tap does: it fills the free places.
                     label: here.length == 1
                         ? 'Bring it back'
-                        : 'Bring them back',
+                        : here.length <=
+                              DashboardState.maxCompare - picked.length
+                        ? 'Bring them back'
+                        : 'Bring back ${joinAnd([for (final k in here.take(DashboardState.maxCompare - picked.length)) state.nameOf(k)])}',
                     onTap: state.restoreParked,
                   ),
               ],
@@ -370,7 +375,9 @@ class _Picked extends StatelessWidget {
               ),
           ],
         ),
-        if (full)
+        // The set-aside note says the same when it shows; one line, not two.
+        if (full &&
+            !state.parkedCompare.any((k) => state.run!.backend(k) != null))
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(

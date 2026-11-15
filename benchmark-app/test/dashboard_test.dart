@@ -789,6 +789,23 @@ void main() {
       expect(state.parkedCompare, ['gone-framework']);
     });
 
+    testWidgets('Back keeps set-aside picks and a missing framework', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final keys = [for (final b in state.run!.backends) b.key];
+      state.parkedCompare.add('gone-framework');
+      state.missingKey = 'gone-framework';
+      state.applyRoute(
+        page: DashboardPage.home,
+        view: HomeView.compare,
+        compare: keys.take(2).toList(),
+      );
+      expect(state.parkedCompare, ['gone-framework']);
+      state.applyRoute(page: DashboardPage.home, view: HomeView.one);
+      expect(state.missingKey, 'gone-framework');
+    });
+
     testWidgets('a copied link keeps an older run', (t) async {
       final state = await pumpApp(t, twoRunBundle());
       expect(locationOf(state).queryParameters, isNot(contains('run')));

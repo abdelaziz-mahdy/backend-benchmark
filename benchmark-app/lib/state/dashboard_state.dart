@@ -286,7 +286,9 @@ class DashboardState extends ChangeNotifier {
       selectedKey = selected != null && keys.contains(selected)
           ? selected
           : null;
-      missingKey = null;
+      // Back or Forward to the picker keeps a framework the run lacks,
+      // so changing run can still bring it back.
+      if (selected != null) missingKey = null;
     }
     if (compare != null) {
       final picked = <String>[];
@@ -296,7 +298,9 @@ class DashboardState extends ChangeNotifier {
       compareKeys
         ..clear()
         ..addAll(picked.take(maxCompare));
-      parkedCompare.clear();
+      // Set-aside picks survive Back and Forward; only those now picked
+      // leave the list.
+      parkedCompare.removeWhere(compareKeys.contains);
     }
     this.page = page;
     this.view = view;
