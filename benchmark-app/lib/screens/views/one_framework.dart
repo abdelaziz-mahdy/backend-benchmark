@@ -261,7 +261,7 @@ class _Profile extends StatelessWidget {
       if (b.formerName != null) 'named "${b.formerName}" in this run',
     ].join(' · ');
     final cores = appCoreCount(run);
-    final unit = unitFor(state.headline);
+    final unit = unitFor(state.headline, run);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -489,7 +489,7 @@ class _TestRow extends StatelessWidget {
   }
 }
 
-/// Typical and slow reply, processor and memory in every test, measured
+/// Reply times, processor and memory in every test, measured
 /// at the framework's own result.
 class _ExtraTable extends StatelessWidget {
   final BackendResult backend;
@@ -573,8 +573,6 @@ class _ExtraTable extends StatelessWidget {
                     'the same traffic to every framework.'
               : 'All of these were measured at its result: the busiest step '
                     'it passed (tap its bar above for that number).',
-          'Typical reply: ${Measure.typical.meaning}.',
-          'Slow reply: ${Measure.slow.meaning}.',
           'Processor: how much of its ${numberWord(cores)} processor '
               '${cores == 1 ? 'core' : 'cores'} the framework used.',
           '"ms" means milliseconds. 1,000 ms is one second.',

@@ -18,12 +18,12 @@ import '../widgets/site_frame.dart' show SiteFooter, SiteWidth;
 
 /// Numbers History can plot (they are in index.json's headline data), with
 /// their name on the switch and what they mean.
-final _historyMetrics = [
-  (Metrics.sustainable, 'Requests a second'),
-  (Metrics.peak, 'Most at any step'),
-  (Metrics.p99, 'Slow reply'),
-  (Metrics.cpu, 'Processor'),
-  (Metrics.memory, 'Memory'),
+List<(Metric, String)> _historyMetrics(RunSummary run) => [
+  (Metrics.sustainable, capFirst(unitFor(Metrics.sustainable, run))),
+  (Metrics.peak, 'Most at any speed'),
+  (Metrics.p99, 'Reply time 99 in 100 beat'),
+  (Metrics.cpu, 'Processor use'),
+  (Metrics.memory, 'Memory use'),
 ];
 
 String _metricMeaning(Metric m, RunSummary run) => switch (m.id) {
@@ -32,10 +32,12 @@ String _metricMeaning(Metric m, RunSummary run) => switch (m.id) {
     'Old method: the average requests a second while users were added. '
         'Higher is better.',
   'peak_rps' =>
-    'The most requests a second it really answered at any step, however '
-        'slow the replies were. It can sit just below the result, which '
-        'counts the rate we sent.',
-  'p99_ms' => 'Slow reply: 99 of every 100 replies came back within this time.',
+    'The most replies a second it gave at any step, however slow they '
+        'were. The result only counts steps where replies stayed fast, so '
+        'the two can differ.',
+  'p99_ms' =>
+    'Reply time 99 in 100 beat: 99 of every 100 replies came back faster '
+        'than this.',
   'app_cpu' =>
     'How much of its processor cores it used. 100% is all of them (in the '
         'old method, 100% is one core).',
@@ -271,7 +273,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   const SizedBox(height: 8),
                   SegmentSwitch<Metric>(
                     label: 'Number to show',
-                    options: _historyMetrics,
+                    options: _historyMetrics(run),
                     selected: _metric,
                     onSelected: (m) => setState(() => _metric = m),
                   ),
@@ -324,10 +326,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final single = lines.length - multi.length;
     final dates = runDates(g.runs);
     final narrow = MediaQuery.sizeOf(context).width < kNarrow;
-    final metricName = _historyMetrics
-        .where((m) => m.$1 == g.metric)
-        .map((m) => m.$2)
-        .firstOrNull;
+    final run = context.read<DashboardState>().run!;
+    final metricName = _historyMetrics(
+      run,
+    ).where((m) => m.$1 == g.metric).map((m) => m.$2).firstOrNull;
     final (pillText, pillIcon, pillOn) = legacy
         ? (
             'Old method: cannot be compared with newer runs',
@@ -375,7 +377,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Showing: ${metricName ?? plainMetricLabel(g.metric)}, in the '
+            'Showing: ${metricName ?? plainMetricLabel(g.metric, run)}, in the '
             '"${testInfo(g.scenario).title}" test.',
             style: t.small,
           ),

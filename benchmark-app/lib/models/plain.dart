@@ -218,13 +218,14 @@ const kLimitSentence =
 
 /// "All three runs gave the same result." / "The three runs ranged from
 /// 38,000 to 40,000." / "We ran this test once."
-String runsSentence(Result r) {
+String runsSentence(Result r, [String Function(double) format = whole]) {
   if (r.reps <= 1) return 'We ran this test once.';
   final n = numberWord(r.reps);
-  if (whole(r.low) == whole(r.high)) {
+  if (format(r.low) == format(r.high)) {
     return 'All $n tries gave the same result.';
   }
-  return 'Across $n tries it ranged from ${whole(r.low)} to ${whole(r.high)}.';
+  return 'Across $n tries it ranged from ${format(r.low)} to '
+      '${format(r.high)}.';
 }
 
 /// "Too close to call with A and B." or "".
@@ -792,67 +793,137 @@ const kFootLine =
 
 // --------------------------------------------------------- every number
 
-/// What the Every number table can show.
+/// What the bars and the Every number table can show.
 enum Measure {
   // The same names as every other table and Method's "Words we use".
-  load('Requests a second', 'the main result'),
-  typical('Typical reply', 'half of all replies were faster than this'),
-  slow('Slow reply', '99 of every 100 replies were faster than this'),
-  processor('Processor', 'how much of its processor cores it used'),
-  memory('Memory', 'how much memory the framework used');
+  // The result's name carries the run's reply-time limit: see [title].
+  load('Replies a second', 'the main result'),
+  peak(
+    'Most replies a second, at any speed',
+    'the most replies a second it gave at any step, however slow they were',
+  ),
+  typical('Median reply time', 'half of all replies came back faster'),
+  slow('Reply time 99 in 100 beat', '99 of every 100 replies came back faster'),
+  processor('Processor use', 'how much of its processor cores it used'),
+  memory('Memory use', 'how much memory the framework used');
 
   final String label;
   final String meaning;
 
   const Measure(this.label, this.meaning);
 
-  /// Short column title: "Typical reply".
-  String get short => switch (this) {
-    load => 'Requests a second',
-    typical => 'Typical reply',
-    slow => 'Slow reply',
-    processor => 'Processor',
-    memory => 'Memory',
+  /// Column title: "Median reply time".
+  String get short => label;
+
+  /// Its name in [run]: the result says its limit, "Replies a second, 99%
+  /// within 100 ms".
+  String title(RunSummary run) =>
+      this == load ? capFirst(unitFor(headlineOf(run), run)) : label;
+
+  /// More is better for replies a second; less for everything else.
+  bool get higherIsBetter => this == load || this == peak;
+
+  /// The number behind it; [headline] is the run's result.
+  Metric metric(Metric headline) => switch (this) {
+    load => headline,
+    peak => Metrics.peak,
+    typical => Metrics.p50,
+    slow => Metrics.p99,
+    processor => Metrics.cpu,
+    memory => Metrics.memory,
   };
 
-  double? value(ScenarioResult r, Metric headline) => switch (this) {
-    load => headline.value(r),
-    typical => Metrics.p50.value(r),
-    slow => Metrics.p99.value(r),
-    processor => Metrics.cpu.value(r),
-    memory => Metrics.memory.value(r),
-  };
+  double? value(ScenarioResult r, Metric headline) => metric(headline).value(r);
 
   String format(double v, int cores) => switch (this) {
-    load => whole(v),
+    load || peak => whole(v),
     typical || slow => msText(v),
     processor => cpuText(v, cores),
     memory => memText(v),
   };
 }
 
+/// What [m] means, for the (i) next to the control that picks it.
+String measureMeaning(Measure m, RunSummary run) {
+  final cores = appCoreCount(run);
+  if (m == Measure.load) {
+    return run.isLegacy
+        ? 'The average requests a second during the old test. Higher is better.'
+        : 'The main result. ${m.title(run)}: the busiest rate we sent where 99 of every 100 '
+              'replies came back ${sloPhrase(run)}, ${errorPhrase(run)}, and '
+              'it answered at least ${keptUp(run)} of the requests. Near its '
+              'limit '
+              'the rate goes up in small steps, so two frameworks can land on '
+              'the same number. Higher is better.';
+  }
+  final what = m == Measure.processor
+      ? 'how much of its ${numberWord(cores)} processor '
+            '${cores == 1 ? 'core' : 'cores'} the framework used'
+      : m.meaning;
+  final when = m == Measure.peak
+      ? 'Higher is better, but replies may have been slow by then.'
+      : run.isLegacy
+      ? 'Measured during the old test, which sent the same traffic to every '
+            'framework.'
+      : "Measured at each framework's own top load, so not a like-for-like "
+            'race. Lower is better.';
+  final ms = m == Measure.typical || m == Measure.slow
+      ? ' 1,000 ms is one second.'
+      : '';
+  return '${m.label}: $what. $when$ms';
+}
+
+/// Every framework's [m] in [test], best first: the most replies a second,
+/// the lowest of everything else (name order among equals). Only the result
+/// can be at the testing tool's limit.
+List<Result> measureResults(RunSummary run, String test, Measure m) {
+  final rs = resultsFor(run, test, m.metric(headlineOf(run)));
+  if (m == Measure.load) return rs;
+  final out = [
+    for (final r in rs)
+      Result(
+        backend: r.backend,
+        value: r.value,
+        low: r.low,
+        high: r.high,
+        reps: r.reps,
+        restarts: r.restarts,
+      ),
+  ];
+  if (!m.higherIsBetter) {
+    out.sort((a, b) {
+      final c = a.value.compareTo(b.value);
+      return c != 0 ? c : a.name.compareTo(b.name);
+    });
+  }
+  return out;
+}
+
 /// A metric's name in plain words, for the full list of numbers.
-String plainMetricLabel(Metric m) => switch (m.id) {
-  'sustainable_rps' => 'Requests a second (the result)',
-  'peak_rps' => 'Most requests a second at any step',
+String plainMetricLabel(Metric m, [RunSummary? run]) => switch (m.id) {
+  'sustainable_rps' =>
+    'Replies a second, 99% ${run == null ? 'within the limit' : sloPhrase(run)} '
+        '(the result)',
+  'peak_rps' => 'Most replies a second, at any speed',
   'avg_rps' => 'Average requests a second',
-  'p50_ms' => 'Typical reply (half were faster)',
-  'p90_ms' => '9 in 10 replies were faster than',
-  'p99_ms' => 'Slow reply (99 in 100 were faster)',
-  'p999_ms' => '999 in 1,000 replies were faster than',
+  'p50_ms' => 'Median reply time',
+  'p90_ms' => 'Reply time 9 in 10 beat',
+  'p99_ms' => 'Reply time 99 in 100 beat',
+  'p999_ms' => 'Reply time 999 in 1,000 beat',
   'error_rate' => 'Requests that failed',
-  'app_cpu' => 'Processor (share of its cores)',
-  'app_mem_mb' => 'Memory',
-  'db_cpu' => 'Database processor (100% is one core)',
-  'rps_per_core' => 'Requests a second per core it used',
-  'rps_per_100mb' => 'Requests a second per 100 MB of memory',
+  'app_cpu' => 'Processor use (share of its cores)',
+  'app_mem_mb' => 'Memory use',
+  'db_cpu' => 'Database processor use (100% is one core)',
+  'rps_per_core' => 'Replies a second per core it used',
+  'rps_per_100mb' => 'Replies a second per 100 MB of memory',
   _ => m.label,
 };
 
-/// "requests a second", or "requests a second, on average" for v1 runs.
-String unitFor(Metric headline) => headline == Metrics.avgRps
+/// "replies a second, 99% within 100 ms" (the run's reply-time limit), or
+/// "requests a second, on average" for v1 runs.
+String unitFor(Metric headline, RunSummary run) => headline == Metrics.avgRps
     ? 'requests a second, on average'
-    : 'requests a second';
+    : 'replies a second, 99% ${sloPhrase(run)}';
 
 /// What a measured number means, in plain words, for tooltips next to a
 /// number's name.
@@ -865,17 +936,19 @@ String metricMeaning(Metric m, RunSummary run) {
           'kept up with at least ${keptUp(run)} of the requests. '
           'Higher is better.',
     'peak_rps' =>
-      'The most requests a second it really answered at any step, however '
-          'slow the replies were. The result counts the rate we sent, so '
-          'this can sit just below it.',
+      'The most replies a second it gave at any step, however slow they '
+          'were. The result only counts steps where replies stayed fast, so '
+          'the two can differ.',
     'avg_rps' =>
       'Old method: the average requests a second while more and more '
           'visitors were added. Higher is better.',
     'p50_ms' =>
-      'Typical reply: half of all replies came back faster than this.',
+      'Median reply time: half of all replies came back faster than this.',
     'p90_ms' => '9 in 10 replies came back faster than this.',
-    'p99_ms' => 'Slow reply: 99 of every 100 replies came back within this.',
-    'p999_ms' => '999 of every 1,000 replies came back within this.',
+    'p99_ms' =>
+      'Reply time 99 in 100 beat: 99 of every 100 replies came back faster '
+          'than this.',
+    'p999_ms' => '999 of every 1,000 replies came back faster than this.',
     'error_rate' => 'The share of requests that failed.',
     'app_cpu' =>
       'How much of its ${numberWord(cores)} processor '
@@ -887,7 +960,7 @@ String metricMeaning(Metric m, RunSummary run) {
           '100% is one core.',
     'rps_per_core' =>
       'Requests a second for each processor core it really used.',
-    'rps_per_100mb' => 'Requests a second for every 100 MB of memory it used.',
+    'rps_per_100mb' => 'Replies a second for every 100 MB of memory it used.',
     _ => plainMetricLabel(m),
   };
 }

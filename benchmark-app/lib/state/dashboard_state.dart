@@ -172,7 +172,7 @@ class DashboardState extends ChangeNotifier {
       scenario = fit(scenario, _currentMethodTest);
       if (sortTest == null) {
         sortTest = tests.firstOrNull ?? sortByName;
-        sortDesc = measure == Measure.load;
+        sortDesc = measure.higherIsBetter;
       } else if (sortTest case final was?
           when was != sortByName && !tests.contains(was)) {
         final next = fit(was, _currentMethodSort);
@@ -193,7 +193,7 @@ class DashboardState extends ChangeNotifier {
         if (back && _currentMethodSortDesc != null) {
           sortDesc = _currentMethodSortDesc!;
         } else if (!back && next != near) {
-          sortDesc = measure == Measure.load;
+          sortDesc = measure.higherIsBetter;
         }
       }
       final keys = loaded.backends.map((b) => b.key).toSet();
@@ -303,9 +303,9 @@ class DashboardState extends ChangeNotifier {
     if (measure == next) return;
     measure = next;
     if (run?.isLegacy ?? false) _currentMethodSortDesc = null;
-    // Best first: most requests a second, but the lowest reply time,
+    // Best first: most replies a second, but the lowest reply time,
     // processor and memory.
-    if (sortTest != sortByName) sortDesc = next == Measure.load;
+    if (sortTest != sortByName) sortDesc = next.higherIsBetter;
     notifyListeners();
   }
 
@@ -318,8 +318,8 @@ class DashboardState extends ChangeNotifier {
       sortDesc = !sortDesc;
     } else {
       sortTest = test;
-      // Best first: most requests a second, lowest of everything else.
-      sortDesc = test == sortByName || measure == Measure.load;
+      // Best first: most replies a second, lowest of everything else.
+      sortDesc = test == sortByName || measure.higherIsBetter;
     }
     notifyListeners();
   }

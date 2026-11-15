@@ -61,7 +61,7 @@ class CompareView extends StatelessWidget {
     final t = Txt.of(context);
     final picked = state.compared;
     final tests = testsOf(run);
-    final unit = unitFor(state.headline);
+    final unit = unitFor(state.headline, state.run!);
     final byTest = {
       for (final s in tests)
         s: resultsFor(
@@ -519,12 +519,12 @@ class _Shared extends StatelessWidget {
     }
     final cores = appCoreCount(state.run!);
     final rows = <(String, String Function(LoadStep))>[
-      ('Typical reply', (x) => msText(x.p50)),
-      ('Slow reply', (x) => msText(x.p99)),
+      (Measure.typical.label, (x) => msText(x.p50)),
+      (Measure.slow.label, (x) => msText(x.p99)),
       if (shared.steps.values.every((x) => x.appCpu != null))
-        ('Processor', (x) => cpuText(x.appCpu!, cores)),
+        (Measure.processor.label, (x) => cpuText(x.appCpu!, cores)),
       if (shared.steps.values.every((x) => x.appMemMb != null))
-        ('Memory', (x) => memText(x.appMemMb!)),
+        (Measure.memory.label, (x) => memText(x.appMemMb!)),
     ];
     final cell = t.body.copyWith(
       fontSize: 14.5,
@@ -611,8 +611,6 @@ class _Shared extends StatelessWidget {
         Bullets([
           'Unlike the main numbers, these are at the same rate for all of '
               'them, so they compare like for like. Lower is better.',
-          'Typical reply: half of all replies were faster. Slow reply: 99 of '
-              'every 100 were faster.',
         ]),
       ],
     );
@@ -681,7 +679,7 @@ class _ChartsState extends State<_Charts> {
             ),
           ),
           ChartBlock(
-            title: 'Slow reply time at each step',
+            title: 'Reply time 99 in 100 beat, at each step',
             subtitle:
                 'Above the red line is too slow; hollow points missed '
                 'a limit.'
@@ -873,7 +871,7 @@ class _SideBySide extends StatelessWidget {
             blocks: [
               for (final m in metrics)
                 (
-                  plainMetricLabel(m),
+                  plainMetricLabel(m, state.run),
                   metricMeaning(m, state.run!),
                   [
                     for (final b in picked)
@@ -970,7 +968,7 @@ class _SideBySide extends StatelessWidget {
               c(
                 Tooltip(
                   message: metricMeaning(m, state.run!),
-                  child: Text(plainMetricLabel(m), style: cell),
+                  child: Text(plainMetricLabel(m, state.run), style: cell),
                 ),
               ),
               for (final b in picked)

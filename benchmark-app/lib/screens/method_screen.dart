@@ -475,7 +475,7 @@ class _MethodScreenState extends State<MethodScreen> {
         const SizedBox(height: 14),
         Points([
           Point(
-            'Slow reply:',
+            'Fast enough:',
             '99 of every 100 replies came back within ${msText(slo.p99Ms)}.',
             leading: tick(),
           ),
@@ -492,7 +492,7 @@ class _MethodScreenState extends State<MethodScreen> {
         const SizedBox(height: 10),
         const Points([
           Point(
-            'Most requests a second at any step,',
+            'Most replies a second, at any speed:',
             'however slow the replies were.',
           ),
           Point(
@@ -784,7 +784,7 @@ class _MethodScreenState extends State<MethodScreen> {
         const SizedBox(height: 14),
         Points([
           for (final m in metrics)
-            Point('${_label(m)}:', _meaning(m, slo, cores, run)),
+            Point('${_label(m, run)}:', _meaning(m, slo, cores, run)),
           // The old method had no steps and no limits.
           if (!run.isLegacy) ...[
             const Point(
@@ -807,7 +807,7 @@ class _MethodScreenState extends State<MethodScreen> {
   }
 
   /// A number's name in the glossary: the same one the tables use.
-  static String _label(Metric m) => plainMetricLabel(m);
+  static String _label(Metric m, RunSummary run) => plainMetricLabel(m, run);
 
   /// What a number means, in plain words.
   String _meaning(Metric m, Slo slo, int cores, RunSummary run) =>
@@ -825,9 +825,9 @@ class _MethodScreenState extends State<MethodScreen> {
           '${_pct(slo.servedRatio)} of requests '
           'answered. The middle of the ${numberWord(_reps(run))} tries.',
     'peak_rps' =>
-      'the most requests a second it really answered at any step, '
-          'however slow the replies were. The result counts the rate we '
-          'sent, so this can sit just below it.',
+      'the most replies a second it gave at any step, however slow they '
+          'were. The result only counts steps where replies stayed fast, so '
+          'the two can differ.',
     'avg_rps' =>
       'old method: the average requests a second while '
           'simulated users were added.',
@@ -896,12 +896,12 @@ class _MethodScreenState extends State<MethodScreen> {
                   'similar numbers.',
             ),
           Point(
-            'The slow reply',
+            'Reply times',
             run.isLegacy
-                ? 'is an average over the whole old test, which sent the same '
+                ? 'are averages over the whole old test, which sent the same '
                       'traffic to every framework.'
-                : "is measured at each framework's own result. A slower "
-                      'framework can show a quicker slow reply simply because '
+                : "are measured at each framework's own result. A slower "
+                      'framework can show quicker reply times simply because '
                       'it served less traffic.',
           ),
           const Point(
@@ -1187,7 +1187,7 @@ String _whySentence(LoadStep s, Slo slo) {
   }
   final parts = [
     if (s.p99 >= slo.p99Ms)
-      'the slow reply took ${msText(s.p99)}, over the '
+      '99 in 100 replies took up to ${msText(s.p99)}, over the '
           '${msText(slo.p99Ms)} limit',
     if (s.errorRate >= slo.errorRate)
       '${(s.errorRate * 100).toStringAsFixed(1)}% of requests failed',
@@ -1423,7 +1423,7 @@ class _RunStaircase extends StatelessWidget {
               ),
             if (sustainable != null)
               Point(
-                'The result: ${whole(sustainable)} requests a second.',
+                'The result: ${whole(sustainable)} ${unitFor(Metrics.sustainable, run)}.',
                 'That is the middle of the ${numberWord(reps)} tries, so it '
                     'can differ a little from this one.',
                 leading: Icon(Icons.flag, size: 20, color: p.accent),
@@ -1523,7 +1523,7 @@ class _StepBar extends StatelessWidget {
     return Tooltip(
       message:
           '${whole(step.targetRps)} requests a second asked · '
-          '${whole(step.achievedRps)} answered · slow reply '
+          '${whole(step.achievedRps)} answered · 99 in 100 within '
           '${msText(step.p99)} · '
           '${(step.errorRate * 100).toStringAsFixed(2)}% errors'
           '${extra ? ' · extra step' : ''} · $why',

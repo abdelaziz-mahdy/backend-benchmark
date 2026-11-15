@@ -1,11 +1,11 @@
 {
-    "name": "benchmark_app",
-    "short_name": "benchmark_app",
+    "name": "Backend speed test",
+    "short_name": "Backend speed",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0E6B5C",
+    "theme_color": "#0E6B5C",
+    "description": "How fast backend frameworks answer the same requests, measured the same way.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
