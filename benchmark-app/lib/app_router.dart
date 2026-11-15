@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:material_ui/material_ui.dart';
 
+import 'models/tests.dart';
 import 'screens/home_screen.dart';
 import 'state/dashboard_state.dart';
 
@@ -40,12 +41,13 @@ Uri _place(DashboardState s) {
     queryParameters: withScenario && scenario != null ? {'s': scenario} : null,
   );
   return switch (s.page) {
-    DashboardPage.history => Uri(
-      path: '/history',
-      queryParameters: (s.historyTest ?? scenario) == null
-          ? null
-          : {'s': s.historyTest ?? scenario!},
-    ),
+    // History lists the newest runs' tests: an old-method test is named
+    // by its closest current one, the one History shows.
+    DashboardPage.history => switch (s.historyTest ??
+        (scenario == null ? null : currentScenario(scenario))) {
+      null => Uri(path: '/history'),
+      final test => Uri(path: '/history', queryParameters: {'s': test}),
+    },
     DashboardPage.method => at('/method', withScenario: false),
     DashboardPage.home => switch (s.view) {
       HomeView.short => Uri(path: '/'),
@@ -90,7 +92,7 @@ void applyLocation(DashboardState state, Uri uri) {
       state.applyRoute(
         page: DashboardPage.history,
         view: state.view,
-        scenario: scenario,
+        scenario: scenario == null ? null : currentScenario(scenario),
       );
     case 'method':
       state.applyRoute(page: DashboardPage.method, view: state.view);
@@ -172,7 +174,16 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     final pending = _pending;
     if (pending != null) {
       _pending = null;
-      if (state.actions == _pendingActions) {
+      // Its run could not be loaded: the entry cannot be shown, so it is
+      // replaced by what is (and not retried in a loop).
+      final want = pending.uri.queryParameters['run'];
+      final failedHere =
+          state.failedRun != null &&
+          state.failedRun ==
+              (want == null
+                  ? state.index.firstOrNull
+                  : state.index.where((e) => e.id == want).firstOrNull);
+      if (state.actions == _pendingActions && !failedHere) {
         _apply(pending);
       } else {
         // The visitor acted while it waited: their action wins. The waiting
@@ -224,6 +235,13 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     if (target != null && target == state.entry && state.loading) {
       _pending = info;
       _pendingActions = state.actions;
+      // Still a run change if it leaves the run on screen (the visitor
+      // chose this run moments ago): its picks come back as for any other.
+      final crossing = target != state.shownEntry;
+      _crossedRun = crossing;
+      _beforeCross = crossing
+          ? [...state.compareKeys, ...state.parkedCompare]
+          : const [];
       return;
     }
     if (target != null && target != state.entry) {

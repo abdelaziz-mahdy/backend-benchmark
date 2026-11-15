@@ -7,6 +7,7 @@ import 'package:benchmark_app/models/results.dart';
 import 'package:benchmark_app/screens/views/short_answer.dart';
 import 'package:benchmark_app/services/results_service.dart';
 import 'package:benchmark_app/state/dashboard_state.dart';
+import 'package:flutter/services.dart' show ByteData;
 import 'package:flutter_test/flutter_test.dart' hide closeTo;
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
@@ -745,6 +746,31 @@ void main() {
       expect(state.compareKeys, contains('foam3'));
     });
 
+    testWidgets('a run that fails to load says so and can be tried again', (
+      t,
+    ) async {
+      final files = twoRunBundle().files;
+      var fails = 1;
+      final state = await pumpApp(
+        t,
+        _FlakyBundle(files, 'assets/results/runs/r0.json', () => fails-- > 0),
+      );
+      final shown = state.entry;
+      await t.runAsync(() => state.selectRun(state.index[1]));
+      await settle(t);
+      // The run on screen stays, links name it, and the visitor is told.
+      expect(state.entry, shown);
+      expect(state.failedRun, state.index[1]);
+      expect(locationOf(state).queryParameters['run'], isNull);
+      expect(find.textContaining('Could not load'), findsOneWidget);
+      // Picking it again tries again.
+      await t.runAsync(() => state.selectRun(state.index[1]));
+      await settle(t);
+      expect(state.entry, state.index[1]);
+      expect(state.failedRun, isNull);
+      expect(find.textContaining('Could not load'), findsNothing);
+    });
+
     testWidgets('a test the loaded run lacks is never set', (t) async {
       final state = await pumpApp(t, realisticBundle());
       final before = state.scenario;
@@ -1027,4 +1053,18 @@ void main() {
       router.dispose();
     });
   });
+}
+
+/// Fails loading [key] while [fail] says so.
+class _FlakyBundle extends MapBundle {
+  final String key;
+  final bool Function() fail;
+
+  _FlakyBundle(super.files, this.key, this.fail);
+
+  @override
+  Future<ByteData> load(String key) {
+    if (key == this.key && fail()) throw StateError('network hiccup');
+    return super.load(key);
+  }
 }

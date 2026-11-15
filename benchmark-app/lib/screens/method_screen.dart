@@ -623,6 +623,7 @@ class _MethodScreenState extends State<MethodScreen> {
         ),
         const SizedBox(height: 8),
         RunPicker(state: state),
+        RunLoadFailedNote(state: state),
         const SizedBox(height: 24),
         Points([
           if (run.date != null) Point('Date:', '${capFirst(_when(state))}.'),

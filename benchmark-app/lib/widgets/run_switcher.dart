@@ -146,3 +146,38 @@ class ChangeRunButton extends StatelessWidget {
     );
   }
 }
+
+/// Said next to a run choice when the run picked could not be loaded; the
+/// run on screen stays, and picking it again tries again.
+class RunLoadFailedNote extends StatelessWidget {
+  final DashboardState state;
+
+  const RunLoadFailedNote({super.key, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final failed = state.failedRun;
+    if (failed == null) return const SizedBox.shrink();
+    final p = context.palette;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2, right: 6),
+            child: Icon(Icons.error_outline, size: 16, color: p.danger),
+          ),
+          Flexible(
+            child: Text(
+              'Could not load ${runLabel(failed, newest: state.index.firstOrNull)}. '
+              'Pick it again to try again.',
+              style: body(13.5, color: p.text),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

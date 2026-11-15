@@ -36,6 +36,10 @@ class DashboardState extends ChangeNotifier {
   Object? error;
   bool loading = true;
 
+  /// A run that could not be loaded while another stayed on screen; the
+  /// visitor is told next to the run choice and can pick it again.
+  RunIndexEntry? failedRun;
+
   DashboardPage page = DashboardPage.home;
   HomeView view = HomeView.short;
 
@@ -100,6 +104,7 @@ class DashboardState extends ChangeNotifier {
     }
     entry = next;
     loading = true;
+    failedRun = null;
     notifyListeners();
     try {
       var loaded = await _service.loadRun(next);
@@ -187,7 +192,14 @@ class DashboardState extends ChangeNotifier {
         missingKey = null;
       }
     } catch (e) {
-      error = e;
+      if (entry != next) return; // a newer selection is loading
+      if (run == null) {
+        error = e;
+      } else {
+        // The run on screen stays, and says so; the choice can be retried.
+        failedRun = next;
+        entry = shownEntry;
+      }
     }
     loading = false;
     notifyListeners();

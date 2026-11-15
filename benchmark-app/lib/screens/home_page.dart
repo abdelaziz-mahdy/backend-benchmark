@@ -243,6 +243,15 @@ class _RunLine extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
           ),
+        // Full width, so it sits on its own line under the run choice.
+        if (state.failedRun != null)
+          SizedBox(
+            width: double.infinity,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: RunLoadFailedNote(state: state),
+            ),
+          ),
       ],
     );
   }
