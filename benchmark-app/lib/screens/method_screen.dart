@@ -15,6 +15,7 @@ import '../widgets/implementation.dart' show SourceLink;
 import '../widgets/prose.dart';
 import '../widgets/race_replay.dart' show Slo;
 import '../widgets/run_switcher.dart';
+import '../widgets/setup_diagram.dart';
 import '../widgets/site_frame.dart' show SiteFooter, SiteWidth, kSiteWidth;
 
 /// How the numbers are made. Four key facts up front, one real run drawn
@@ -132,6 +133,8 @@ class _MethodScreenState extends State<MethodScreen> {
             ),
             RunLoadFailedNote(state: state, inPlace: false),
             if (!run.isLegacy) ...[
+              const SizedBox(height: kSectionGap),
+              SetupDiagram(run: run, flowOnly: true),
               const SizedBox(height: kSectionGap),
               _keyFacts(run),
               const SizedBox(height: kSectionGap),

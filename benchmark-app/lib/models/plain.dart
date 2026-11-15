@@ -156,6 +156,20 @@ String _names(Iterable<Result> rs) => joinAnd([for (final r in rs) r.name]);
 /// "40,000" or "40,000 or more" when the load tool was the limit.
 String numberText(Result r) => '${whole(r.value)}${r.capped ? ' or more' : ''}';
 
+/// 1 -> "1st", 12 -> "12th".
+String ordinal(int n) {
+  final teen = n % 100 >= 11 && n % 100 <= 13;
+  final suffix = teen
+      ? 'th'
+      : switch (n % 10) {
+          1 => 'st',
+          2 => 'nd',
+          3 => 'rd',
+          _ => 'th',
+        };
+  return '$n$suffix';
+}
+
 /// "27,000" or "27,000 to 30,000".
 String spanText(double lo, double hi) =>
     whole(lo) == whole(hi) ? whole(lo) : '${whole(lo)} to ${whole(hi)}';
@@ -760,21 +774,13 @@ List<String> howWeTested(RunSummary run) {
         '${oneIn == null ? '' : ', fewer than 1 in $oneIn failed'}, and it '
         'kept up with at least ${keptUp(run)} of the requests sent.',
     if (reps != null && reps > 1)
-      'We tried every test ${numberWord(reps)} times. The number we show is '
-          'the middle try. The lowest and highest tries are shown next to it '
-          'wherever you see a range.',
-    'We call two frameworks about the same when each one\'s middle try '
-        "falls inside the other's lowest-to-highest tries. Frameworks with "
-        'the same number always stay together, so if one of them is not '
-        'about the same as the fastest, none of them is counted as tied '
-        'for fastest.',
+      'We try every test ${numberWord(reps)} times and show the middle try.',
+    'Two frameworks are about the same when their tries overlap; the same '
+        'number always counts as the same.',
     if (limit != null)
-      'Our testing tool has its own limit: results stop at about '
+      'Our testing tool tops out near '
           '${whole(limit < 1000 ? limit : (limit / 1000).round() * 1000)} '
-          'requests a second on this computer, because it cannot send more '
-          'than that steadily, and less in the tests that use '
-          'the database, where it has more work per request. A framework that '
-          'hit the limit may really be faster than its number.',
+          'requests a second here; a number with + may really be higher.',
     'Everything ran on one $cpu computer. On other machines the numbers will '
         'be different.',
   ];

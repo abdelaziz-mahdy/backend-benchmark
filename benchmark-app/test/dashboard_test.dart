@@ -7,6 +7,7 @@ import 'package:benchmark_app/models/results.dart';
 import 'package:benchmark_app/screens/views/short_answer.dart';
 import 'package:benchmark_app/services/results_service.dart';
 import 'package:benchmark_app/state/dashboard_state.dart';
+import 'package:benchmark_app/widgets/calm.dart' show InfoTip;
 import 'package:flutter/services.dart' show ByteData;
 import 'package:flutter_test/flutter_test.dart' hide closeTo;
 import 'package:material_ui/material_ui.dart';
@@ -594,19 +595,25 @@ void main() {
   });
 
   group('home page', () {
-    testWidgets('opens on who is fastest, as bars without numbers', (t) async {
+    testWidgets('opens on who is fastest, as bars with their numbers', (
+      t,
+    ) async {
       final state = await pumpApp(t, realisticBundle());
       expect(state.view, HomeView.short);
       expect(
         find.text('How much traffic can each backend framework handle?'),
         findsOneWidget,
       );
-      // One bar per framework in the main test, and no numbers until a bar
-      // is tapped.
+      // One bar per framework in the main test, each with its number; no
+      // answer sentence or bar legend in words.
       expect(find.byKey(const ValueKey('bar-db_mixed-rust-actix')), findsOne);
       expect(find.byKey(const ValueKey('bar-db_mixed-db-only')), findsOne);
-      expect(find.textContaining('32,000'), findsNothing);
-      expect(find.textContaining('about half as fast'), findsWidgets);
+      expect(find.textContaining('32,000'), findsWidgets);
+      expect(find.textContaining('Longer bar'), findsNothing);
+      expect(find.textContaining('as fast'), findsNothing);
+      // What a test does sits behind its (i), not on the page.
+      expect(find.textContaining('8 in 10 requests'), findsNothing);
+      expect(find.byType(InfoTip), findsWidgets);
       // No internal test names anywhere on the page.
       expect(find.textContaining('db_mixed'), findsNothing);
       expect(find.textContaining('DB mixed'), findsNothing);
@@ -657,7 +664,13 @@ void main() {
       state.selectFramework('foam3');
       await settle(t);
       expect(find.text('Uses its own box RPC.'), findsWidgets);
-      expect(find.textContaining('of the other'), findsWidgets);
+      // Its place in each test, at a glance.
+      expect(
+        find.textContaining(
+          RegExp(r'^(\d+(st|nd|rd|th) of \d+|Fastest|Tied fastest)$'),
+        ),
+        findsWidgets,
+      );
     });
 
     testWidgets('the Show me switch changes the view', (t) async {

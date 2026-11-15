@@ -346,6 +346,61 @@ class TextLink extends StatelessWidget {
 /// After this frame, scrolls so the start of [key]'s widget is on screen,
 /// if it is not already: used when a tap opens something that may land
 /// below the fold.
+/// Scrolls just enough to show the whole of [key]'s box, its top first: a
+/// fold that opens keeps its title on screen. A box taller than the screen
+/// goes to the top.
+void revealWhole(GlobalKey key) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final ctx = key.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    final box = ctx.findRenderObject() as RenderBox?;
+    final scrollable = Scrollable.maybeOf(ctx);
+    if (box == null || !box.attached || scrollable == null) return;
+    final view = scrollable.context.findRenderObject() as RenderBox?;
+    if (view == null || !view.attached) return;
+    final top = box.localToGlobal(Offset.zero, ancestor: view).dy;
+    final vh = view.size.height;
+    final h = box.size.height;
+    if (top >= 0 && top + h <= vh) return;
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: h <= vh && top >= 0 ? 1.0 : 0.0,
+      duration: motion(ctx, 300),
+      curve: Curves.easeOutCubic,
+    );
+  });
+}
+
+/// A small (i) that says [message] on hover or tap: what a test or a mark
+/// means, kept off the page until asked for.
+class InfoTip extends StatelessWidget {
+  final String message;
+  final double size;
+
+  const InfoTip(this.message, {super.key, this.size = 18});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Tooltip(
+      message: message,
+      triggerMode: TooltipTriggerMode.tap,
+      showDuration: const Duration(seconds: 6),
+      waitDuration: const Duration(milliseconds: 150),
+      preferBelow: true,
+      constraints: const BoxConstraints(maxWidth: 320),
+      child: Semantics(
+        label: message,
+        button: true,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(Icons.info_outline, size: size, color: p.muted),
+        ),
+      ),
+    );
+  }
+}
+
 void bringIntoView(GlobalKey key) {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     final ctx = key.currentContext;
@@ -386,12 +441,16 @@ class Fold extends StatefulWidget {
   /// Shown before the title, in the accent colour.
   final IconData? icon;
 
+  /// Said by an (i) after the title, on hover or tap.
+  final String? info;
+
   const Fold({
     super.key,
     required this.title,
     required this.child,
     this.subtitle,
     this.icon,
+    this.info,
     this.initiallyOpen = false,
     this.topLine = false,
     this.onChanged,
@@ -404,7 +463,7 @@ class Fold extends StatefulWidget {
 
 class _FoldState extends State<Fold> {
   late bool _open = widget.initiallyOpen;
-  final _content = GlobalKey(debugLabel: 'fold content');
+  final _whole = GlobalKey(debugLabel: 'fold');
 
   /// A fold with a name keeps its open state in the page's storage, so
   /// Back to its view finds it as it was left.
@@ -431,9 +490,9 @@ class _FoldState extends State<Fold> {
       PageStorage.maybeOf(context)?.writeState(context, _open, identifier: id);
     }
     widget.onChanged?.call(_open);
-    // What opened must be seen: a fold near the bottom of the screen
-    // scrolls up so its content shows, not just its triangle.
-    if (_open) bringIntoView(_content);
+    // What opened must be seen, with its title still on screen: a fold
+    // near the bottom scrolls up just enough, never past its title.
+    if (_open) revealWhole(_whole);
   }
 
   @override
@@ -441,6 +500,7 @@ class _FoldState extends State<Fold> {
     final p = context.palette;
     final t = Txt(p);
     return Container(
+      key: _whole,
       decoration: BoxDecoration(
         border: Border(
           top: widget.topLine ? BorderSide(color: p.line) : BorderSide.none,
@@ -454,7 +514,11 @@ class _FoldState extends State<Fold> {
             onTap: _toggle,
             radius: 6,
             expanded: _open,
-            semanticLabel: [widget.title, ?widget.subtitle].join('. '),
+            semanticLabel: [
+              widget.title,
+              ?widget.subtitle,
+              ?widget.info,
+            ].join('. '),
             builder: (context, hovered) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 13),
               child: ExcludeSemantics(
@@ -505,6 +569,8 @@ class _FoldState extends State<Fold> {
                                   ),
                                 ),
                               ),
+                              if (widget.info case final info?)
+                                InfoTip(info, size: 17),
                             ],
                           ),
                           if (widget.subtitle != null)
@@ -522,7 +588,6 @@ class _FoldState extends State<Fold> {
           ),
           if (_open)
             Padding(
-              key: _content,
               padding: const EdgeInsets.only(bottom: 16),
               child: widget.child,
             ),
@@ -567,6 +632,9 @@ class SegmentSwitch<T> extends StatelessWidget {
   /// An icon before each option's label.
   final Map<T, IconData>? icons;
 
+  /// A count after an option's label (how many are in Compare, say).
+  final Map<T, int>? counts;
+
   const SegmentSwitch({
     super.key,
     required this.options,
@@ -575,6 +643,7 @@ class SegmentSwitch<T> extends StatelessWidget {
     required this.label,
     this.focusNodes,
     this.icons,
+    this.counts,
   });
 
   @override
@@ -609,7 +678,9 @@ class SegmentSwitch<T> extends StatelessWidget {
                       onTap: () => onSelected(value),
                       focusNode: focusNodes?[value],
                       selected: value == selected,
-                      semanticLabel: text,
+                      semanticLabel: (counts?[value] ?? 0) > 0
+                          ? '$text, ${counts![value]} picked'
+                          : text,
                       radius: 8,
                       builder: (context, hovered) {
                         final on = value == selected;
@@ -654,6 +725,31 @@ class SegmentSwitch<T> extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                                if ((counts?[value] ?? 0) > 0) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    constraints: const BoxConstraints(
+                                      minWidth: 22,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: p.accent,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      '${counts![value]}',
+                                      textAlign: TextAlign.center,
+                                      style: t.small.copyWith(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: p.accentInk,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),

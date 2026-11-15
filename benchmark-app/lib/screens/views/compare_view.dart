@@ -193,7 +193,6 @@ class CompareView extends StatelessWidget {
               unit: unit,
               onOpen: nav.open,
             ),
-          BarsNote(capped: byTest.values.expand((x) => x).any((r) => r.capped)),
           const SizedBox(height: 26),
           // The old method recorded no load steps, so the two step-based
           // sections would only open onto "nothing recorded".
@@ -201,8 +200,8 @@ class CompareView extends StatelessWidget {
             Fold(
               key: ValueKey('replay-${run.id}'),
               title: 'Watch the load climb',
-              subtitle:
-                  'Replays each framework\'s recorded steps, one rate at a '
+              info:
+                  "Replays each framework's recorded steps, one rate at a "
                   'time.',
               topLine: true,
               child: _WithTestPicker(
@@ -212,7 +211,7 @@ class CompareView extends StatelessWidget {
             Fold(
               key: ValueKey('shared-${run.id}'),
               title: 'At a shared load',
-              subtitle:
+              info:
                   'Reply times, processor and memory at a rate all of them '
                   'handled.',
               child: _WithTestPicker(
@@ -223,7 +222,7 @@ class CompareView extends StatelessWidget {
           Fold(
             key: ValueKey('charts-${run.id}-${state.compareSet}'),
             title: 'Charts and all numbers',
-            subtitle: run.isLegacy
+            info: run.isLegacy
                 ? 'Processor and memory over time, every measured number '
                       'side by side, and how each is built.'
                 : 'The load steps, processor and memory over time, every '
@@ -418,7 +417,6 @@ class _TestBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = Txt(p);
-    final info = testInfo(test);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
@@ -427,20 +425,8 @@ class _TestBlock extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Semantics(
-            header: true,
-            child: Row(
-              children: [
-                Icon(testIcon(test), size: 20, color: p.accent),
-                const SizedBox(width: 6),
-                Flexible(child: Text(info.title, style: t.h3)),
-              ],
-            ),
-          ),
-          Text(info.what, style: t.small),
-          const SizedBox(height: 10),
-          Text(compareTestSentence(results, all: all), style: t.body),
-          const SizedBox(height: 10),
+          TestHeading(id: test, style: t.h3),
+          const SizedBox(height: 8),
           SpeedBars(
             // A new set of picks, or another run, starts with every box
             // closed.
@@ -455,7 +441,6 @@ class _TestBlock extends StatelessWidget {
             unit: unit,
             mine: null,
             onOpen: onOpen,
-            legend: false,
           ),
           if (missing.isNotEmpty)
             Padding(
@@ -488,15 +473,23 @@ class _Replay extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Each step asked for a fixed number of requests a second. A step '
-          'passed only when 99 of every 100 replies came back '
-          '${sloPhrase(run)}, ${errorPhrase(run)}, and it answered at least '
-          '${keptUp(run)} of the requests sent. Press play or drag the '
-          'slider.',
-          style: Txt.of(context).small,
+        // How a step passes, kept by its (i) until asked for.
+        Row(
+          children: [
+            Text(
+              'Press play or drag the slider.',
+              style: Txt.of(context).small,
+            ),
+            InfoTip(
+              'Each step asked for a fixed number of requests a second. A step '
+              'passed only when 99 of every 100 replies came back '
+              '${sloPhrase(run)}, ${errorPhrase(run)}, and it answered at least '
+              '${keptUp(run)} of the requests sent.',
+              size: 17,
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         RaceReplay(backends: picked, scenario: s, slo: slo),
       ],
     );

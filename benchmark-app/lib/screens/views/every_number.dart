@@ -55,9 +55,6 @@ class EveryNumberView extends StatelessWidget {
         : '${testInfo(state.sortTest ?? tests.first).short}, '
               '${state.sortDesc ? 'highest first' : 'lowest first'}';
     final rows = everyNumberRows(state);
-    final anyCapped =
-        m == Measure.load &&
-        run.backends.any((b) => b.scenarios.values.any((r) => r.loadgenBound));
     final cores = appCoreCount(run);
     final legacy = run.isLegacy;
     return Column(
@@ -85,6 +82,22 @@ class EveryNumberView extends StatelessWidget {
               ],
               onChanged: state.setMeasure,
             ),
+            // What the number means, kept off the page until asked for.
+            InfoTip(
+              m == Measure.load
+                  ? (legacy
+                        ? 'The average requests a second during the old test. '
+                              'Higher is better.'
+                        : 'Requests a second: the busiest rate we sent that '
+                              'the framework kept up with, while 99 of every '
+                              '100 replies came back ${sloPhrase(run)}, '
+                              '${errorPhrase(run)}, and it kept up with at '
+                              'least ${keptUp(run)} of the requests sent. '
+                              'Higher is better.')
+                  : '${m.label}: ${m == Measure.processor ? 'how much of its ${numberWord(cores)} processor ${cores == 1 ? 'core' : 'cores'} the framework used' : m.meaning}. '
+                        '${legacy ? 'Measured during the old test, which sent the same traffic to every framework.' : 'Measured at each framework\'s own top load, so not a like-for-like race.'}'
+                        '${m == Measure.typical || m == Measure.slow ? ' 1,000 ms is one second.' : ''}',
+            ),
             if (m == Measure.load && !legacy)
               _Check(
                 value: state.showRange,
@@ -94,57 +107,14 @@ class EveryNumberView extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 14),
+        // Said to screen readers when the sort changes; the arrow on the
+        // heading shows it on screen.
         Semantics(
           liveRegion: true,
-          child: Text(
-            'Sorted by $sortLabel. Select a column heading to sort by it.',
-            style: t.small,
-          ),
+          label: 'Sorted by $sortLabel.',
+          child: const SizedBox.shrink(),
         ),
-        const SizedBox(height: 8),
         _Table(state: state, tests: tests, rows: rows, cores: cores),
-        const SizedBox(height: 12),
-        Bullets([
-          if (m == Measure.load) ...[
-            if (legacy)
-              'Each number is the average requests a second during the old '
-                  'test. Higher is better.'
-            else
-              'Each number is requests a second: the busiest rate we sent '
-                  'that the framework kept up with, while 99 of every 100 '
-                  'replies came back '
-                  '${sloPhrase(run)}, ${errorPhrase(run)}, and it kept up with at '
-                  'least ${keptUp(run)} of the requests sent. Higher is '
-                  'better.',
-            if (anyCapped)
-              'A plus sign (+) means the framework reached the most our testing '
-                  'tool could send. Its real figure may be higher.',
-          ] else ...[
-            '${m.label}: ${m == Measure.processor ? 'how much of its ${numberWord(cores)} processor ${cores == 1 ? 'core' : 'cores'} the framework used' : m.meaning}.',
-            if (legacy)
-              'Each framework was measured during the old test, which sent '
-                  'the same traffic to every framework.'
-            else
-              'Each framework was measured at its own top load (its '
-                  'requests-a-second result), so this is not a like-for-like '
-                  'race.',
-            if (m == Measure.typical || m == Measure.slow)
-              '"ms" means milliseconds. 1,000 ms is one second.',
-          ],
-          if (rows.any(
-            (b) => tests.any(
-              (s) =>
-                  b.scenarios[s] == null ||
-                  m.value(b.scenarios[s]!, state.headline) == null,
-            ),
-          ))
-            'A dash means the framework was not measured in that test.',
-          'Select a framework name to see everything about it. The last '
-              'column adds it to Compare (up to ${DashboardState.maxCompare}).',
-          if (state.selectedKey != null &&
-              run.backend(state.selectedKey!) != null)
-            'The row marked on the left is the one you looked up.',
-        ]),
       ],
     );
   }
@@ -424,11 +394,14 @@ class _Table extends StatelessWidget {
     final on = state.sortTest == test;
     final style = cell.copyWith(fontWeight: on ? FontWeight.w700 : null);
     if (v == null) {
-      return Text(
-        '—',
-        textAlign: TextAlign.right,
-        style: style,
-        semanticsLabel: 'not measured',
+      return Tooltip(
+        message: 'Not measured in this test.',
+        child: Text(
+          '—',
+          textAlign: TextAlign.right,
+          style: style,
+          semanticsLabel: 'not measured',
+        ),
       );
     }
     final capped = m == Measure.load && r!.loadgenBound;
@@ -439,12 +412,16 @@ class _Table extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerRight,
-          child: Text(
-            '${m.format(v, cores)}${capped ? '+' : ''}',
-            textAlign: TextAlign.right,
-            maxLines: 1,
-            style: style,
-            semanticsLabel: '${m.format(v, cores)}${capped ? ' or more' : ''}',
+          child: _PlusTip(
+            on: capped,
+            child: Text(
+              '${m.format(v, cores)}${capped ? '+' : ''}',
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              style: style,
+              semanticsLabel:
+                  '${m.format(v, cores)}${capped ? ' or more' : ''}',
+            ),
           ),
         ),
         // A thin bar in the framework's colour: its share of the column's
@@ -531,4 +508,20 @@ class _CompareToggleState extends State<_CompareToggle> {
       ),
     );
   }
+}
+
+/// At the testing tool's limit, the "+" says why on hover or long press.
+class _PlusTip extends StatelessWidget {
+  final bool on;
+  final Widget child;
+
+  const _PlusTip({required this.on, required this.child});
+
+  @override
+  Widget build(BuildContext context) => on
+      ? Tooltip(
+          message: "+ = it hit our testing tool's limit, so it may be faster.",
+          child: child,
+        )
+      : child;
 }

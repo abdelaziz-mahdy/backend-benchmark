@@ -51,19 +51,29 @@ class OneFrameworkView extends StatelessWidget {
             ),
           ),
         if (b == null) ...[
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final x in alpha)
-                NameChip(
-                  label: x.name,
-                  leading: LangBadge.of(x.key, x.language),
-                  onTap: () => nav.open(x.key),
-                ),
-            ],
-          ),
+          const SizedBox(height: 20),
+          // Every framework, grouped under its language.
+          for (final (lang, group) in byLanguage(run.backends)) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 10, bottom: 6),
+              child: Text(
+                languageLabel(lang),
+                style: t.small.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final x in group)
+                  NameChip(
+                    label: x.name,
+                    leading: LangBadge.of(x.key, x.language),
+                    onTap: () => nav.open(x.key),
+                  ),
+              ],
+            ),
+          ],
         ] else
           Padding(
             padding: const EdgeInsets.only(top: 24),
@@ -74,8 +84,28 @@ class OneFrameworkView extends StatelessWidget {
   }
 }
 
-/// The design's select, with typing to narrow the list (name, language or
-/// runtime). Enter picks the first match.
+/// Frameworks grouped by language (languages by name, frameworks by name
+/// in each), for pickers that show the hierarchy.
+List<(String, List<BackendResult>)> byLanguage(List<BackendResult> all) {
+  final groups = <String, List<BackendResult>>{};
+  for (final b in all) {
+    (groups[b.language] ??= []).add(b);
+  }
+  final langs = groups.keys.toList()
+    ..sort((a, c) => languageLabel(a).compareTo(languageLabel(c)));
+  return [
+    for (final l in langs)
+      (l, groups[l]!..sort((a, c) => a.name.compareTo(c.name))),
+  ];
+}
+
+/// The design's select as a tree: each language a header with its badge,
+/// its frameworks under it. Typing narrows the list (name, language or
+/// runtime) and keeps the headers of what matches. Enter picks the first
+/// match.
+/// Header entries' values: never a framework key.
+const _header = '__language__';
+
 class FrameworkPicker extends StatelessWidget {
   final List<BackendResult> backends;
   final BackendResult? selected;
@@ -117,11 +147,30 @@ class FrameworkPicker extends StatelessWidget {
               final q = filter.trim();
               // The field shows the chosen name; that is not a search.
               if (q.isEmpty || q == selected?.name) return entries;
+              final hit = {
+                for (final b in backends)
+                  if (b.matches(q)) b.key,
+              };
+              final langs = {
+                for (final b in backends)
+                  if (hit.contains(b.key)) b.language,
+              };
               return [
                 for (final e in entries)
-                  if (backends.firstWhere((b) => b.key == e.value).matches(q))
+                  if (hit.contains(e.value) ||
+                      (e.value.startsWith(_header) &&
+                          langs.contains(e.value.substring(_header.length))))
                     e,
               ];
+            },
+            // A search's first framework, never a header, is what Enter picks.
+            searchCallback: (entries, query) {
+              final q = query.trim();
+              if (q.isEmpty || q == selected?.name) return null;
+              final i = entries.indexWhere(
+                (e) => e.enabled && !e.value.startsWith(_header),
+              );
+              return i < 0 ? null : i;
             },
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
@@ -142,20 +191,44 @@ class FrameworkPicker extends StatelessWidget {
             menuStyle: MenuStyle(
               backgroundColor: WidgetStatePropertyAll(p.surface),
             ),
+            leadingIcon: selected == null
+                ? const Icon(Icons.search)
+                : Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: LangBadge.of(selected!.key, selected!.language),
+                  ),
             dropdownMenuEntries: [
-              for (final b in backends)
+              for (final (lang, group) in byLanguage(backends)) ...[
                 DropdownMenuEntry(
-                  value: b.key,
-                  label: b.name,
+                  value: '$_header$lang',
+                  label: languageLabel(lang),
+                  enabled: false,
+                  leadingIcon: LangBadge.of(group.first.key, lang, size: 20),
                   style: MenuItemButton.styleFrom(
-                    foregroundColor: p.text,
-                    textStyle: t.body,
-                    minimumSize: const Size(0, 44),
+                    disabledForegroundColor: p.muted,
+                    textStyle: t.small.copyWith(fontWeight: FontWeight.w700),
+                    minimumSize: const Size(0, 36),
                   ),
                 ),
+                for (final b in group)
+                  DropdownMenuEntry(
+                    value: b.key,
+                    label: b.name,
+                    leadingIcon: Padding(
+                      padding: const EdgeInsets.only(left: 22),
+                      child: LangBadge.of(b.key, b.language, size: 20),
+                    ),
+                    style: MenuItemButton.styleFrom(
+                      foregroundColor: p.text,
+                      textStyle: t.body,
+                      minimumSize: const Size(0, 44),
+                    ),
+                  ),
+              ],
             ],
             onSelected: (key) {
-              if (key != null && key != selected?.key) onSelected(key);
+              if (key == null || key.startsWith(_header)) return;
+              if (key != selected?.key) onSelected(key);
             },
           ),
         ),
@@ -227,13 +300,6 @@ class _Profile extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        BarsNote(
-          mine: true,
-          capped: run.backends.any(
-            (x) => x.scenarios.values.any((r) => r.loadgenBound),
-          ),
-        ),
-        const SizedBox(height: 8),
         Fold(
           key: ValueKey('extra-${run.id}-${b.key}'),
           title: 'Reply times, processor and memory',
@@ -340,9 +406,7 @@ class _TestRow extends StatelessWidget {
     final nav = HomeNav.of(context);
     final all = sortResults(resultsFor(run, test));
     final r = all.where((x) => x.key == backend.key).firstOrNull;
-    final info = testInfo(test);
     if (r == null) return const SizedBox.shrink();
-    final max = all.first.value;
     // Fastest by the same rule as Who's fastest: a tie at the top (overlapping
     // runs, or several at our testing tool's limit) counts as fastest.
     final top = topGroup(all);
@@ -351,18 +415,11 @@ class _TestRow extends StatelessWidget {
     final pair = [
       if (fastest) ...[r, ?others.firstOrNull] else ...[all.first, r],
     ];
-    final tieNote = top.length < 2
-        ? ''
-        : ' ${capFirst(numberWord(top.length))} frameworks tie for fastest'
-              "${top.every((x) => x.capped) ? " at our testing tool's limit" : ''}"
-              '${fastest ? '' : '; the top bar is one of them'}.';
-    // The speed word of its block, so frameworks that are about the same
-    // read the same as in Who's fastest ("Next are A and B, …").
-    final block = followerBlocks(
-      all,
-    ).where((bl) => bl.any((x) => x.key == r.key)).firstOrNull;
-    final ref = block?.first.value ?? r.value;
-    final share = max <= 0 ? 0.0 : (ref / max).clamp(0.0, 1.0);
+    // Its place: frameworks with the same number share one.
+    final place = 1 + all.where((x) => x.value > r.value).length;
+    final placeText = fastest
+        ? (top.length < 2 ? 'Fastest' : 'Tied fastest')
+        : '${ordinal(place)} of ${all.length}';
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
@@ -371,34 +428,49 @@ class _TestRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Semantics(
-            header: true,
-            child: Row(
-              children: [
-                Icon(testIcon(test), size: 20, color: p.accent),
-                const SizedBox(width: 6),
-                Flexible(child: Text(info.title, style: t.h3)),
-              ],
-            ),
-          ),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: Text(
-              info.whatFor(noDatabase: backend.db == 'none'),
-              style: t.small,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            fastest
-                ? (top.length < 2
-                      ? placeSentence(all, r)
-                      : 'Tied for fastest with ${numberWord(top.length - 1)} '
-                            "${top.length == 2 ? 'other' : 'others'}"
-                            "${top.every((x) => x.capped) ? " at our testing tool's limit" : ''}.")
-                : '${placeSentence(all, r)} '
-                      '${capFirst(asFast(share))} as the fastest.$tieNote',
-            style: t.body.copyWith(fontWeight: FontWeight.w700),
+          Row(
+            children: [
+              Flexible(
+                child: TestHeading(
+                  id: test,
+                  style: t.h3,
+                  noDatabase: backend.db == 'none',
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Its place in this test, at a glance.
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: fastest ? p.accentSoft : p.surface,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: fastest ? p.accent : p.line),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (fastest) ...[
+                      Icon(
+                        Icons.emoji_events_outlined,
+                        size: 15,
+                        color: p.accent,
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(
+                      placeText,
+                      style: t.small.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: p.text,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           SpeedBars(
@@ -410,7 +482,6 @@ class _TestRow extends StatelessWidget {
             mine: backend.key,
             onOpen: nav.open,
             page: backend.key,
-            legend: false,
           ),
         ],
       ),
