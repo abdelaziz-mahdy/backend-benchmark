@@ -95,6 +95,7 @@ class DashboardState extends ChangeNotifier {
     if (leaving != null && !leaving.isLegacy) {
       _currentMethodTest = scenario;
       _currentMethodSort = sortTest;
+      _currentMethodSortDesc = sortDesc;
     }
     entry = next;
     loading = true;
@@ -129,9 +130,29 @@ class DashboardState extends ChangeNotifier {
       }
 
       scenario = fit(scenario, _currentMethodTest);
-      if (sortTest != sortByName && !tests.contains(sortTest)) {
-        sortTest = fit(sortTest, _currentMethodSort) ?? sortByName;
+      if (sortTest == null) {
+        sortTest = tests.firstOrNull ?? sortByName;
         sortDesc = measure == Measure.load;
+      } else if (sortTest case final was?
+          when was != sortByName && !tests.contains(was)) {
+        final next = fit(was, _currentMethodSort);
+        sortTest = next ?? sortByName;
+        // The direction goes with the column: the one chosen before when
+        // that column comes back, kept when the column carries across by
+        // its closest match, the default only for a fallback.
+        final back =
+            !loaded.isLegacy &&
+            next != null &&
+            next == _currentMethodSort &&
+            legacyScenario(next) == was;
+        final near = loaded.isLegacy
+            ? legacyScenario(was)
+            : currentScenario(was);
+        if (back && _currentMethodSortDesc != null) {
+          sortDesc = _currentMethodSortDesc!;
+        } else if (next != near) {
+          sortDesc = measure == Measure.load;
+        }
       }
       final keys = loaded.backends.map((b) => b.key).toSet();
       // Picks the run lacks are parked, not dropped, and parked picks the
@@ -310,6 +331,7 @@ class DashboardState extends ChangeNotifier {
 
   String? _currentMethodTest;
   String? _currentMethodSort;
+  bool? _currentMethodSortDesc;
 
   /// The visitor has picked (or cleared) Compare frameworks in this visit.
   /// Until then, as after a reload, Back may bring back a history entry's
