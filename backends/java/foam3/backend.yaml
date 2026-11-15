@@ -6,12 +6,13 @@ runtime: java 25
 variants:
   - id: embedded
     db: none
+    notes: "Keeps its notes in memory and writes every change to a file on disk; it uses no database."
   - id: postgres
     db: postgres
+    notes: "Keeps its notes in PostgreSQL, through FOAM's own database layer."
 # NoteService is called with FOAM's box RPC (POST /service/noteService).
 api_style: foam_rpc
 health_path: /service/health
-notes: "FOAM NoteService over box RPC. embedded: in-memory MDAO + FOAM journal file; postgres: FOAM's PostgresDAO (JDBC). Both via EasyDAO with SequenceNumberDAO ids."
 # How this backend is run and talks to the database; shown on the dashboard.
 implementation:
   server: "FOAM3 Jetty HttpServer with NanoRouter at /service/*"

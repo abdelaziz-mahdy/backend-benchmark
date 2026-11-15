@@ -51,7 +51,11 @@ class StepSeries {
   final BackendResult backend;
   final List<LoadStep> steps;
 
-  StepSeries(this.backend, this.steps)
+  /// Its result hit our testing tool's limit: a step that only fell short
+  /// of answering enough (fast replies, few errors) is the tool's limit too.
+  final bool capped;
+
+  StepSeries(this.backend, this.steps, {this.capped = false})
     : assert(steps.every((s) => s.targetRps > 0));
 }
 
@@ -163,7 +167,12 @@ class StepLoadChart extends StatelessWidget {
                 // Amber: the load generator, not the app, was the limit.
                 strokeColor: step.pass
                     ? p.surface
-                    : (step.k6Bound ? p.warn : p.danger),
+                    : (step.k6Bound ||
+                              (s.capped &&
+                                  step.p99 < _sloMs &&
+                                  step.errorRate < 0.01)
+                          ? p.warn
+                          : p.danger),
                 strokeWidth: step.pass ? 1 : 2,
               );
             },

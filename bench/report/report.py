@@ -197,6 +197,21 @@ def implementation_for(backends_dir, key, item):
     return None, None
 
 
+def notes_for(backends_dir, item, path):
+    """A backend's note describes it rather than measuring it, so today's
+    manifest wins over the copy a run recorded: a plainer rewording reaches
+    older runs too. A variant's own note beats the shared one."""
+    if path:
+        manifest = current_manifest(backends_dir, path)
+        variant = item.get("variant")
+        for v in manifest.get("variants") or []:
+            if v.get("id") == variant and v.get("notes"):
+                return v["notes"]
+        if manifest.get("notes"):
+            return manifest["notes"]
+    return item.get("notes")
+
+
 def describe_backend(backends_dir, key, item):
     """Implementation fields shared by v2 and legacy summaries."""
     impl, source = implementation_for(backends_dir, key, item)
@@ -209,6 +224,7 @@ def describe_backend(backends_dir, key, item):
         "api_style": api_style or "rest",
         "implementation": impl,
         "implementation_from": source,
+        "notes": notes_for(backends_dir, item, path),
     }
 
 

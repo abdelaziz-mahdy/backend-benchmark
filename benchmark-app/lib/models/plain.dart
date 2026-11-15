@@ -714,9 +714,10 @@ List<String> howWeTested(RunSummary run) {
     'We call two frameworks about the same when each one\'s middle try '
         "falls inside the other's lowest-to-highest tries.",
     if (limit != null)
-      "Our testing tool has its own limit: up to about "
+      'Our testing tool has its own limit: results stop at about '
           '${whole(limit < 1000 ? limit : (limit / 1000).round() * 1000)} '
-          'requests a second on this computer, and less in the tests that use '
+          'requests a second on this computer, because it cannot send more '
+          'than that steadily, and less in the tests that use '
           'the database, where it has more work per request. A framework that '
           'hit the limit may really be faster than its number.',
     'Everything ran on one $cpu computer. On other machines the numbers will '

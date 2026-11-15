@@ -133,7 +133,7 @@ class FrameworkCharts extends StatelessWidget {
                   'keeping up. Hollow points missed a limit.'
                   '${r.reps > 1 ? ' From one of the ${numberWord(r.reps)} tries, so its numbers can differ a little from the table above.' : ''}',
               child: StepLoadChart(
-                series: [StepSeries(b, r.steps)],
+                series: [StepSeries(b, r.steps, capped: r.loadgenBound)],
                 mode: StepChartMode.throughput,
                 sustainable: Metrics.sustainable.value(r),
                 capped: r.loadgenBound,
@@ -145,9 +145,9 @@ class FrameworkCharts extends StatelessWidget {
                   '99 of every 100 replies were faster than this. Above the '
                   'red line is too slow.'
                   '${r.reps > 1 ? ' From one of the ${numberWord(r.reps)} tries, so it can differ a little from the table above.' : ''}'
-                  "${r.steps.any((s) => !s.pass && s.k6Bound) ? " Amber points stopped at our testing tool's limit, not the framework's." : ''}",
+                  "${r.steps.any((s) => !s.pass && (s.k6Bound || (r.loadgenBound && s.p99 < 100 && s.errorRate < 0.01))) ? " Amber points stopped at our testing tool's limit, not the framework's." : ''}",
               child: StepLoadChart(
-                series: [StepSeries(b, r.steps)],
+                series: [StepSeries(b, r.steps, capped: r.loadgenBound)],
                 mode: StepChartMode.p99,
                 sustainable: Metrics.sustainable.value(r),
                 capped: r.loadgenBound,

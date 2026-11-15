@@ -377,7 +377,10 @@ class _TestRow extends StatelessWidget {
           ),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
-            child: Text(info.what, style: t.small),
+            child: Text(
+              info.whatFor(noDatabase: backend.db == 'none'),
+              style: t.small,
+            ),
           ),
           const SizedBox(height: 10),
           Text(

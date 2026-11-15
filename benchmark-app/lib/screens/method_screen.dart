@@ -860,9 +860,10 @@ class _MethodScreenState extends State<MethodScreen> {
           if (!run.isLegacy)
             Point(
               "Our testing tool's limit:",
-              'it tops out around $around requests a second on this computer '
-                  'in No database, and lower in the tests that use the '
-                  'database, where it has more work per request. Frameworks '
+              'results stop at about $around requests a second on this '
+                  'computer in No database (it cannot send more than that '
+                  'steadily), and lower in the tests that use the database, '
+                  'where it has more work per request. Frameworks '
                   "that hit it get a striped bar end; they may be faster than "
                   'their number.',
             ),
@@ -1157,7 +1158,7 @@ String _why(LoadStep s, Slo slo) {
     if (s.errorRate >= slo.errorRate)
       '${(s.errorRate * 100).toStringAsFixed(1)}% errors',
     if (s.targetRps > 0 && s.achievedRps / s.targetRps < slo.servedRatio)
-      'answered ${(s.achievedRps / s.targetRps * 100).round()}%',
+      'answered ${(s.achievedRps / s.targetRps * 100).floor()}%',
   ];
   return parts.isEmpty ? 'failed a limit' : parts.join(', ');
 }
@@ -1175,7 +1176,7 @@ String _whySentence(LoadStep s, Slo slo) {
     if (s.errorRate >= slo.errorRate)
       '${(s.errorRate * 100).toStringAsFixed(1)}% of requests failed',
     if (s.targetRps > 0 && s.achievedRps / s.targetRps < slo.servedRatio)
-      'it answered only ${(s.achievedRps / s.targetRps * 100).round()}% of '
+      'it answered only ${(s.achievedRps / s.targetRps * 100).floor()}% of '
           'the requests',
   ];
   return parts.isEmpty ? 'it failed a limit' : joinAnd(parts);

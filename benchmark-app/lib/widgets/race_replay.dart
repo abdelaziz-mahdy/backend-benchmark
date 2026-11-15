@@ -32,18 +32,29 @@ class Slo {
   /// Why [s] failed, from its recorded numbers, in plain words: "slow
   /// reply 412 ms", "3.1% errors", "answered 88%", "our testing tool's
   /// limit"; "" when it passed.
-  String reason(LoadStep s) {
+  String reason(LoadStep s, {bool resultCapped = false}) {
     if (s.pass) return '';
     final parts = [
       if (s.p99 >= p99Ms) 'slow reply ${msText(s.p99)}',
       if (s.errorRate >= errorRate)
         '${(s.errorRate * 100).toStringAsFixed(1)}% errors',
+      // Rounded down, so 94.7% never reads as the 95% that passes.
       if (s.targetRps > 0 && s.achievedRps / s.targetRps < servedRatio)
-        'answered ${(s.achievedRps / s.targetRps * 100).round()}%',
+        'answered ${(s.achievedRps / s.targetRps * 100).floor()}%',
     ];
-    if (s.k6Bound) return "our testing tool's limit";
+    if (toolLimited(s, resultCapped: resultCapped)) {
+      return "our testing tool's limit";
+    }
     return parts.isEmpty ? 'failed a limit' : parts.join(', ');
   }
+
+  /// The testing tool, not the app, was the limit: flagged so, or the
+  /// step only fell short of answering enough while the framework's result
+  /// hit the tool's limit (fast replies, few errors: the tool could not
+  /// send the rate steadily).
+  bool toolLimited(LoadStep s, {bool resultCapped = false}) =>
+      s.k6Bound ||
+      (resultCapped && !s.pass && s.p99 < p99Ms && s.errorRate < errorRate);
 }
 
 /// Replays the recorded load steps (the median repetition of each
@@ -72,7 +83,10 @@ class _Lane {
   final BackendResult backend;
   final List<LoadStep> steps; // by requested rate
 
-  _Lane(this.backend, this.steps);
+  /// The framework's result in this test hit our testing tool's limit.
+  final bool capped;
+
+  _Lane(this.backend, this.steps, {this.capped = false});
 
   /// The step at [rate], or the last one below it once this framework had
   /// stopped climbing; null before its first step.
@@ -138,6 +152,7 @@ class _RaceReplayState extends State<RaceReplay>
           _Lane(
             b,
             [...steps]..sort((a, c) => a.targetRps.compareTo(c.targetRps)),
+            capped: b.scenarios[widget.scenario]!.loadgenBound,
           ),
     ];
     _rates = {
@@ -345,7 +360,8 @@ class _ReplayLane extends StatelessWidget {
         : done
         ? 'passed ${whole(held ?? 0)} · stopped at ${whole(lane.top)}'
         : failed
-        ? 'failed at ${whole(step.targetRps)}: ${slo.reason(step)}'
+        ? 'failed at ${whole(step.targetRps)}: '
+              '${slo.reason(step, resultCapped: lane.capped)}'
         : exact
         ? 'answered ${whole(step.achievedRps)} a second'
         : 'passed ${whole(step.targetRps)}; no step at this rate';
@@ -353,11 +369,13 @@ class _ReplayLane extends StatelessWidget {
         ? context.palette.line
         : !failed
         ? identityColor(context.palette, b.key)
-        : step.k6Bound
+        : slo.toolLimited(step, resultCapped: lane.capped)
         ? context.palette.warn
         : context.palette.danger;
     final statusColor = failed && !done
-        ? (step.k6Bound ? context.palette.warn : context.palette.danger)
+        ? (slo.toolLimited(step, resultCapped: lane.capped)
+              ? context.palette.warn
+              : context.palette.danger)
         : context.palette.text;
     return Semantics(
       label: '${b.name}: $status',

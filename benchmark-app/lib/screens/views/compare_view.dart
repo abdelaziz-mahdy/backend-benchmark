@@ -587,7 +587,11 @@ class _ChartsState extends State<_Charts> {
     final steps = [
       for (final b in here)
         if (b.scenarios[s]!.steps.isNotEmpty)
-          StepSeries(b, b.scenarios[s]!.steps),
+          StepSeries(
+            b,
+            b.scenarios[s]!.steps,
+            capped: b.scenarios[s]!.loadgenBound,
+          ),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
