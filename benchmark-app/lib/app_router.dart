@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:material_ui/material_ui.dart';
 
 import 'screens/home_screen.dart';
@@ -121,6 +123,9 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
   /// entry that Back would only land on and rewrite again.
   Uri? _openedAs;
   Uri? _openedFor;
+
+  /// The side state last reported, to notice changes the link misses.
+  String? _lastSide;
   bool _applying = false;
 
   DashRouterDelegate(this.state) {
@@ -140,8 +145,12 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     // Once the visitor moves on, the opened link is no longer what is
     // shown, and must not come back into the address bar later.
     if (now != _openedFor) _openedAs = null;
-    if (now != _last) {
+    // A change the link does not show (Clear all of set-aside picks, say)
+    // still updates the entry: same link, so the browser replaces it.
+    final side = jsonEncode(state.sideState);
+    if (now != _last || side != _lastSide) {
       _last = now;
+      _lastSide = side;
       notifyListeners();
     }
   }
@@ -162,11 +171,18 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     try {
       applyLocation(state, uri);
       // Back and Forward bring back what the entry had beyond its link.
-      if (info.state != null) state.restoreSide(info.state);
+      if (info.state != null) {
+        state.restoreSide(
+          info.state,
+          linkHasPicks: uri.pathSegments.firstOrNull == 'compare',
+          linkHasTest: uri.queryParameters.containsKey('s'),
+        );
+      }
     } finally {
       _applying = false;
     }
     _last = locationOf(state);
+    _lastSide = jsonEncode(state.sideState);
     _openedAs = uri;
     _openedFor = _last;
     notifyListeners();

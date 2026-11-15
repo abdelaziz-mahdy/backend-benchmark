@@ -852,6 +852,45 @@ void main() {
       router.dispose();
     });
 
+    testWidgets('an entry keeps its picks and test where its link cannot', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      final keys = [for (final b in state.run!.backends) b.key];
+      for (final k in keys.take(3)) {
+        state.toggleCompare(k);
+      }
+      state.setView(HomeView.all);
+      final saved = router.currentConfiguration!;
+      // Elsewhere the picks change and a test is chosen...
+      state.toggleCompare(keys.first);
+      final test = state.scenario;
+      state.setScenario(state.run!.scenarios.last);
+      // ...and Back to the /all entry brings back its three picks and test.
+      await router.setNewRoutePath(saved);
+      expect(state.compareKeys, keys.take(3).toList());
+      expect(state.scenario, test);
+      router.dispose();
+    });
+
+    testWidgets('a change the link does not show still updates the entry', (
+      t,
+    ) async {
+      final state = await pumpApp(t, realisticBundle());
+      final router = DashRouterDelegate(state);
+      var reports = 0;
+      router.addListener(() => reports++);
+      state.setView(HomeView.compare);
+      state.restoreCompare([], ['gone-framework']);
+      final before = reports;
+      state.clearCompare();
+      // Same link (/compare), but the entry must be updated.
+      expect(reports, greaterThan(before));
+      expect((router.currentConfiguration!.state! as Map)['parked'], isEmpty);
+      router.dispose();
+    });
+
     testWidgets('an opened old link never comes back after moving on', (
       t,
     ) async {

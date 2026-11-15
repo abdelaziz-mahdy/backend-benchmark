@@ -286,19 +286,43 @@ class DashboardState extends ChangeNotifier {
   /// which of them return on a run change, and a looked-up framework the
   /// run lacks. Saved with each entry so Back and Forward restore it.
   Map<String, Object?> get sideState => {
+    'picks': [...compareKeys],
     'parked': [...parkedCompare],
     'away': [..._awayForRun],
     'missing': missingKey,
+    'test': scenario,
   };
 
-  /// Restores [sideState] saved with a history entry (Back, Forward).
-  void restoreSide(Object? saved) {
+  /// Restores [sideState] saved with a history entry (Back, Forward). The
+  /// picks and the test come back only when the entry's link did not hold
+  /// them ([linkHasPicks], [linkHasTest]); a link always wins.
+  void restoreSide(
+    Object? saved, {
+    bool linkHasPicks = false,
+    bool linkHasTest = false,
+  }) {
     if (saved is! Map) return;
     List<String> list(Object? v) => [
       if (v is List)
         for (final x in v)
           if (x is String) x,
     ];
+    final r = run;
+    if (!linkHasPicks && saved.containsKey('picks')) {
+      compareKeys
+        ..clear()
+        ..addAll(
+          list(
+            saved['picks'],
+          ).where((k) => r?.backend(k) != null).take(maxCompare),
+        );
+    }
+    final test = saved['test'];
+    if (!linkHasTest &&
+        test is String &&
+        (r?.scenarios.contains(test) ?? false)) {
+      scenario = test;
+    }
     parkedCompare
       ..clear()
       ..addAll(list(saved['parked']).where((k) => !compareKeys.contains(k)));
