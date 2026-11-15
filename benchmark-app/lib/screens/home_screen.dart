@@ -6,6 +6,7 @@ import '../state/dashboard_state.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/common.dart';
 import '../widgets/loading_widget.dart';
+import '../widgets/run_switcher.dart';
 import '../widgets/site_frame.dart';
 import 'history_screen.dart';
 import 'home_page.dart';
@@ -22,9 +23,48 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _picker = FocusNode(debugLabel: 'framework picker');
+  DashboardState? _state;
+  int _failuresSeen = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final s = context.read<DashboardState>();
+    if (s != _state) {
+      _state?.removeListener(_onState);
+      _state = s..addListener(_onState);
+      _failuresSeen = s.runFailures;
+    }
+  }
+
+  /// A run Back or a link asked for could not be loaded: said wherever the
+  /// visitor is (any page, any scroll), with a way to try again.
+  void _onState() {
+    final s = _state;
+    if (s == null || s.runFailures == _failuresSeen) return;
+    _failuresSeen = s.runFailures;
+    final failed = s.failedRun;
+    if (failed == null || !mounted) return;
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not load '
+            '${runLabel(failed, newest: s.index.firstOrNull)}.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'Try again',
+            onPressed: () => s.selectRun(failed),
+          ),
+        ),
+      );
+  }
 
   @override
   void dispose() {
+    _state?.removeListener(_onState);
     _picker.dispose();
     super.dispose();
   }

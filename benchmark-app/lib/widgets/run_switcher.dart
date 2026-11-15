@@ -67,7 +67,7 @@ class ChangeRunButton extends StatelessWidget {
           return;
         }
         final e = state.index.where((x) => x.id == id).firstOrNull;
-        if (e != null && e != state.entry) state.selectRun(e);
+        if (e != null && e != state.entry) state.selectRun(e, inPlace: true);
       },
       itemBuilder: (context) => [
         PopupMenuItem<String>(
@@ -157,7 +157,7 @@ class RunLoadFailedNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final failed = state.failedRun;
-    if (failed == null) return const SizedBox.shrink();
+    if (failed == null || !state.failedInPlace) return const SizedBox.shrink();
     final p = context.palette;
     return Padding(
       padding: const EdgeInsets.only(top: 6),

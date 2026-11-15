@@ -244,7 +244,7 @@ class _RunLine extends StatelessWidget {
             ),
           ),
         // Full width, so it sits on its own line under the run choice.
-        if (state.failedRun != null)
+        if (state.failedRun != null && state.failedInPlace)
           SizedBox(
             width: double.infinity,
             child: Align(

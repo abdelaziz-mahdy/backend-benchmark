@@ -756,19 +756,48 @@ void main() {
         _FlakyBundle(files, 'assets/results/runs/r0.json', () => fails-- > 0),
       );
       final shown = state.entry;
-      await t.runAsync(() => state.selectRun(state.index[1]));
+      await t.runAsync(() => state.selectRun(state.index[1], inPlace: true));
       await settle(t);
-      // The run on screen stays, links name it, and the visitor is told.
+      // The run on screen stays, links name it, and the visitor is told
+      // next to the run choice.
       expect(state.entry, shown);
       expect(state.failedRun, state.index[1]);
       expect(locationOf(state).queryParameters['run'], isNull);
-      expect(find.textContaining('Could not load'), findsOneWidget);
+      expect(find.textContaining('Pick it again'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
       // Picking it again tries again.
-      await t.runAsync(() => state.selectRun(state.index[1]));
+      await t.runAsync(() => state.selectRun(state.index[1], inPlace: true));
       await settle(t);
       expect(state.entry, state.index[1]);
       expect(state.failedRun, isNull);
       expect(find.textContaining('Could not load'), findsNothing);
+    });
+
+    testWidgets('a run Back asked for that fails is said wherever you are', (
+      t,
+    ) async {
+      final files = twoRunBundle().files;
+      var fails = 1;
+      final state = await pumpApp(
+        t,
+        _FlakyBundle(files, 'assets/results/runs/r0.json', () => fails-- > 0),
+      );
+      state.setPage(DashboardPage.method);
+      await settle(t);
+      await t.runAsync(() => state.selectRun(state.index[1], byRouter: true));
+      await settle(t);
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.textContaining('Pick it again'), findsNothing);
+      await t.tap(find.text('Try again'));
+      await t.runAsync(() async {
+        for (var i = 0; i < 10; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await t.pump();
+        }
+      });
+      await settle(t);
+      expect(state.entry, state.index[1]);
+      expect(state.failedRun, isNull);
     });
 
     testWidgets('a test the loaded run lacks is never set', (t) async {

@@ -185,6 +185,26 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
                   : state.index.where((e) => e.id == want).firstOrNull);
       if (state.actions == _pendingActions && !failedHere) {
         _apply(pending);
+      } else if (state.actions == _pendingActions && pending.state == null) {
+        // A pasted link whose run could not be loaded: the rest of it (view,
+        // picks, test) still applies, to the run on screen, and the address
+        // bar keeps the link, so a reload tries its run again.
+        _crossedRun = false;
+        _beforeCross = const [];
+        final shown = state.shownEntry ?? state.entry;
+        final query = {...pending.uri.queryParameters}..remove('run');
+        if (shown != null && shown != state.index.firstOrNull) {
+          query['run'] = shown.id;
+        }
+        _apply(
+          RouteInformation(
+            uri: Uri(
+              path: pending.uri.path,
+              queryParameters: query.isEmpty ? null : query,
+            ),
+          ),
+          openedAs: pending.uri,
+        );
       } else {
         // The visitor acted while it waited: their action wins. The waiting
         // entry was never shown, so it is replaced by what is.
@@ -223,7 +243,7 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
     }
   }
 
-  void _apply(RouteInformation info) {
+  void _apply(RouteInformation info, {Uri? openedAs}) {
     final uri = info.uri;
     // The run first: load it, and apply the rest once it is in.
     final want = uri.queryParameters['run'];
@@ -305,7 +325,7 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
       _openedFor = null;
       _report(replace: _last != uri);
     } else {
-      _openedAs = uri;
+      _openedAs = openedAs ?? uri;
       _openedFor = _last;
       notifyListeners();
     }

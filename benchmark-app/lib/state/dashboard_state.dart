@@ -40,6 +40,12 @@ class DashboardState extends ChangeNotifier {
   /// visitor is told next to the run choice and can pick it again.
   RunIndexEntry? failedRun;
 
+  /// Whether that run was picked from a run choice (its note sits there);
+  /// otherwise Back or a link asked for it, and [runFailures] counts it so
+  /// the page can say so wherever the visitor is.
+  bool failedInPlace = false;
+  int runFailures = 0;
+
   DashboardPage page = DashboardPage.home;
   HomeView view = HomeView.short;
 
@@ -92,7 +98,13 @@ class DashboardState extends ChangeNotifier {
     }
   }
 
-  Future<void> selectRun(RunIndexEntry next, {bool byRouter = false}) async {
+  /// Shows [next]. [inPlace]: picked from a run choice, so a failure is told
+  /// next to it.
+  Future<void> selectRun(
+    RunIndexEntry next, {
+    bool byRouter = false,
+    bool inPlace = false,
+  }) async {
     if (!byRouter) actions++;
     // The test (and sort column) chosen on a current-method run, kept for
     // the way back from an old-method run with other tests.
@@ -198,6 +210,8 @@ class DashboardState extends ChangeNotifier {
       } else {
         // The run on screen stays, and says so; the choice can be retried.
         failedRun = next;
+        failedInPlace = inPlace;
+        if (!inPlace) runFailures++;
         entry = shownEntry;
       }
     }

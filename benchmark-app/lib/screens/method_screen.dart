@@ -1691,7 +1691,7 @@ class RunPicker extends StatelessWidget {
             onChanged: (id) async {
               final e = state.index.where((x) => x.id == id).firstOrNull;
               if (e == null) return;
-              await state.selectRun(e);
+              await state.selectRun(e, inPlace: true);
               // Sections above come and go with the run; keep the picker
               // (and the facts it just changed) on screen.
               bringIntoView(_runPickerKey);
