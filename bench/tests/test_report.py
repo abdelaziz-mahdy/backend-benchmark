@@ -255,7 +255,7 @@ def test_overall_score_is_the_geometric_mean_of_shares_of_the_best():
     s = _scored([
         ("best", every, {}),
         ("quarter-in-one", half, {}),
-        ("old", {sc: 4000 for sc in report.SCORE_SCENARIOS}, {"history": True}),
+        ("old", {sc: 500 for sc in report.SCORE_SCENARIOS}, {"history": True}),
         ("partial", {"no_db": 1000}, {}),
         ("zero", {**every, "db_write": 0}, {}),
         ("capped", every, {"capped": ("no_db",)}),
@@ -263,7 +263,7 @@ def test_overall_score_is_the_geometric_mean_of_shares_of_the_best():
     by = {b["key"]: b.get("overall") for b in s["backends"]}
     assert by["best"]["score"] == 100
     assert round(by["quarter-in-one"]["score"], 3) == round(100 * 0.25 ** 0.25, 3)  # 70.711
-    assert by["old"] is None  # history releases are not scored nor the best
+    assert by["old"]["score"] == 50  # older releases are scored like the rest
     assert by["partial"] == {"score": None, "capped": False, "missing": ["db_read", "db_write", "db_mixed"]}
     assert by["zero"]["score"] == 0
     assert by["capped"]["capped"] is True and by["capped"]["score"] == 100

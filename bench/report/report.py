@@ -437,10 +437,11 @@ SCORE_SCENARIOS = ["no_db", "db_read", "db_write", "db_mixed"]
 def add_overall_scores(summary):
     """One score a backend across the four tests: each result as a share of
     the best result in that test, then 100 x the geometric mean of the shares.
-    Older releases (history) are neither scored nor counted as the best. A
+    Older releases (history) are scored like any other entry, since the
+    dashboard shows them as their own bars ("relic 1.2.0" next to 2.0). A
     backend missing a test gets no score; a capped result ("+", the testing
     tool's limit) counts at its value and marks the score capped too."""
-    current = [b for b in summary["backends"] if not b.get("history")]
+    current = summary["backends"]
 
     def result(b, scenario):
         # None when the test was not run; 0 when it ran and no step passed.
@@ -448,8 +449,6 @@ def add_overall_scores(summary):
 
     best = {sc: max((result(b, sc) or 0 for b in current), default=0) for sc in SCORE_SCENARIOS}
     for b in summary["backends"]:
-        if b.get("history"):
-            continue
         missing = [sc for sc in SCORE_SCENARIOS if result(b, sc) is None or not best[sc]]
         if missing:
             b["overall"] = {"score": None, "capped": False, "missing": missing}
