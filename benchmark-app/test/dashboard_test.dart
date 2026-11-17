@@ -664,6 +664,84 @@ void main() {
       expect(find.textContaining(' ms'), findsWidgets);
     });
 
+    testWidgets('the overall score ranks every framework, best first', (
+      t,
+    ) async {
+      final run =
+          jsonDecode(realisticBundle().files['assets/results/runs/r1.json']!)
+              as Map<String, dynamic>;
+      const scores = {
+        'rust-actix': {'score': 100.0, 'capped': true},
+        'go-mux': {'score': 84.1, 'capped': true},
+        'foam3': {'score': 31.0},
+        'django-sync': {'score': 18.4},
+        'db-only': {
+          'score': null,
+          'missing': ['no_db', 'db_read', 'db_write'],
+        },
+      };
+      for (final b in run['backends'] as List) {
+        (b as Map)['overall'] = scores[b['key']];
+        // Bytes a reply, for the picker.
+        for (final sc in (b['scenarios'] as Map).values) {
+          (sc as Map)['bytes_in'] = stat(1152);
+        }
+      }
+      final bundle = MapBundle({
+        ...realisticBundle().files,
+        'assets/results/runs/r1.json': jsonEncode(run),
+      });
+      final state = await pumpApp(t, bundle);
+      expect(find.text('Overall score (all four tests)'), findsOneWidget);
+      double top(String key) =>
+          t.getRect(find.byKey(ValueKey('score-$key'))).top;
+      final order = [...scores.keys]..sort((a, b) => top(a).compareTo(top(b)));
+      expect(order, [
+        'rust-actix',
+        'go-mux',
+        'foam3',
+        'django-sync',
+        'db-only',
+      ]);
+      expect(find.text('100+'), findsOneWidget);
+      expect(find.text('31'), findsOneWidget);
+      expect(find.text('—'), findsWidgets);
+      // A row leads to the framework's page.
+      await t.tap(find.byKey(const ValueKey('score-foam3')));
+      await settle(t);
+      expect(state.selectedKey, 'foam3');
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('the overall score shows only with the result', (t) async {
+      final run =
+          jsonDecode(realisticBundle().files['assets/results/runs/r1.json']!)
+              as Map<String, dynamic>;
+      for (final b in run['backends'] as List) {
+        (b as Map)['overall'] = {'score': 50.0};
+        for (final sc in (b['scenarios'] as Map).values) {
+          (sc as Map)['bytes_in'] = stat(1152);
+        }
+      }
+      final state = await pumpApp(
+        t,
+        MapBundle({
+          ...realisticBundle().files,
+          'assets/results/runs/r1.json': jsonEncode(run),
+        }),
+      );
+      expect(find.text('Overall score (all four tests)'), findsOneWidget);
+      state.setMeasure(Measure.replyBytes);
+      await settle(t);
+      expect(find.text('Overall score (all four tests)'), findsNothing);
+      expect(find.text('1,152 bytes'), findsWidgets);
+    });
+
+    testWidgets('runs without scores show no overall block', (t) async {
+      await pumpApp(t, realisticBundle());
+      expect(find.text('Overall score (all four tests)'), findsNothing);
+    });
+
     testWidgets('a bar opens its number in place', (t) async {
       await pumpApp(t, realisticBundle());
       await t.tap(find.byKey(const ValueKey('bar-db_mixed-go-mux')));

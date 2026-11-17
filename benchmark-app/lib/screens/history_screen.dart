@@ -54,6 +54,7 @@ String _fmt(Metric m, double? v) {
     // Capped at 100%, as cpuText does everywhere else.
     Unit.cpu => '${math.min(100, v.round())}%',
     Unit.mb => memText(v),
+    Unit.bytes => bytesText(v),
     Unit.percent => formatMetricShort(m, v),
   };
 }

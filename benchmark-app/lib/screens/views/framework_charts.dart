@@ -240,6 +240,7 @@ class _AllNumbers extends StatelessWidget {
       Unit.cpu when m.id == 'app_cpu' => cpuText(v, cores),
       Unit.cpu => '${whole(v)}%',
       Unit.mb => memText(v),
+      Unit.bytes => bytesText(v),
       Unit.percent => formatMetricShort(m, v),
     };
     // "40,000+": the result hit our testing tool's limit.

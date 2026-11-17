@@ -832,6 +832,7 @@ class _SideBySide extends StatelessWidget {
         Unit.cpu when m.id == 'app_cpu' => cpuText(v, appCoreCount(state.run!)),
         Unit.cpu => '${whole(v)}%',
         Unit.mb => memText(v),
+        Unit.bytes => bytesText(v),
         Unit.percent => formatMetricShort(m, v),
       };
     }

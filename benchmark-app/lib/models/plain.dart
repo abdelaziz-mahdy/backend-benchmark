@@ -183,6 +183,10 @@ String cpuText(double v, int cores) =>
     '${math.min(100, (v / math.max(1, cores)).round())}%';
 
 /// Memory: "383 MB", "1.9 GB".
+/// Bytes on the wire: "1,152 bytes".
+String bytesText(double v) => '${whole(v)} bytes';
+
+/// Memory: "512 MB", "1.8 GB".
 String memText(double mb) =>
     mb >= 1000 ? '${(mb / 1024).toStringAsFixed(1)} GB' : '${whole(mb)} MB';
 
@@ -805,7 +809,17 @@ enum Measure {
   typical('Median reply time', 'half of all replies came back faster'),
   slow('Reply time 99 in 100 beat', '99 of every 100 replies came back faster'),
   processor('Processor use', 'how much of its processor cores it used'),
-  memory('Memory use', 'how much memory the framework used');
+  memory('Memory use', 'how much memory the framework used'),
+  replyBytes(
+    'Bytes a reply',
+    'how many bytes each reply took on the wire: status line, headers and '
+        'body',
+  ),
+  requestBytes(
+    'Bytes a request',
+    'how many bytes each request took on the wire, as this framework needs '
+        'it called: request line, headers and body',
+  );
 
   final String label;
   final String meaning;
@@ -831,6 +845,8 @@ enum Measure {
     slow => Metrics.p99,
     processor => Metrics.cpu,
     memory => Metrics.memory,
+    replyBytes => Metrics.bytesIn,
+    requestBytes => Metrics.bytesOut,
   };
 
   double? value(ScenarioResult r, Metric headline) => metric(headline).value(r);
@@ -840,6 +856,7 @@ enum Measure {
     typical || slow => msText(v),
     processor => cpuText(v, cores),
     memory => memText(v),
+    replyBytes || requestBytes => bytesText(v),
   };
 }
 
@@ -862,6 +879,10 @@ String measureMeaning(Measure m, RunSummary run) {
       : m.meaning;
   final when = m == Measure.peak
       ? 'Higher is better, but replies may have been slow by then.'
+      : m == Measure.replyBytes || m == Measure.requestBytes
+      ? 'Counted by the testing tool at the result step. The same for every '
+            'framework except what its own reply format or calls add. Lower '
+            'is better.'
       : run.isLegacy
       ? 'Measured during the old test, which sent the same traffic to every '
             'framework.'
@@ -916,6 +937,8 @@ String plainMetricLabel(Metric m, [RunSummary? run]) => switch (m.id) {
   'db_cpu' => 'Database processor use (100% is one core)',
   'rps_per_core' => 'Replies a second per core it used',
   'rps_per_100mb' => 'Replies a second per 100 MB of memory',
+  'bytes_in' => 'Bytes a reply',
+  'bytes_out' => 'Bytes a request',
   _ => m.label,
 };
 
