@@ -14,6 +14,9 @@ class Variant:
     db: str = "postgres"  # "postgres" or "none"
     pgbouncer: bool = False
     notes: str | None = None  # this variant's own note, over the shared one
+    # False when the variant did not exist in the releases under `history:`
+    # (Relic's native adapter is new in 2.0), so only the current version runs.
+    history: bool = True
 
 
 @dataclass
@@ -71,7 +74,7 @@ def load_items(root: Path):
         history = [str(h["version"]) for h in manifest.get("history") or []]
         for variant in variants:
             key = slug if len(variants) == 1 else f"{slug}-{variant.id}"
-            for version in [""] + history:
+            for version in [""] + (history if variant.history else []):
                 items.append(
                     Item(
                         # Docker image names can't hold "@", hence "-v".

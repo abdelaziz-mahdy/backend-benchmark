@@ -1,0 +1,23 @@
+name: relic
+language: dart
+framework: relic
+version: "2.0.0"
+runtime: dart 3.14
+# Older releases benchmarked alongside, for the version history.
+history:
+  - version: "1.2.0"
+variants:
+  - id: io
+    db: postgres
+    notes: "Serves through relic_io, Relic's dart:io adapter (app.serve)."
+  - id: native
+    db: postgres
+    # relic_native arrived in 2.0, so there is no 1.x build of this variant.
+    history: false
+    notes: "Serves through relic_native, the native HTTP adapter new in Relic 2.0 (app.serveNative)."
+# How this backend is run and talks to the database; shown on the dashboard.
+implementation:
+  server: "Relic router; relic_io (app.serve) or relic_native (app.serveNative)"
+  concurrency: "one Dart isolate per core (2, noOfIsolates)"
+  db_access: "package:postgres, hand-written SQL"
+  pool: "10 per isolate, 20 in total"

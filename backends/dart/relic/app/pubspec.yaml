@@ -1,0 +1,11 @@
+name: relic_bench
+description: Relic backend for the benchmark suite.
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  postgres: ^3.5.0
+  relic: 2.0.0
+  relic_native: 2.0.0

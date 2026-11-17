@@ -65,6 +65,22 @@ def test_load_items_variants_and_keys(tmp_path):
     assert {i.key for i in manifest.filter_items(list(items.values()), "go/")} == {"go-mux"}
 
 
+def test_history_versions_skip_variants_that_opt_out(tmp_path):
+    write_manifest(
+        tmp_path,
+        "dart/relic",
+        "name: relic\nversion: '2.0.0'\nhistory:\n  - version: '1.2.0'\n"
+        "variants:\n  - id: io\n  - id: native\n    history: false\n",
+    )
+    items = {i.key: i for i in manifest.load_items(tmp_path)}
+    assert set(items) == {"dart-relic-io", "dart-relic-io-v1.2.0", "dart-relic-native"}
+    assert items["dart-relic-io-v1.2.0"].version == "1.2.0"
+    assert items["dart-relic-native"].version == "2.0.0"
+    # `--only relic` picks all three; the native key alone picks only it.
+    assert len(manifest.filter_items(list(items.values()), "dart/relic")) == 3
+    assert [i.key for i in manifest.filter_items(list(items.values()), "relic-native")] == ["dart-relic-native"]
+
+
 def test_cpusets_scale_with_docker_cpus():
     assert machine.cpusets(10) == {"app": "0-1", "db": "2-4", "k6": "5-8", "k6_cores": 4}
     assert machine.cpusets(6) == {"app": "0-1", "db": "2-3", "k6": "4-5", "k6_cores": 2}
