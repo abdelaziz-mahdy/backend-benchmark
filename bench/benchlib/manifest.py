@@ -20,6 +20,10 @@ class Variant:
     # False keeps the backend's plain key ("dart-server-pod") for this
     # variant when others are added, so its earlier results stay linked.
     suffix: bool = True
+    # The testing tool asks for gzip replies (Accept-Encoding: gzip), as a
+    # browser does. k6 does not by default, so a server that gzips only when
+    # asked (FOAM) sends plain replies otherwise.
+    accept_gzip: bool = False
 
 
 @dataclass

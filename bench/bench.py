@@ -89,6 +89,8 @@ class Stack:
         if out_name:
             args += ["--summary-export", f"/out/{out_name}"]
         env.setdefault("API_STYLE", self.item.api_style)
+        if self.item.variant.accept_gzip:
+            env.setdefault("ACCEPT_GZIP", "1")
         for k, v in env.items():
             args += ["-e", f"{k}={v}"]
         args.append(f"/scenarios/{script}")
