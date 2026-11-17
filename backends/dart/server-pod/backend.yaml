@@ -9,6 +9,18 @@ history:
 variants:
   - id: postgres
     db: postgres
+    # Keeps the key "dart-server-pod", so earlier results stay linked.
+    suffix: false
+  # Serverpod 4.1.1 pins relic 2.0.0-rc.4 and serves through relic_io.
+  # These two move it to the final Relic 2.0.0 (app/tool/relic2.sh).
+  - id: relic-2.0.0
+    db: postgres
+    history: false
+    notes: "Serverpod 4.1.1 with Relic overridden to the final 2.0.0 release, still served through relic_io. One Dart isolate, like the default build."
+  - id: relic-native-2.0.0
+    db: postgres
+    history: false
+    notes: "Serverpod 4.1.1 on Relic 2.0.0, patched to serve through relic_native (app.serveNative); Serverpod itself has no option for it. One Dart isolate."
 # Serverpod is called through its RPC API (POST /note/<method>).
 api_style: serverpod_rpc
 health_path: /

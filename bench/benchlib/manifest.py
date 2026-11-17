@@ -17,6 +17,9 @@ class Variant:
     # False when the variant did not exist in the releases under `history:`
     # (Relic's native adapter is new in 2.0), so only the current version runs.
     history: bool = True
+    # False keeps the backend's plain key ("dart-server-pod") for this
+    # variant when others are added, so its earlier results stay linked.
+    suffix: bool = True
 
 
 @dataclass
@@ -73,7 +76,7 @@ def load_items(root: Path):
         scenarios = manifest.get("scenarios") or list(ALL_SCENARIOS)
         history = [str(h["version"]) for h in manifest.get("history") or []]
         for variant in variants:
-            key = slug if len(variants) == 1 else f"{slug}-{variant.id}"
+            key = slug if len(variants) == 1 or not variant.suffix else f"{slug}-{variant.id}"
             for version in [""] + (history if variant.history else []):
                 items.append(
                     Item(

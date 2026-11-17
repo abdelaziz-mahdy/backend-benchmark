@@ -10,6 +10,11 @@ RUN if [ -n "$FRAMEWORK_VERSION" ]; then \
     fi && \
     dart pub get
 COPY . .
+# The Relic 2.0.0 variants (see tool/relic2.sh and backend.yaml) change the
+# dependencies here, after the sources are in; other variants are untouched.
+ARG BENCH_VARIANT=postgres
+RUN sh tool/relic2.sh "$BENCH_VARIANT" && \
+    if [ ! -f pubspec.lock ]; then dart pub get; fi
 # dart build (not compile exe): serverpod 4 depends on sqlite3, which has native build hooks.
 RUN dart build cli --target bin/main.dart -o build/server
 
