@@ -44,6 +44,9 @@ services:
       # Older release to build for the version history; empty = the pinned one.
       args:
         FRAMEWORK_VERSION: ${FRAMEWORK_VERSION:-}
+        # The variant, for backends whose variants differ at build time
+        # (FOAM's gzip, Serverpod's Relic 2.0.0); others ignore it.
+        BENCH_VARIANT: ${BENCH_VARIANT:-postgres}
     image: bench-app-${BACKEND_SLUG:?BACKEND_SLUG is required}
     cpuset: "${APP_CPUSET:-0-1}"
     mem_limit: 2g
