@@ -221,3 +221,49 @@ def test_restarts_are_counted(tmp_path):
     s = report.build_run(run, problems)
     assert problems == []
     assert s["backends"][0]["scenarios"]["db_write"]["restarts"] == 1
+
+
+def test_bytes_a_request_come_from_the_result_step(tmp_path):
+    run = make_run(tmp_path, "2026-10-05_m_b_0001", {"x": {"name": "x", "scenarios": {"no_db": {"status": "ok"}}}})
+    rep = run / "x" / "no_db" / "rep-1"
+    make_rep(rep, [(1000, True), (2000, False)])
+    for rate, got, sent in [(1000, 140_000, 85_000), (2000, 999, 999)]:
+        (rep / f"k6-{rate:05d}.json").write_text(json.dumps({"metrics": {
+            "http_reqs": {"count": 1000}, "data_received": {"count": got}, "data_sent": {"count": sent}}}))
+    sc = report.build_run(run, report.Problems())["backends"][0]["scenarios"]["no_db"]
+    assert sc["bytes_in"]["median"] == 140
+    assert sc["bytes_out"]["median"] == 85
+
+
+def test_bytes_are_none_without_k6_files(tmp_path):
+    run = make_run(tmp_path, "2026-10-05_m_b_0002", {"x": {"name": "x", "scenarios": {"no_db": {"status": "ok"}}}})
+    make_rep(run / "x" / "no_db" / "rep-1", [(1000, True)])
+    sc = report.build_run(run, report.Problems())["backends"][0]["scenarios"]["no_db"]
+    assert sc["bytes_in"] is None
+
+
+def _scored(backends):
+    def entry(key, results, history=False, capped=()):
+        return {"key": key, "history": history, "scenarios": {
+            sc: {"sustainable_rps": {"median": v}, "loadgen_bound": sc in capped} for sc, v in results.items()}}
+    return report.add_overall_scores({"backends": [entry(*b[:2], **b[2]) for b in backends]})
+
+
+def test_overall_score_is_the_geometric_mean_of_shares_of_the_best():
+    every = dict.fromkeys(report.SCORE_SCENARIOS, 1000)
+    half = {**every, "no_db": 250}  # a quarter of the best in one test
+    s = _scored([
+        ("best", every, {}),
+        ("quarter-in-one", half, {}),
+        ("old", {sc: 4000 for sc in report.SCORE_SCENARIOS}, {"history": True}),
+        ("partial", {"no_db": 1000}, {}),
+        ("zero", {**every, "db_write": 0}, {}),
+        ("capped", every, {"capped": ("no_db",)}),
+    ])
+    by = {b["key"]: b.get("overall") for b in s["backends"]}
+    assert by["best"]["score"] == 100
+    assert round(by["quarter-in-one"]["score"], 3) == round(100 * 0.25 ** 0.25, 3)  # 70.711
+    assert by["old"] is None  # history releases are not scored nor the best
+    assert by["partial"] == {"score": None, "capped": False, "missing": ["db_read", "db_write", "db_mixed"]}
+    assert by["zero"]["score"] == 0
+    assert by["capped"]["capped"] is True and by["capped"]["score"] == 100
