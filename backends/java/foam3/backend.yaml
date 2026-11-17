@@ -10,6 +10,9 @@ variants:
   - id: postgres
     db: postgres
     notes: "Keeps its notes in PostgreSQL, through FOAM's own database layer."
+  - id: embedded-gzip
+    db: none
+    notes: "Like embedded, with FOAM's default gzip left on: replies are compressed when the client asks for it."
 # NoteService is called with FOAM's box RPC (POST /service/noteService).
 api_style: foam_rpc
 health_path: /service/health

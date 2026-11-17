@@ -24,6 +24,15 @@ COPY src ./src
 COPY journals ./journals
 COPY deployment ./deployment
 
+# embedded-gzip keeps FOAM's default gzip: drop the override that turns it
+# off for every path (deployment/bench/services.jrl). Other variants keep it
+# off, like every other backend.
+ARG BENCH_VARIANT=embedded
+RUN if [ "$BENCH_VARIANT" = embedded-gzip ]; then \
+      sed -i '/"excludedGzipPaths"/d' deployment/bench/services.jrl && \
+      ! grep -q excludedGzipPaths deployment/bench/services.jrl; \
+    fi
+
 # -Jbench adds deployment/bench (the HTTP server on port 8000).
 RUN node foam3/tools/build.js -Jbench --build-docker-tar \
  && node foam3/tools/build.js -Jbench --build-resources-tar
