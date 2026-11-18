@@ -14,6 +14,16 @@ class Variant:
     db: str = "postgres"  # "postgres" or "none"
     pgbouncer: bool = False
     notes: str | None = None  # this variant's own note, over the shared one
+    # False when the variant did not exist in the releases under `history:`
+    # (Relic's native adapter is new in 2.0), so only the current version runs.
+    history: bool = True
+    # False keeps the backend's plain key ("dart-server-pod") for this
+    # variant when others are added, so its earlier results stay linked.
+    suffix: bool = True
+    # The testing tool asks for gzip replies (Accept-Encoding: gzip), as a
+    # browser does. k6 does not by default, so a server that gzips only when
+    # asked (FOAM) sends plain replies otherwise.
+    accept_gzip: bool = False
 
 
 @dataclass
@@ -70,8 +80,8 @@ def load_items(root: Path):
         scenarios = manifest.get("scenarios") or list(ALL_SCENARIOS)
         history = [str(h["version"]) for h in manifest.get("history") or []]
         for variant in variants:
-            key = slug if len(variants) == 1 else f"{slug}-{variant.id}"
-            for version in [""] + history:
+            key = slug if len(variants) == 1 or not variant.suffix else f"{slug}-{variant.id}"
+            for version in [""] + (history if variant.history else []):
                 items.append(
                     Item(
                         # Docker image names can't hold "@", hence "-v".

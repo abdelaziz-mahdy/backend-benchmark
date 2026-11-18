@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from benchlib import foam_rpc, machine, manifest, recovery, slo
+from benchlib import foam_rpc, machine, manifest, recovery, slo, targets
 from benchlib.stats import Sampler
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -49,7 +49,9 @@ class Stack:
             BENCH_VARIANT=item.variant.id,
             BENCH_PORT=str(PORT),
             OUT_DIR=str(out_dir or BENCH / ".tmp"),
+            TARGETS_DIR=str(BENCH / ".tmp" / "targets" / item.key),
         )
+        self.request_head = {}
 
     def _cmd(self, *args, load=False):
         cmd = ["docker", "compose", "-f", str(BENCH / "compose.yaml"), "--project-directory", str(BENCH)]
@@ -89,10 +91,38 @@ class Stack:
         if out_name:
             args += ["--summary-export", f"/out/{out_name}"]
         env.setdefault("API_STYLE", self.item.api_style)
+        if self.item.variant.accept_gzip:
+            env.setdefault("ACCEPT_GZIP", "1")
         for k, v in env.items():
             args += ["-e", f"{k}={v}"]
         args.append(f"/scenarios/{script}")
         return self.run(*args, load=True)
+
+    def write_targets(self, scenario):
+        """The scenario's request list for vegeta, in TARGETS_DIR."""
+        out = Path(self.env["TARGETS_DIR"])
+        out.mkdir(parents=True, exist_ok=True)
+        self.request_head[scenario] = targets.write(
+            out / f"{scenario}.jsonl", scenario, self.item.api_style, "http://benchmark:8000",
+            accept_gzip=self.item.variant.accept_gzip,
+        )
+
+    def load(self, scenario, rate, duration_s, out_name=None):
+        """One fixed-rate step with vegeta. Its results stream straight into
+        loadgen/summary, which writes out_name (a JSON) to OUT_DIR. At most
+        10,000 requests in flight, as k6's 10,000 VUs: when all are busy,
+        vegeta falls behind and sends fewer. Whole replies are read, so their
+        sizes count, as k6 counted them."""
+        foam = self.item.api_style == "foam_rpc"
+        attack = (
+            f"vegeta attack -format=json -targets=/targets/{scenario}.jsonl -rate={rate}/s "
+            f"-duration={duration_s}s -timeout=60s -max-workers=10000"
+        )
+        summary = f"summary -request-head-bytes={self.request_head.get(scenario, 0):.1f}"
+        if foam:
+            summary += f" -body-must-contain '{targets.FOAM_OK.decode()}'"
+        dest = f"/out/{out_name}" if out_name else "/dev/null"
+        return self.run("run", "--rm", "--no-deps", "vegeta", f"set -o pipefail; {attack} | {summary} > {dest}", load=True)
 
     def logs(self):
         return self.run("logs", "--no-color", "--tail", "60", "benchmark").stdout
@@ -256,7 +286,28 @@ def known_best(scenario_dir):
     return max(passing, default=0)
 
 
-def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0):
+def earlier_best(run_meta, item_key, scenario):
+    """(rate, run id) of the newest earlier run on this machine that holds a
+    first rep for this item and scenario, any methodology; (0, None) if none.
+    A first rep starts its ladder near that rate instead of at the bottom:
+    the steps far below it always pass and only cost time. If the result has
+    dropped a lot since, the rep walks back down (see run_rep)."""
+    runs_dir = RESULTS / "runs"
+    if not runs_dir.exists():
+        return 0, None
+    for other in sorted(runs_dir.iterdir(), reverse=True):
+        if other.name == run_meta["id"] or not (other / "run.json").exists():
+            continue
+        meta = json.loads((other / "run.json").read_text())
+        if meta["machine"]["slug"] != run_meta["machine"]["slug"]:
+            continue
+        best = known_best(other / item_key / scenario)
+        if best:
+            return best, other.name
+    return 0, None
+
+
+def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0, best_from="rep 1"):
     rep_dir.mkdir(parents=True, exist_ok=True)
     stack.env["OUT_DIR"] = str(rep_dir)
     stack.down()
@@ -274,10 +325,11 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0):
             stack.down()
             return {"status": "error", "error": "seeding failed: " + (seed.stdout + seed.stderr)[-2000:] + logs[-1000:]}
 
+    stack.write_targets(scenario)
     sampler = Sampler(PROJECT)
     sampler.start()
     t0 = time.time()
-    stack.k6(f"{scenario}.js", RATE=steps[0], DURATION=f"{slo.WARMUP_SECONDS}s", SEED_ROWS=slo.SEED_ROWS)
+    stack.load(scenario, steps[0], slo.WARMUP_SECONDS)
 
     rows = []
 
@@ -285,18 +337,15 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0):
 
     def do_step(rate, refine=False):
         start = time.time()
-        res = stack.k6(
-            f"{scenario}.js",
-            out_name=f"k6-{rate:05d}.json",
-            RATE=rate,
-            DURATION=f"{slo.STEP_SECONDS}s",
-            SEED_ROWS=slo.SEED_ROWS,
-        )
+        res = stack.load(scenario, rate, slo.STEP_SECONDS, out_name=f"vg-{rate:05d}.json")
         end = time.time()
-        summary_path = rep_dir / f"k6-{rate:05d}.json"
-        summary = json.loads(summary_path.read_text()) if summary_path.exists() else {}
-        row = slo.step_from_k6(rate, slo.STEP_SECONDS, summary)
-        # Skip the first 3 s of each step for resource averages (k6 start-up).
+        summary_path = rep_dir / f"vg-{rate:05d}.json"
+        try:
+            summary = json.loads(summary_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            summary = {}
+        row = slo.step_from_vegeta(rate, slo.STEP_SECONDS, summary)
+        # Skip the first 3 s of each step for resource averages (start-up).
         usage = sampler.window(start + 3, end)
         row["app_cpu"] = usage.get("app", {}).get("cpu")
         row["app_mem_mb"] = usage.get("app", {}).get("mem_mb")
@@ -324,12 +373,7 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0):
                 stack.run("restart", "benchmark")
                 if wait_healthy(stack):
                     passing = [r["target_rps"] for r in rows if r["pass"]]
-                    stack.k6(
-                        f"{scenario}.js",
-                        RATE=max(passing) if passing else steps[0],
-                        DURATION=f"{recovery.REWARM_S:.0f}s",
-                        SEED_ROWS=slo.SEED_ROWS,
-                    )
+                    stack.load(scenario, max(passing) if passing else steps[0], round(recovery.REWARM_S))
                 else:
                     log("    backend did not come back after a restart")
                     stopped[0] = True
@@ -343,7 +387,7 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0):
 
     ladder = slo.start_steps(steps, best)
     if ladder != steps:
-        log(f"    starting at {ladder[0]} rps (rep 1 sustained {best})")
+        log(f"    starting at {ladder[0]} rps ({best_from} sustained {best})")
     for rate in ladder:
         if not do_step(rate):
             break
@@ -485,6 +529,10 @@ def main():
     ap.add_argument("--steps", help="override load steps, e.g. 250,500")
     ap.add_argument("--run-id", help="append to / resume this run id")
     ap.add_argument("--force", action="store_true", help="ignore the cross-run cache")
+    ap.add_argument(
+        "--from-bottom", action="store_true",
+        help="first reps climb every step instead of starting near an earlier run's result",
+    )
     ap.add_argument("--smoke", action="store_true", help="build, start and check every endpoint; no load")
     ap.add_argument("--list", action="store_true", help="list discovered backends")
     ap.add_argument("--contributor", help="optional name or handle stored in run.json")
@@ -564,8 +612,14 @@ def main():
                     log(f"   {scenario} rep {rep}: already done")
                     continue
                 log(f"   {scenario} rep {rep}/{args.reps}")
-                best = known_best(run_dir / item.key / scenario) if rep > 1 else 0
-                result = run_rep(stack, item, scenario, steps, rep_dir, digest, cpus["k6_cores"], best)
+                if rep > 1:
+                    best, best_from = known_best(run_dir / item.key / scenario), "rep 1"
+                elif args.from_bottom:
+                    best, best_from = 0, None
+                else:
+                    best, best_from = earlier_best(run_meta, item.key, scenario)
+                result = run_rep(stack, item, scenario, steps, rep_dir, digest, cpus["k6_cores"], best, best_from)
+                result["ladder_from"] = {"rate": best, "source": best_from} if best else None
                 result.update(
                     finished_at=dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                     framework_version=item.version,

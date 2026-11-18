@@ -44,6 +44,9 @@ services:
       # Older release to build for the version history; empty = the pinned one.
       args:
         FRAMEWORK_VERSION: ${FRAMEWORK_VERSION:-}
+        # The variant, for backends whose variants differ at build time
+        # (FOAM's gzip, Serverpod's Relic 2.0.0); others ignore it.
+        BENCH_VARIANT: ${BENCH_VARIANT:-postgres}
     image: bench-app-${BACKEND_SLUG:?BACKEND_SLUG is required}
     cpuset: "${APP_CPUSET:-0-1}"
     mem_limit: 2g
@@ -74,3 +77,15 @@ services:
     volumes:
       - ./scenarios:/scenarios:ro
       - ${OUT_DIR:-/tmp}:/out
+
+  # The load generator for the load steps (k6 above still seeds the database
+  # and runs the smoke checks). bench.py writes each scenario's request list
+  # to TARGETS_DIR; see benchlib/targets.py and loadgen/Dockerfile.
+  vegeta:
+    build: ./loadgen
+    image: bench-vegeta:12.12.0
+    profiles: [load]
+    cpuset: "${K6_CPUSET:-4-7}"
+    volumes:
+      - ${OUT_DIR:-/tmp}:/out
+      - ${TARGETS_DIR:-/tmp}:/targets:ro

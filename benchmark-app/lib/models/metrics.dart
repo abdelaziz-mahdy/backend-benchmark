@@ -1,7 +1,7 @@
 import 'results.dart';
 import 'tests.dart';
 
-enum Unit { rps, ms, percent, cpu, mb, ratio }
+enum Unit { rps, ms, percent, cpu, mb, ratio, bytes }
 
 /// A number the dashboard can rank, chart and compare.
 class Metric {
@@ -150,6 +150,28 @@ class Metrics {
     help: 'Average CPU of Postgres while serving this backend.',
     value: (r) => _stat(r, 'db_cpu'),
   );
+  static final bytesIn = Metric(
+    id: 'bytes_in',
+    label: 'Bytes a reply',
+    short: 'Reply bytes',
+    unit: Unit.bytes,
+    higherIsBetter: false,
+    help:
+        'Bytes the testing tool received per request at the result step: '
+        'status line, headers and body.',
+    value: (r) => _stat(r, 'bytes_in'),
+  );
+  static final bytesOut = Metric(
+    id: 'bytes_out',
+    label: 'Bytes a request',
+    short: 'Request bytes',
+    unit: Unit.bytes,
+    higherIsBetter: false,
+    help:
+        'Bytes the testing tool sent per request at the result step: '
+        'request line, headers and body.',
+    value: (r) => _stat(r, 'bytes_out'),
+  );
   static final rpsPerCore = Metric(
     id: 'rps_per_core',
     label: 'Requests per core',
@@ -205,6 +227,8 @@ class Metrics {
     dbCpu,
     rpsPerCore,
     rpsPer100Mb,
+    bytesIn,
+    bytesOut,
   ];
 
   static Metric byId(String id) =>

@@ -5,8 +5,11 @@ Shared by the runner (deciding when to stop stepping) and the report
 """
 import statistics
 
-METHODOLOGY = "v2.1"
-STEPS = [250, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000]
+# v3: vegeta replaces k6 for the load steps (k6 added 10 ms or more to p99
+# from 20,000 requests/s and topped out near 48,000), and the ladder ends at
+# 80,000, the most vegeta sends cleanly on 4 cores.
+METHODOLOGY = "v3"
+STEPS = [250, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 80000]
 STEP_SECONDS = 30
 WARMUP_SECONDS = 30
 SEED_ROWS = 10000
@@ -49,6 +52,27 @@ def step_from_k6(target_rps, duration_s, summary):
         "p99_ms": dur.get("p(99)", 0.0),
         "p999_ms": dur.get("p(99.9)", 0.0),
         "avg_ms": dur.get("avg", 0.0),
+    }
+
+
+def step_from_vegeta(target_rps, duration_s, summary):
+    """Turn the load generator's step summary (loadgen/summary) into one step
+    row with the same keys as step_from_k6. vegeta never drops a request: when
+    it falls behind it sends fewer, so dropped is what it did not send."""
+    reqs = summary.get("requests", 0)
+    lat = summary.get("latency_ms", {})
+    failed = reqs - summary.get("success", 0) + summary.get("rpc_failed", 0)
+    return {
+        "target_rps": target_rps,
+        "achieved_rps": reqs / duration_s if duration_s else 0.0,
+        "requests": reqs,
+        "dropped": max(0, round(target_rps * duration_s) - reqs),
+        "error_rate": min(1.0, failed / reqs) if reqs else 1.0,
+        "p50_ms": lat.get("p50", 0.0),
+        "p90_ms": lat.get("p90", 0.0),
+        "p99_ms": lat.get("p99", 0.0),
+        "p999_ms": lat.get("p999", 0.0),
+        "avg_ms": lat.get("mean", 0.0),
     }
 
 

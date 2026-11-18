@@ -17,6 +17,7 @@ import argparse
 import csv
 import datetime as dt
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -103,6 +104,33 @@ def read_timeseries(path):
 # ---------------------------------------------------------------- v2 runs
 
 
+def rep_bytes(rep_dir, steps):
+    """Bytes a request at the rep's result step (the busiest that passed, or
+    the first step when none did), from the load generator's own counters:
+    replies in (status line, headers and body), requests out. v3 runs keep
+    vegeta's step summary (vg-*.json), older runs k6's (k6-*.json)."""
+    passing = [s for s in steps if s["pass"]]
+    step = max(passing, key=lambda s: s["target_rps"]) if passing else min(steps, key=lambda s: s["target_rps"])
+    rate = int(step["target_rps"])
+    vg = rep_dir / f"vg-{rate:05d}.json"
+    if vg.exists():
+        try:
+            m = json.loads(vg.read_text())
+            n = m["requests"]
+            return m["bytes_in"] / n, m["bytes_out"] / n
+        except (json.JSONDecodeError, KeyError, TypeError, ZeroDivisionError):
+            return None, None
+    path = rep_dir / f"k6-{rate:05d}.json"
+    if not path.exists():
+        return None, None
+    try:
+        m = json.loads(path.read_text()).get("metrics", {})
+        n = m["http_reqs"]["count"]
+        return m["data_received"]["count"] / n, m["data_sent"]["count"] / n
+    except (json.JSONDecodeError, KeyError, TypeError, ZeroDivisionError):
+        return None, None
+
+
 def scenario_summary(sdir, problems):
     reps, rep_steps, rep_dirs = [], [], []
     for rep_dir in sorted(sdir.glob("rep-*")):
@@ -120,7 +148,9 @@ def scenario_summary(sdir, problems):
         if not steps:
             problems.add(str(rep_dir), "steps.csv is empty")
             continue
-        reps.append(slo.summarize_rep(steps))
+        rep = slo.summarize_rep(steps)
+        rep["bytes_in"], rep["bytes_out"] = rep_bytes(rep_dir, steps)
+        reps.append(rep)
         rep_steps.append(steps)
         rep_dirs.append(rep_dir)
     if not reps:
@@ -399,7 +429,47 @@ def clean(v):
     return v
 
 
-HEADLINE_KEYS = ["sustainable_rps", "peak_rps", "avg_rps", "p50_ms", "p99_ms", "error_rate", "app_cpu", "app_mem_mb"]
+HEADLINE_KEYS = [
+    "sustainable_rps",
+    "peak_rps",
+    "avg_rps",
+    "p50_ms",
+    "p99_ms",
+    "error_rate",
+    "app_cpu",
+    "app_mem_mb",
+    "bytes_in",
+    "bytes_out",
+]
+SCORE_SCENARIOS = ["no_db", "db_read", "db_write", "db_mixed"]
+
+
+def add_overall_scores(summary):
+    """One score a backend across the four tests: each result as a share of
+    the best result in that test, then 100 x the geometric mean of the shares.
+    Older releases (history) are scored like any other entry, since the
+    dashboard shows them as their own bars ("relic 1.2.0" next to 2.0). A
+    backend missing a test gets no score; a capped result ("+", the testing
+    tool's limit) counts at its value and marks the score capped too."""
+    current = summary["backends"]
+
+    def result(b, scenario):
+        # None when the test was not run; 0 when it ran and no step passed.
+        return ((b["scenarios"].get(scenario) or {}).get("sustainable_rps") or {}).get("median")
+
+    best = {sc: max((result(b, sc) or 0 for b in current), default=0) for sc in SCORE_SCENARIOS}
+    for b in summary["backends"]:
+        missing = [sc for sc in SCORE_SCENARIOS if result(b, sc) is None or not best[sc]]
+        if missing:
+            b["overall"] = {"score": None, "capped": False, "missing": missing}
+            continue
+        shares = [result(b, sc) / best[sc] for sc in SCORE_SCENARIOS]
+        b["overall"] = {
+            "score": 100 * math.prod(shares) ** (1 / len(shares)),
+            "capped": any((b["scenarios"].get(sc) or {}).get("loadgen_bound") for sc in SCORE_SCENARIOS),
+            "missing": [],
+        }
+    return summary
 
 
 def headline(summary):
@@ -509,6 +579,8 @@ def main():
     (args.out / "runs").mkdir(parents=True, exist_ok=True)
     index = []
     for s in summaries + latest_views(summaries):
+        if s.get("kind") != "legacy":
+            add_overall_scores(s)
         file = f"runs/{s['id']}.json"
         (args.out / file).write_text(json.dumps(clean(s), separators=(",", ":"), allow_nan=False, default=str))
         index.append(index_entry(s, file))

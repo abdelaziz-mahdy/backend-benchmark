@@ -8,6 +8,7 @@ import '../../utils/colors.dart';
 import '../../utils/theme_constants.dart';
 import '../../widgets/calm.dart';
 import 'home_nav.dart';
+import 'overall_score.dart';
 
 /// Who's fastest: the main test with a bar and number per framework, the
 /// other tests folded underneath, and where to go next. What each test
@@ -56,6 +57,17 @@ class ShortAnswerView extends StatelessWidget {
           child: MeasurePicker(run: run),
         ),
         const SizedBox(height: 22),
+        // One ranking across the tests, built from the result, so only
+        // while the bars show the result.
+        if (m == Measure.load && hasOverallScores(run)) ...[
+          OverallScoreBars(
+            key: ValueKey('overall-${run.id}'),
+            run: run,
+            mine: state.selectedKey,
+            onOpen: nav.open,
+          ),
+          const SizedBox(height: 34),
+        ],
         TestHeading(id: main.id),
         const SizedBox(height: 12),
         bars(main.id),

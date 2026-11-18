@@ -1,0 +1,7 @@
+{
+  "finished_at": "2026-11-18T04:06:00+00:00",
+  "framework_version": "4.1.1",
+  "image_digest": "sha256:dc02ac02093287d49bc0d35c9b76b2cd291ff99137c16cf44376f8e3f66ee0d4",
+  "runtime": "dart 3.14",
+  "status": "ok"
+}

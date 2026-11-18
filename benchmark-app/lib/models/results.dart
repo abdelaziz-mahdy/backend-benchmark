@@ -240,6 +240,8 @@ class ScenarioResult {
     'app_mem_mb',
     'db_cpu',
     'db_mem_mb',
+    'bytes_in',
+    'bytes_out',
   ];
 
   factory ScenarioResult.fromJson(Map<String, dynamic> j) {
@@ -303,6 +305,33 @@ class Implementation {
 
 const kRepoUrl = 'https://github.com/abdelaziz-mahdy/backend-benchmark';
 
+/// One score across the four tests (report.py `overall`): each result as a
+/// share of the best in that test, then 100 x their geometric mean.
+class OverallScore {
+  /// Null when a test is missing ([missing] names it).
+  final double? score;
+
+  /// A result in at least one test hit the testing tool's limit.
+  final bool capped;
+  final List<String> missing;
+
+  const OverallScore({
+    required this.score,
+    this.capped = false,
+    this.missing = const [],
+  });
+
+  static OverallScore? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final s = json['score'];
+    return OverallScore(
+      score: s is num ? s.toDouble() : null,
+      capped: json['capped'] == true,
+      missing: [...?(json['missing'] as List?)?.whereType<String>()],
+    );
+  }
+}
+
 class BackendResult {
   final String key;
   final String name;
@@ -326,6 +355,9 @@ class BackendResult {
   final String? implementationFrom;
   final Map<String, ScenarioResult> scenarios;
 
+  /// Its score across the four tests; null in runs made before it existed.
+  final OverallScore? overall;
+
   /// The name this backend had in the run's own files, when the dashboard
   /// shows today's name instead (v1 results used slug-like names).
   final String? formerName;
@@ -347,6 +379,7 @@ class BackendResult {
     required this.implementation,
     required this.implementationFrom,
     required this.scenarios,
+    this.overall,
     this.formerName,
   });
 
@@ -370,6 +403,7 @@ class BackendResult {
           implementation: implementation,
           implementationFrom: implementationFrom,
           scenarios: scenarios,
+          overall: overall,
           formerName: name,
         );
 
@@ -400,6 +434,7 @@ class BackendResult {
       implementation: Implementation.fromJson(j['implementation']),
       implementationFrom: j['implementation_from'] as String?,
       scenarios: scenarios,
+      overall: OverallScore.fromJson(j['overall']),
     );
   }
 

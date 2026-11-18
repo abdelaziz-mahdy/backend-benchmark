@@ -30,7 +30,9 @@ def role_of(name, project="bench"):
         return "db"
     if "-pgbouncer-" in name:
         return "pgbouncer"
-    if "-k6-" in name:
+    # The load generator, k6 or vegeta, keeps the "k6" key so step rows and
+    # the report stay as they were.
+    if "-k6-" in name or "-vegeta-" in name:
         return "k6"
     return None
 

@@ -32,11 +32,20 @@ String runLabel(RunIndexEntry e, {RunIndexEntry? newest}) {
 String methodNumber(RunIndexEntry e) =>
     e.methodology.startsWith('v') ? e.methodology.substring(1) : e.methodology;
 
-/// Second line of a run in the lists: method, date, size.
+/// The tool that sent the load in a run of [methodology]: Locust for v1,
+/// k6 for v2 and v2.1, vegeta from v3 on.
+String loadTool(String methodology) => switch (methodology) {
+  'v1' => 'Locust',
+  'v2' || 'v2.1' => 'k6',
+  _ => 'vegeta',
+};
+
+/// Second line of a run in the lists: method, load tool, date, size.
 String runDetail(RunIndexEntry e) => [
   e.isLegacy
       ? 'cannot be compared with newer runs'
       : 'method version ${methodNumber(e)}',
+  'load from ${loadTool(e.methodology)}',
   if (e.kind == RunKind.latest && e.date != null) 'up to ${longDate(e.date)}',
   if (e.kind == RunKind.latest && e.runs.length > 1)
     'combined from ${numberWord(e.runs.length)} runs',

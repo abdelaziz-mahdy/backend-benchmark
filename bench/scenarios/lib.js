@@ -82,6 +82,9 @@ const FOAM_PARAMS = {
     Origin: BASE,
     Pragma: 'no-cache',
     'Cache-Control': 'no-cache, no-store',
+    // Variants with accept_gzip ask for gzip, as a browser does; k6 sends no
+    // Accept-Encoding by default and decompresses gzip replies itself.
+    ...(__ENV.ACCEPT_GZIP === '1' ? { 'Accept-Encoding': 'gzip' } : {}),
   },
 };
 // True for a 2xx reply that is not an RPCReturnMessage (i.e. an RPCErrorMessage).

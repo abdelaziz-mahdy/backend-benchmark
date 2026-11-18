@@ -31,6 +31,7 @@ String formatMetric(Metric metric, double? value) {
     Unit.cpu => '${value.toStringAsFixed(0)}%',
     Unit.mb => formatMb(value),
     Unit.ratio => formatRps(value),
+    Unit.bytes => '${value.round()} bytes',
   };
 }
 
