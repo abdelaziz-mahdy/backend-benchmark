@@ -641,11 +641,12 @@ class _MethodScreenState extends State<MethodScreen> {
                   '${docker['version'] != null ? ', Docker version ${docker['version']}' : ''}.',
             ),
           Point('Method:', '$method.'),
+          Point('Load sent by:', '${loadTool(run.methodology)}.'),
           if (run.contributor != null) Point('Run by:', run.contributor!),
           for (final e in images.entries)
             Point(
-              '${_image('${e.key}', '${e.value}').$1}:',
-              _image('${e.key}', '${e.value}').$2,
+              '${_image('${e.key}', '${e.value}', images).$1}:',
+              _image('${e.key}', '${e.value}', images).$2,
             ),
         ]),
         if (run.gitSha != null) ...[
@@ -934,11 +935,17 @@ class _MethodScreenState extends State<MethodScreen> {
 
   /// What an image in the run's settings is for.
   /// ("db", "postgres:18.6") -> ("Database", "PostgreSQL 18.6").
-  static (String, String) _image(String key, String image) {
+  /// From v3 vegeta sends the load and k6 only fills the database first.
+  static (String, String) _image(String key, String image, Map images) {
     final version = image.contains(':') ? image.split(':').last : image;
     return switch (key) {
       'db' => ('Database', 'PostgreSQL $version'),
-      'k6' => ('Testing tool version', version),
+      'k6' when images.containsKey('vegeta') => (
+        'Database filled by',
+        'k6 $version (it adds the starting rows before the test)',
+      ),
+      'k6' => ('Testing tool version', 'k6 $version'),
+      'vegeta' => ('Testing tool version', 'vegeta $version'),
       'pgbouncer' => (
         'Database connection sharer',
         'PgBouncer $version (it lets many requests share a few database '

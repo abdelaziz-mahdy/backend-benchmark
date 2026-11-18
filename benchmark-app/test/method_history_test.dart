@@ -19,7 +19,8 @@ final _jargon = <Pattern>[
   'req/s',
   RegExp(r'\brps\b', caseSensitive: false),
   RegExp(r'\bp(50|90|99)\b'),
-  RegExp(r'\bk6\b'),
+  // k6 and vegeta are allowed: runs name the tool that sent the load, since
+  // method v3 switched from k6 to vegeta and mixing them unnamed misleads.
   RegExp('load generator', caseSensitive: false),
   RegExp('scenario', caseSensitive: false),
   RegExp('sustainable', caseSensitive: false),
