@@ -1,0 +1,279 @@
+{
+  "contributor": null,
+  "dirty": false,
+  "docker": {
+    "cpus": 10,
+    "mem_gb": 11.7,
+    "version": "29.9.3"
+  },
+  "git_sha": "b85c912",
+  "id": "2026-11-17_m2pro-10c-32g_b85c912_ce85",
+  "items": {
+    "dart-relic-native-fixed": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "relic",
+      "history": false,
+      "image_digest": "sha256:de2f359dc93c04efd432037d1a4eda3815da942273d13fa3c28e5809eaed3460",
+      "implementation": {
+        "concurrency": "one Dart isolate per core (2, noOfIsolates)",
+        "db_access": "package:postgres, hand-written SQL",
+        "pool": "10 per isolate, 20 in total",
+        "server": "Relic router; relic_io (app.serve) or relic_native (app.serveNative)"
+      },
+      "language": "dart",
+      "name": "relic",
+      "notes": "relic_native with a fix: its drain parks instead of lingering 1 ms in the kernel while handlers wait on their own I/O, which held database replies (app/patches/).",
+      "path": "dart/relic",
+      "pgbouncer": false,
+      "runtime": "dart 3.14",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "native-fixed",
+      "version": "2.0.0"
+    },
+    "dart-server-pod-relic-2.0.0": {
+      "api_style": "serverpod_rpc",
+      "db": "postgres",
+      "framework": "serverpod",
+      "history": false,
+      "image_digest": "sha256:77b83f6687f1a9149accf5e7b388f3c475ab7151dc2ab7dec8eec382716da558",
+      "implementation": {
+        "concurrency": "one Dart isolate, single-threaded event loop (uses one core)",
+        "db_access": "Serverpod ORM over its own Postgres driver",
+        "pool": "20 (database.maxConnectionCount)",
+        "server": "Serverpod 4 built-in server (production mode, monolith role)"
+      },
+      "language": "dart",
+      "name": "serverpod",
+      "notes": "Serverpod 4.1.1 with Relic overridden to the final 2.0.0 release, still served through relic_io. One Dart isolate, like the default build.",
+      "path": "dart/server-pod",
+      "pgbouncer": false,
+      "runtime": "dart 3.14",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "relic-2.0.0",
+      "version": "4.1.1"
+    },
+    "dart-server-pod-relic-native-2.0.0": {
+      "api_style": "serverpod_rpc",
+      "db": "postgres",
+      "framework": "serverpod",
+      "history": false,
+      "image_digest": "sha256:fd2785d1ff64a16f2e74a5bb1acb03a9d2b8465bdd7706c1d3abb25ae5ad9c9a",
+      "implementation": {
+        "concurrency": "one Dart isolate, single-threaded event loop (uses one core)",
+        "db_access": "Serverpod ORM over its own Postgres driver",
+        "pool": "20 (database.maxConnectionCount)",
+        "server": "Serverpod 4 built-in server (production mode, monolith role)"
+      },
+      "language": "dart",
+      "name": "serverpod",
+      "notes": "Serverpod 4.1.1 on Relic 2.0.0, patched to serve through relic_native (app.serveNative); Serverpod itself has no option for it. One Dart isolate.",
+      "path": "dart/server-pod",
+      "pgbouncer": false,
+      "runtime": "dart 3.14",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "relic-native-2.0.0",
+      "version": "4.1.1"
+    },
+    "dart-server-pod-relic-native-fixed-2.0.0": {
+      "api_style": "serverpod_rpc",
+      "db": "postgres",
+      "framework": "serverpod",
+      "history": false,
+      "image_digest": "sha256:dc02ac02093287d49bc0d35c9b76b2cd291ff99137c16cf44376f8e3f66ee0d4",
+      "implementation": {
+        "concurrency": "one Dart isolate, single-threaded event loop (uses one core)",
+        "db_access": "Serverpod ORM over its own Postgres driver",
+        "pool": "20 (database.maxConnectionCount)",
+        "server": "Serverpod 4 built-in server (production mode, monolith role)"
+      },
+      "language": "dart",
+      "name": "serverpod",
+      "notes": "As relic-native-2.0.0, with relic_native's drain fix: it parks instead of lingering 1 ms while handlers wait on the database. One Dart isolate.",
+      "path": "dart/server-pod",
+      "pgbouncer": false,
+      "runtime": "dart 3.14",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "relic-native-fixed-2.0.0",
+      "version": "4.1.1"
+    }
+  },
+  "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.2.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+  },
+  "methodology": "v2.1",
+  "params": {
+    "cpusets": {
+      "app": "0-1",
+      "db": "2-4",
+      "k6": "5-8",
+      "k6_cores": 4
+    },
+    "images": {
+      "db": "postgres:18.6",
+      "k6": "grafana/k6:2.3.0",
+      "pgbouncer": "edoburu/pgbouncer:v1.26.0-p0"
+    },
+    "memory": {
+      "app": "2g",
+      "db": "2g"
+    },
+    "recovery_timeout_s": 30.0,
+    "refine_steps": 4,
+    "refine_tolerance": 0.06,
+    "reps": 3,
+    "seed_rows": 10000,
+    "slo": {
+      "achieved_ratio": 0.95,
+      "error_rate": 0.01,
+      "p99_ms": 100.0
+    },
+    "start_fraction": 4,
+    "step_seconds": 30,
+    "steps": [
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000,
+      16000,
+      32000,
+      64000
+    ],
+    "warmup_seconds": 30
+  },
+  "plan": [
+    {
+      "key": "dart-relic-native-fixed",
+      "scenarios": [
+        "no_db",
+        "db_read",
+        "db_write",
+        "db_mixed"
+      ]
+    },
+    {
+      "key": "dart-server-pod-relic-2.0.0",
+      "scenarios": [
+        "no_db",
+        "db_read",
+        "db_write",
+        "db_mixed"
+      ]
+    },
+    {
+      "key": "dart-server-pod-relic-native-2.0.0",
+      "scenarios": [
+        "no_db",
+        "db_read",
+        "db_write",
+        "db_mixed"
+      ]
+    },
+    {
+      "key": "dart-server-pod-relic-native-fixed-2.0.0",
+      "scenarios": [
+        "no_db",
+        "db_read",
+        "db_write",
+        "db_mixed"
+      ]
+    },
+    {
+      "key": "go-mux",
+      "scenarios": [
+        "no_db",
+        "db_read",
+        "db_write",
+        "db_mixed"
+      ]
+    },
+    {
+      "key": "java-foam3-embedded-gzip",
+      "scenarios": [
+        "no_db",
+        "db_read",
+        "db_write",
+        "db_mixed"
+      ]
+    }
+  ],
+  "started_at": "2026-11-18T01:17:12+00:00"
+}

@@ -1,0 +1,164 @@
+{
+  "contributor": null,
+  "dirty": false,
+  "docker": {
+    "cpus": 10,
+    "mem_gb": 11.7,
+    "version": "29.9.3"
+  },
+  "finished_at": "2026-11-17T23:56:57+00:00",
+  "git_sha": "b85c912",
+  "id": "2026-11-17_m2pro-10c-32g_b85c912_4938",
+  "items": {
+    "dart-relic-io": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "relic",
+      "history": false,
+      "image_digest": "sha256:c14705b13fe5ec515a62da911ee2561ddf65e9ed00e1a771f6e8d992c84a0136",
+      "implementation": {
+        "concurrency": "one Dart isolate per core (2, noOfIsolates)",
+        "db_access": "package:postgres, hand-written SQL",
+        "pool": "10 per isolate, 20 in total",
+        "server": "Relic router; relic_io (app.serve) or relic_native (app.serveNative)"
+      },
+      "language": "dart",
+      "name": "relic",
+      "notes": "Serves through relic_io, Relic's dart:io adapter (app.serve).",
+      "path": "dart/relic",
+      "pgbouncer": false,
+      "runtime": "dart 3.14",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 3,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 3,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "io",
+      "version": "2.0.0"
+    },
+    "dart-relic-io-v1.2.0": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "relic",
+      "history": true,
+      "image_digest": "sha256:9ee0a3dacf04728abf92a6dd9b3cc5d5cffeedb3e784ed49bdc0b5a113a5b1e6",
+      "implementation": {
+        "concurrency": "one Dart isolate per core (2, noOfIsolates)",
+        "db_access": "package:postgres, hand-written SQL",
+        "pool": "10 per isolate, 20 in total",
+        "server": "Relic router; relic_io (app.serve) or relic_native (app.serveNative)"
+      },
+      "language": "dart",
+      "name": "relic",
+      "notes": "Serves through relic_io, Relic's dart:io adapter (app.serve).",
+      "path": "dart/relic",
+      "pgbouncer": false,
+      "runtime": "dart 3.14",
+      "scenarios": {
+        "db_mixed": {
+          "from": "2026-11-17_m2pro-10c-32g_186ad7a_7ef5",
+          "status": "cached"
+        },
+        "db_read": {
+          "from": "2026-11-17_m2pro-10c-32g_186ad7a_7ef5",
+          "status": "cached"
+        },
+        "db_write": {
+          "from": "2026-11-17_m2pro-10c-32g_186ad7a_7ef5",
+          "status": "cached"
+        },
+        "no_db": {
+          "from": "2026-11-17_m2pro-10c-32g_186ad7a_7ef5",
+          "status": "cached"
+        }
+      },
+      "status": "ok",
+      "variant": "io",
+      "version": "1.2.0"
+    }
+  },
+  "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.2.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+  },
+  "methodology": "v2.1",
+  "params": {
+    "cpusets": {
+      "app": "0-1",
+      "db": "2-4",
+      "k6": "5-8",
+      "k6_cores": 4
+    },
+    "images": {
+      "db": "postgres:18.6",
+      "k6": "grafana/k6:2.3.0",
+      "pgbouncer": "edoburu/pgbouncer:v1.26.0-p0"
+    },
+    "memory": {
+      "app": "2g",
+      "db": "2g"
+    },
+    "recovery_timeout_s": 30.0,
+    "refine_steps": 4,
+    "refine_tolerance": 0.06,
+    "reps": 3,
+    "seed_rows": 10000,
+    "slo": {
+      "achieved_ratio": 0.95,
+      "error_rate": 0.01,
+      "p99_ms": 100.0
+    },
+    "start_fraction": 4,
+    "step_seconds": 30,
+    "steps": [
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000,
+      16000,
+      32000,
+      64000
+    ],
+    "warmup_seconds": 30
+  },
+  "plan": [
+    {
+      "key": "dart-relic-io",
+      "scenarios": [
+        "no_db",
+        "db_read",
+        "db_write",
+        "db_mixed"
+      ]
+    },
+    {
+      "key": "dart-relic-io-v1.2.0",
+      "scenarios": [
+        "no_db",
+        "db_read",
+        "db_write",
+        "db_mixed"
+      ]
+    }
+  ],
+  "started_at": "2026-11-17T22:51:18+00:00"
+}
