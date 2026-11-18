@@ -16,6 +16,15 @@ RUN if [ -n "$FRAMEWORK_VERSION" ]; then \
       rm pubspec.lock; \
     fi && \
     dart pub get
+# native-fixed: relic_native with the drain fix (patches/, tool/fix_native.sh).
+ARG BENCH_VARIANT=io
+COPY patches/ patches/
+COPY tool/ tool/
+RUN if [ "$BENCH_VARIANT" = native-fixed ]; then \
+      sh tool/fix_native.sh && \
+      printf '\ndependency_overrides:\n  relic_native:\n    path: vendor/relic_native\n' >> pubspec.yaml && \
+      dart pub get; \
+    fi
 COPY bin/ bin/
 COPY migration.sql ./
 # dart build (not compile exe): relic_native ships its native library through

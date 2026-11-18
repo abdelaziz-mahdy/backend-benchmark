@@ -15,6 +15,10 @@ variants:
     # relic_native arrived in 2.0, so there is no 1.x build of this variant.
     history: false
     notes: "Serves through relic_native, the native HTTP adapter new in Relic 2.0 (app.serveNative)."
+  - id: native-fixed
+    db: postgres
+    history: false
+    notes: "relic_native with a fix: its drain parks instead of lingering 1 ms in the kernel while handlers wait on their own I/O, which held database replies (app/patches/)."
 # How this backend is run and talks to the database; shown on the dashboard.
 implementation:
   server: "Relic router; relic_io (app.serve) or relic_native (app.serveNative)"

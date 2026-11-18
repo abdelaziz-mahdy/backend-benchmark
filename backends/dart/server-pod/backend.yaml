@@ -21,6 +21,10 @@ variants:
     db: postgres
     history: false
     notes: "Serverpod 4.1.1 on Relic 2.0.0, patched to serve through relic_native (app.serveNative); Serverpod itself has no option for it. One Dart isolate."
+  - id: relic-native-fixed-2.0.0
+    db: postgres
+    history: false
+    notes: "As relic-native-2.0.0, with relic_native's drain fix: it parks instead of lingering 1 ms while handlers wait on the database. One Dart isolate."
 # Serverpod is called through its RPC API (POST /note/<method>).
 api_style: serverpod_rpc
 health_path: /

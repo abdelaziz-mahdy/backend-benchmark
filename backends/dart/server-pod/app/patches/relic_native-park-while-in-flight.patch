@@ -1,0 +1,18 @@
+--- a/lib/src/native_adapter.dart
++++ b/lib/src/native_adapter.dart
+@@ -448,6 +448,15 @@
+         // next one picks their writes up. A sync handler has answered
+         // already and does not end the turn.
+         if (handedOver) break;
++        // Handlers are still at work on exchanges, waiting on their own
++        // I/O such as a database reply. That I/O reaches this isolate
++        // through the event loop, which a lingering tick would hold, so
++        // park on the waiter instead and let the event loop run.
++        if (_inFlight.isNotEmpty) {
++          native.reactorWait(_reactor);
++          parked = true;
++          return;
++        }
+         // Nothing to do. One tick that waits in the kernel for a moment
+         // catches the next request without a thread handoff, which is what
+         // a busy reactor sees next. Only then does the isolate park on the
