@@ -286,7 +286,28 @@ def known_best(scenario_dir):
     return max(passing, default=0)
 
 
-def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0):
+def earlier_best(run_meta, item_key, scenario):
+    """(rate, run id) of the newest earlier run on this machine that holds a
+    first rep for this item and scenario, any methodology; (0, None) if none.
+    A first rep starts its ladder near that rate instead of at the bottom:
+    the steps far below it always pass and only cost time. If the result has
+    dropped a lot since, the rep walks back down (see run_rep)."""
+    runs_dir = RESULTS / "runs"
+    if not runs_dir.exists():
+        return 0, None
+    for other in sorted(runs_dir.iterdir(), reverse=True):
+        if other.name == run_meta["id"] or not (other / "run.json").exists():
+            continue
+        meta = json.loads((other / "run.json").read_text())
+        if meta["machine"]["slug"] != run_meta["machine"]["slug"]:
+            continue
+        best = known_best(other / item_key / scenario)
+        if best:
+            return best, other.name
+    return 0, None
+
+
+def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0, best_from="rep 1"):
     rep_dir.mkdir(parents=True, exist_ok=True)
     stack.env["OUT_DIR"] = str(rep_dir)
     stack.down()
@@ -366,7 +387,7 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0):
 
     ladder = slo.start_steps(steps, best)
     if ladder != steps:
-        log(f"    starting at {ladder[0]} rps (rep 1 sustained {best})")
+        log(f"    starting at {ladder[0]} rps ({best_from} sustained {best})")
     for rate in ladder:
         if not do_step(rate):
             break
@@ -508,6 +529,10 @@ def main():
     ap.add_argument("--steps", help="override load steps, e.g. 250,500")
     ap.add_argument("--run-id", help="append to / resume this run id")
     ap.add_argument("--force", action="store_true", help="ignore the cross-run cache")
+    ap.add_argument(
+        "--from-bottom", action="store_true",
+        help="first reps climb every step instead of starting near an earlier run's result",
+    )
     ap.add_argument("--smoke", action="store_true", help="build, start and check every endpoint; no load")
     ap.add_argument("--list", action="store_true", help="list discovered backends")
     ap.add_argument("--contributor", help="optional name or handle stored in run.json")
@@ -587,8 +612,14 @@ def main():
                     log(f"   {scenario} rep {rep}: already done")
                     continue
                 log(f"   {scenario} rep {rep}/{args.reps}")
-                best = known_best(run_dir / item.key / scenario) if rep > 1 else 0
-                result = run_rep(stack, item, scenario, steps, rep_dir, digest, cpus["k6_cores"], best)
+                if rep > 1:
+                    best, best_from = known_best(run_dir / item.key / scenario), "rep 1"
+                elif args.from_bottom:
+                    best, best_from = 0, None
+                else:
+                    best, best_from = earlier_best(run_meta, item.key, scenario)
+                result = run_rep(stack, item, scenario, steps, rep_dir, digest, cpus["k6_cores"], best, best_from)
+                result["ladder_from"] = {"rate": best, "source": best_from} if best else None
                 result.update(
                     finished_at=dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                     framework_version=item.version,
