@@ -106,11 +106,21 @@ def read_timeseries(path):
 
 def rep_bytes(rep_dir, steps):
     """Bytes a request at the rep's result step (the busiest that passed, or
-    the first step when none did), from k6's own counters: data_received is
-    the replies (status line, headers and body), data_sent the requests."""
+    the first step when none did), from the load generator's own counters:
+    replies in (status line, headers and body), requests out. v3 runs keep
+    vegeta's step summary (vg-*.json), older runs k6's (k6-*.json)."""
     passing = [s for s in steps if s["pass"]]
     step = max(passing, key=lambda s: s["target_rps"]) if passing else min(steps, key=lambda s: s["target_rps"])
-    path = rep_dir / f"k6-{int(step['target_rps']):05d}.json"
+    rate = int(step["target_rps"])
+    vg = rep_dir / f"vg-{rate:05d}.json"
+    if vg.exists():
+        try:
+            m = json.loads(vg.read_text())
+            n = m["requests"]
+            return m["bytes_in"] / n, m["bytes_out"] / n
+        except (json.JSONDecodeError, KeyError, TypeError, ZeroDivisionError):
+            return None, None
+    path = rep_dir / f"k6-{rate:05d}.json"
     if not path.exists():
         return None, None
     try:

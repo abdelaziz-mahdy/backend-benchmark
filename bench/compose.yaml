@@ -77,3 +77,15 @@ services:
     volumes:
       - ./scenarios:/scenarios:ro
       - ${OUT_DIR:-/tmp}:/out
+
+  # The load generator for the load steps (k6 above still seeds the database
+  # and runs the smoke checks). bench.py writes each scenario's request list
+  # to TARGETS_DIR; see benchlib/targets.py and loadgen/Dockerfile.
+  vegeta:
+    build: ./loadgen
+    image: bench-vegeta:12.12.0
+    profiles: [load]
+    cpuset: "${K6_CPUSET:-4-7}"
+    volumes:
+      - ${OUT_DIR:-/tmp}:/out
+      - ${TARGETS_DIR:-/tmp}:/targets:ro

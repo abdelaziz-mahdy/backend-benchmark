@@ -152,8 +152,12 @@ def test_refine_never_repeats_a_tested_rate():
     assert slo.refine_rate(rows) is None
 
 
-def test_methodology_is_v21():
-    assert slo.METHODOLOGY == "v2.1"
+def test_methodology_is_v3():
+    assert slo.METHODOLOGY == "v3"
+
+
+def test_ladder_ends_at_the_load_generators_clean_limit():
+    assert slo.STEPS[-2:] == [64000, 80000]
 
 
 def test_first_rep_climbs_every_step():
@@ -163,9 +167,9 @@ def test_first_rep_climbs_every_step():
 
 def test_later_reps_skip_steps_far_below_the_first_result():
     # 23k sustained: start at 8k, keeping 8k and 16k as warm passing steps.
-    assert slo.start_steps(slo.STEPS, 23000) == [8000, 16000, 32000, 64000]
+    assert slo.start_steps(slo.STEPS, 23000) == [8000, 16000, 32000, 64000, 80000]
     # exactly on a step: that quarter is kept
-    assert slo.start_steps(slo.STEPS, 16000) == [4000, 8000, 16000, 32000, 64000]
+    assert slo.start_steps(slo.STEPS, 16000) == [4000, 8000, 16000, 32000, 64000, 80000]
 
 
 def test_low_results_keep_the_whole_ladder():
