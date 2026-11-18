@@ -12,6 +12,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -21,6 +22,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	vegeta "github.com/tsenart/vegeta/v12/lib"
@@ -51,6 +53,24 @@ func replyHead(code uint16, h http.Header) int {
 	return n
 }
 
+// plainBody is the reply body as the app meant it. A request that names
+// Accept-Encoding itself gets the compressed bytes from Go's client, so a
+// gzip reply is unpacked before the -body-must-contain check.
+func plainBody(r vegeta.Result) []byte {
+	if !strings.EqualFold(r.Headers.Get("Content-Encoding"), "gzip") {
+		return r.Body
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(r.Body))
+	if err != nil {
+		return r.Body
+	}
+	out, err := io.ReadAll(zr)
+	if err != nil {
+		return r.Body
+	}
+	return out
+}
+
 func main() {
 	must := flag.String("body-must-contain", "", "count 2xx replies without this text as RPC failures")
 	reqHead := flag.Float64("request-head-bytes", 0, "request line and headers a request, added to bytes_out")
@@ -74,7 +94,7 @@ func main() {
 		if r.Code >= 200 && r.Code < 400 {
 			s.Success++
 		}
-		if len(needle) > 0 && r.Code >= 200 && r.Code < 300 && !bytes.Contains(r.Body, needle) {
+		if len(needle) > 0 && r.Code >= 200 && r.Code < 300 && !bytes.Contains(plainBody(r), needle) {
 			s.RPCFailed++
 		}
 		if r.Error != "" && len(s.Errors) < 20 {
