@@ -386,11 +386,15 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0, bes
         return row["pass"]
 
     ladder = slo.start_steps(steps, best)
+    first_try = []
     if ladder != steps:
         log(f"    starting at {ladder[0]} rps ({best_from} sustained {best})")
-    for rate in ladder:
-        if not do_step(rate):
-            break
+
+    def set_aside():
+        first_try.append(rows.pop())
+        log(f"    first step failed right after warmup, trying {ladder[0]} rps once more")
+
+    climb(ladder, do_step, retry_first=ladder != steps, on_retry=set_aside, stopped=lambda: stopped[0])
     if not any(r["pass"] for r in rows):
         # The shortened ladder started too high for this rep: walk back down.
         for rate in reversed([s for s in steps if s < ladder[0]]):
@@ -407,7 +411,30 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0, bes
     rows.sort(key=lambda r: r["target_rps"])
     write_csv(rep_dir / "steps.csv", rows)
     write_timeseries(rep_dir / "timeseries.csv", sampler.samples, t0)
-    return {"status": "ok", "image_digest": digest}
+    result = {"status": "ok", "image_digest": digest}
+    if first_try:
+        r = first_try[0]
+        result["first_step_retry"] = {
+            k: r[k] for k in ("target_rps", "achieved_rps", "p99_ms", "error_rate", "app_cpu")
+        }
+    return result
+
+
+def climb(ladder, do_step, retry_first=False, on_retry=None, stopped=lambda: False):
+    """Run the ladder's steps upward until one fails. With retry_first, a
+    failure on the first step is run once more before giving up: a shortened
+    ladder jumps from the warmup rate straight to a high step, and a cold app
+    (connection pools still filling) can stall there though it keeps up a
+    moment later. on_retry runs before the second try."""
+    for i, rate in enumerate(ladder):
+        if do_step(rate):
+            continue
+        if i == 0 and retry_first and not stopped():
+            if on_retry:
+                on_retry()
+            if do_step(rate):
+                continue
+        break
 
 
 def write_csv(path, rows):
