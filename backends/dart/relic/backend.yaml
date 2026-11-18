@@ -18,7 +18,7 @@ variants:
   - id: native-fixed
     db: postgres
     history: false
-    notes: "relic_native with a fix: its drain parks instead of lingering 1 ms in the kernel while handlers wait on their own I/O, which held database replies (app/patches/)."
+    notes: "relic_native with a fix: while handlers wait on their own I/O, its drain gives the event loop a few turns and then parks, instead of lingering 1 ms in the kernel, which held database replies (app/patches/)."
 # How this backend is run and talks to the database; shown on the dashboard.
 implementation:
   server: "Relic router; relic_io (app.serve) or relic_native (app.serveNative)"
