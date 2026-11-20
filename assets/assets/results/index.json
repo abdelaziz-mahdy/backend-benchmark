@@ -1,6 +1,1054 @@
 {
  "runs": [
   {
+   "id": "latest_m2pro-10c-32g_v3",
+   "kind": "latest",
+   "date": "2026-11-20",
+   "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.2.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+   },
+   "methodology": "v3",
+   "dirty": false,
+   "contributor": null,
+   "backends": [
+    "c_sharp-dot-net",
+    "dart-relic-io",
+    "dart-relic-io-v1.2.0",
+    "dart-relic-native",
+    "dart-relic-native-fixed",
+    "dart-server-pod",
+    "dart-server-pod-relic-2.0.0",
+    "dart-server-pod-relic-native-2.0.0",
+    "dart-server-pod-relic-native-fixed-2.0.0",
+    "dart-server-pod-v4.0.3",
+    "go-mux",
+    "java-foam3-embedded",
+    "java-foam3-embedded-gzip",
+    "java-foam3-postgres",
+    "java-spring-boot",
+    "javascript-express-bun",
+    "javascript-express-node",
+    "python-django-async",
+    "python-django-sync",
+    "python-fast-api",
+    "rust-actix-web"
+   ],
+   "names": {
+    "c_sharp-dot-net": "asp.net core",
+    "dart-relic-io": "relic (io)",
+    "dart-relic-io-v1.2.0": "relic 1.2.0 (io)",
+    "dart-relic-native": "relic (native)",
+    "dart-relic-native-fixed": "relic (native-fixed)",
+    "dart-server-pod": "serverpod",
+    "dart-server-pod-relic-2.0.0": "serverpod (relic-2.0.0)",
+    "dart-server-pod-relic-native-2.0.0": "serverpod (relic-native-2.0.0)",
+    "dart-server-pod-relic-native-fixed-2.0.0": "serverpod (relic-native-fixed-2.0.0)",
+    "dart-server-pod-v4.0.3": "serverpod 4.0.3",
+    "go-mux": "go mux",
+    "java-foam3-embedded": "foam3 (embedded)",
+    "java-foam3-embedded-gzip": "foam3 (embedded-gzip)",
+    "java-foam3-postgres": "foam3 (postgres)",
+    "java-spring-boot": "spring boot",
+    "javascript-express-bun": "express (bun)",
+    "javascript-express-node": "express (node)",
+    "python-django-async": "django (async)",
+    "python-django-sync": "django (sync)",
+    "python-fast-api": "fastapi",
+    "rust-actix-web": "rust actix-web"
+   },
+   "scenarios": [
+    "db_mixed",
+    "db_read",
+    "db_write",
+    "no_db"
+   ],
+   "runs": [
+    "2026-11-18_m2pro-10c-32g_2ab8fd2_2d5e",
+    "2026-11-18_m2pro-10c-32g_82ec170_566a",
+    "2026-11-19_m2pro-10c-32g_e8e0c48_f1x5"
+   ],
+   "headline": {
+    "c_sharp-dot-net": {
+     "db_mixed": {
+      "sustainable_rps": 17000.0,
+      "peak_rps": 20728.5,
+      "p50_ms": 0.424292,
+      "p99_ms": 10.606208,
+      "error_rate": 0.0,
+      "app_cpu": 168.0176363636363,
+      "app_mem_mb": 693.8545454545456,
+      "bytes_in": 719.1985862883697,
+      "bytes_out": 158.81781551161262
+     },
+     "db_read": {
+      "sustainable_rps": 15500.0,
+      "peak_rps": 15999.866666666667,
+      "p50_ms": 0.2895,
+      "p99_ms": 2.036625,
+      "error_rate": 0.0,
+      "app_cpu": 147.7730909090909,
+      "app_mem_mb": 615.8672727272728,
+      "bytes_in": 838.5494193548387,
+      "bytes_out": 138.60000000103375
+     },
+     "db_write": {
+      "sustainable_rps": 13500.0,
+      "peak_rps": 15309.766666666666,
+      "p50_ms": 0.765791,
+      "p99_ms": 14.453458,
+      "error_rate": 0.0,
+      "app_cpu": 129.20636363636362,
+      "app_mem_mb": 564.64,
+      "bytes_in": 223.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 80000.0,
+      "p50_ms": 0.38325,
+      "p99_ms": 23.337083,
+      "error_rate": 0.0,
+      "app_cpu": 158.994,
+      "app_mem_mb": 121.68727272727274,
+      "bytes_in": 148.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    },
+    "dart-relic-io": {
+     "db_mixed": {
+      "sustainable_rps": 13000.0,
+      "peak_rps": 14029.433333333332,
+      "p50_ms": 0.492,
+      "p99_ms": 5.88025,
+      "error_rate": 0.0,
+      "app_cpu": 153.5261818181819,
+      "app_mem_mb": 206.55999999999997,
+      "bytes_in": 717.7804256410257,
+      "bytes_out": 158.82133076923077
+     },
+     "db_read": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.574792,
+      "p99_ms": 7.010542,
+      "error_rate": 0.0,
+      "app_cpu": 178.9570909090909,
+      "app_mem_mb": 54.14199999999999,
+      "bytes_in": 842.655325,
+      "bytes_out": 138.60000000104802
+     },
+     "db_write": {
+      "sustainable_rps": 11000.0,
+      "peak_rps": 13093.133333333333,
+      "p50_ms": 0.947083,
+      "p99_ms": 10.562958,
+      "error_rate": 0.0,
+      "app_cpu": 124.00781818181821,
+      "app_mem_mb": 51.83090909090909,
+      "bytes_in": 200.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 54000.0,
+      "peak_rps": 60071.53333333333,
+      "p50_ms": 1.138708,
+      "p99_ms": 51.371792,
+      "error_rate": 0.0,
+      "app_cpu": 164.31839285714278,
+      "app_mem_mb": 89.24428571428568,
+      "bytes_in": 151.0,
+      "bytes_out": 136.0
+     }
+    },
+    "dart-relic-io-v1.2.0": {
+     "db_mixed": {
+      "sustainable_rps": 12000.0,
+      "peak_rps": 12709.966666666667,
+      "p50_ms": 5.23225,
+      "p99_ms": 20.167916,
+      "error_rate": 0.0,
+      "app_cpu": 149.80399999999995,
+      "app_mem_mb": 82.23563636363635,
+      "bytes_in": 717.9773111741356,
+      "bytes_out": 158.81799495001403
+     },
+     "db_read": {
+      "sustainable_rps": 12000.0,
+      "peak_rps": 12959.8,
+      "p50_ms": 0.955958,
+      "p99_ms": 30.209208,
+      "error_rate": 0.0,
+      "app_cpu": 156.62629629629626,
+      "app_mem_mb": 63.31000000000001,
+      "bytes_in": 842.6274104032756,
+      "bytes_out": 138.60000000090065
+     },
+     "db_write": {
+      "sustainable_rps": 7750.0,
+      "peak_rps": 8000.0,
+      "p50_ms": 0.705417,
+      "p99_ms": 46.871333,
+      "error_rate": 0.0,
+      "app_cpu": 101.22200000000002,
+      "app_mem_mb": 50.58018181818181,
+      "bytes_in": 200.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 48000.0,
+      "peak_rps": 48546.46666666667,
+      "p50_ms": 1.609167,
+      "p99_ms": 13.835833,
+      "error_rate": 0.0,
+      "app_cpu": 182.0649090909091,
+      "app_mem_mb": 58.56672727272728,
+      "bytes_in": 151.0,
+      "bytes_out": 136.0
+     }
+    },
+    "dart-relic-native": {
+     "db_mixed": {
+      "sustainable_rps": 1700.0,
+      "peak_rps": 1999.9333333333334,
+      "p50_ms": 4.154208,
+      "p99_ms": 30.026917,
+      "error_rate": 0.0,
+      "app_cpu": 23.360000000000003,
+      "app_mem_mb": 231.1745454545455,
+      "bytes_in": 718.0158630561383,
+      "bytes_out": 158.80485891880232
+     },
+     "db_read": {
+      "sustainable_rps": 1600.0,
+      "peak_rps": 1999.9666666666667,
+      "p50_ms": 3.855709,
+      "p99_ms": 12.559583,
+      "error_rate": 0.0,
+      "app_cpu": 23.669818181818176,
+      "app_mem_mb": 232.42727272727274,
+      "bytes_in": 842.3364861767953,
+      "bytes_out": 138.5999999999038
+     },
+     "db_write": {
+      "sustainable_rps": 2250.0,
+      "peak_rps": 3999.9333333333334,
+      "p50_ms": 4.341167,
+      "p99_ms": 22.218875,
+      "error_rate": 0.0,
+      "app_cpu": 23.92518518518519,
+      "app_mem_mb": 234.1962962962962,
+      "bytes_in": 199.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 80000.0,
+      "p50_ms": 0.128791,
+      "p99_ms": 25.153625,
+      "error_rate": 0.0,
+      "app_cpu": 108.82472727272724,
+      "app_mem_mb": 135.21781818181816,
+      "bytes_in": 151.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    },
+    "dart-relic-native-fixed": {
+     "db_mixed": {
+      "sustainable_rps": 21000.0,
+      "peak_rps": 20999.966666666667,
+      "p50_ms": 0.724042,
+      "p99_ms": 12.427208,
+      "error_rate": 0.0,
+      "app_cpu": 185.13781818181815,
+      "app_mem_mb": 265.0200000000001,
+      "bytes_in": 717.9050411191129,
+      "bytes_out": 158.81743780545685
+     },
+     "db_read": {
+      "sustainable_rps": 22000.0,
+      "peak_rps": 22000.266666666666,
+      "p50_ms": 0.779041,
+      "p99_ms": 9.007958,
+      "error_rate": 0.0,
+      "app_cpu": 187.31654545454538,
+      "app_mem_mb": 239.6527272727273,
+      "bytes_in": 842.6099577580878,
+      "bytes_out": 138.59999999918384
+     },
+     "db_write": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16730.6,
+      "p50_ms": 1.085292,
+      "p99_ms": 22.636625,
+      "error_rate": 0.0,
+      "app_cpu": 135.33037037037036,
+      "app_mem_mb": 67.67870370370369,
+      "bytes_in": 199.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 80000.0,
+      "p50_ms": 0.839834,
+      "p99_ms": 67.220333,
+      "error_rate": 0.0,
+      "app_cpu": 114.33909090909087,
+      "app_mem_mb": 346.27636363636367,
+      "bytes_in": 151.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    },
+    "dart-server-pod": {
+     "db_mixed": {
+      "sustainable_rps": 6000.0,
+      "peak_rps": 6500.0,
+      "p50_ms": 0.462417,
+      "p99_ms": 8.976042,
+      "error_rate": 0.0,
+      "app_cpu": 90.23909090909092,
+      "app_mem_mb": 306.121818181818,
+      "bytes_in": 983.0651274159588,
+      "bytes_out": 214.77271792934485
+     },
+     "db_read": {
+      "sustainable_rps": 6000.0,
+      "peak_rps": 6000.033333333334,
+      "p50_ms": 0.509334,
+      "p99_ms": 20.804125,
+      "error_rate": 0.0,
+      "app_cpu": 96.51599999999999,
+      "app_mem_mb": 322.0163636363637,
+      "bytes_in": 1151.7438736451463,
+      "bytes_out": 204.151129715946
+     },
+     "db_write": {
+      "sustainable_rps": 6000.0,
+      "peak_rps": 6206.7,
+      "p50_ms": 0.817542,
+      "p99_ms": 11.152917,
+      "error_rate": 0.0,
+      "app_cpu": 92.67709090909088,
+      "app_mem_mb": 315.54,
+      "bytes_in": 285.0,
+      "bytes_out": 257.0
+     },
+     "no_db": {
+      "sustainable_rps": 21000.0,
+      "peak_rps": 21000.033333333333,
+      "p50_ms": 0.213166,
+      "p99_ms": 9.464333,
+      "error_rate": 0.0,
+      "app_cpu": 107.2003703703704,
+      "app_mem_mb": 95.01481481481484,
+      "bytes_in": 219.0,
+      "bytes_out": 192.0
+     }
+    },
+    "dart-server-pod-relic-2.0.0": {
+     "db_mixed": {
+      "sustainable_rps": 5500.0,
+      "peak_rps": 5827.566666666667,
+      "p50_ms": 0.426417,
+      "p99_ms": 3.814375,
+      "error_rate": 0.0,
+      "app_cpu": 85.15240740740738,
+      "app_mem_mb": 284.17777777777775,
+      "bytes_in": 983.7046442142774,
+      "bytes_out": 214.7808255707541
+     },
+     "db_read": {
+      "sustainable_rps": 6000.0,
+      "peak_rps": 6000.0,
+      "p50_ms": 0.479083,
+      "p99_ms": 9.292875,
+      "error_rate": 0.0,
+      "app_cpu": 93.89309090909099,
+      "app_mem_mb": 318.32000000000005,
+      "bytes_in": 1151.7487166666667,
+      "bytes_out": 204.15118333333334
+     },
+     "db_write": {
+      "sustainable_rps": 5750.0,
+      "peak_rps": 6000.033333333334,
+      "p50_ms": 0.760917,
+      "p99_ms": 8.2235,
+      "error_rate": 0.0,
+      "app_cpu": 87.18436363636363,
+      "app_mem_mb": 296.71272727272725,
+      "bytes_in": 285.11273623188407,
+      "bytes_out": 257.0
+     },
+     "no_db": {
+      "sustainable_rps": 19000.0,
+      "peak_rps": 20405.666666666668,
+      "p50_ms": 0.177583,
+      "p99_ms": 29.130458,
+      "error_rate": 0.0,
+      "app_cpu": 101.92290909090907,
+      "app_mem_mb": 80.8429090909091,
+      "bytes_in": 219.0,
+      "bytes_out": 192.0
+     }
+    },
+    "dart-server-pod-relic-native-2.0.0": {
+     "db_mixed": {
+      "sustainable_rps": 650.0,
+      "peak_rps": 1000.0,
+      "p50_ms": 3.367167,
+      "p99_ms": 13.199417,
+      "error_rate": 0.0,
+      "app_cpu": 13.430185185185193,
+      "app_mem_mb": 147.78333333333327,
+      "bytes_in": 982.1849743589744,
+      "bytes_out": 214.72502564102564
+     },
+     "db_read": {
+      "sustainable_rps": 650.0,
+      "peak_rps": 989.1666666666666,
+      "p50_ms": 3.826792,
+      "p99_ms": 34.278125,
+      "error_rate": 0.0,
+      "app_cpu": 14.845272727272725,
+      "app_mem_mb": 177.08363636363643,
+      "bytes_in": 1150.3453333333334,
+      "bytes_out": 204.1422564102564
+     },
+     "db_write": {
+      "sustainable_rps": 800.0,
+      "peak_rps": 1000.0,
+      "p50_ms": 4.273958,
+      "p99_ms": 26.073625,
+      "error_rate": 0.0,
+      "app_cpu": 11.245272727272726,
+      "app_mem_mb": 238.77272727272725,
+      "bytes_in": 285.0,
+      "bytes_out": 257.0
+     },
+     "no_db": {
+      "sustainable_rps": 44000.0,
+      "peak_rps": 47683.63333333333,
+      "p50_ms": 0.334292,
+      "p99_ms": 26.611958,
+      "error_rate": 0.0,
+      "app_cpu": 93.60272727272726,
+      "app_mem_mb": 239.85090909090914,
+      "bytes_in": 219.0,
+      "bytes_out": 192.0
+     }
+    },
+    "dart-server-pod-relic-native-fixed-2.0.0": {
+     "db_mixed": {
+      "sustainable_rps": 7250.0,
+      "peak_rps": 7500.0,
+      "p50_ms": 0.580167,
+      "p99_ms": 14.652791,
+      "error_rate": 0.0,
+      "app_cpu": 95.54400000000004,
+      "app_mem_mb": 228.29454545454556,
+      "bytes_in": 983.564612088387,
+      "bytes_out": 214.78115660833663
+     },
+     "db_read": {
+      "sustainable_rps": 7250.0,
+      "peak_rps": 7250.0,
+      "p50_ms": 0.611042,
+      "p99_ms": 10.620208,
+      "error_rate": 0.0,
+      "app_cpu": 90.64618181818182,
+      "app_mem_mb": 235.69818181818195,
+      "bytes_in": 1151.4118344827586,
+      "bytes_out": 204.1488
+     },
+     "db_write": {
+      "sustainable_rps": 5750.0,
+      "peak_rps": 7108.166666666667,
+      "p50_ms": 0.661958,
+      "p99_ms": 3.011125,
+      "error_rate": 0.0,
+      "app_cpu": 79.67545454545456,
+      "app_mem_mb": 153.51454545454547,
+      "bytes_in": 285.10577971014493,
+      "bytes_out": 257.0
+     },
+     "no_db": {
+      "sustainable_rps": 40000.0,
+      "peak_rps": 48035.1,
+      "p50_ms": 0.200958,
+      "p99_ms": 15.60425,
+      "error_rate": 0.0,
+      "app_cpu": 89.5592727272727,
+      "app_mem_mb": 251.95090909090908,
+      "bytes_in": 219.0,
+      "bytes_out": 192.0
+     }
+    },
+    "dart-server-pod-v4.0.3": {
+     "db_mixed": {
+      "sustainable_rps": 5250.0,
+      "peak_rps": 6000.033333333334,
+      "p50_ms": 0.40375,
+      "p99_ms": 2.12175,
+      "error_rate": 0.0,
+      "app_cpu": 80.98581818181819,
+      "app_mem_mb": 86.9543636363636,
+      "bytes_in": 983.5831174603175,
+      "bytes_out": 214.77350476190477
+     },
+     "db_read": {
+      "sustainable_rps": 5750.0,
+      "peak_rps": 5750.033333333334,
+      "p50_ms": 0.483042,
+      "p99_ms": 10.575167,
+      "error_rate": 0.0,
+      "app_cpu": 93.34781818181817,
+      "app_mem_mb": 52.08818181818182,
+      "bytes_in": 1151.7253291285267,
+      "bytes_out": 204.15092955982863
+     },
+     "db_write": {
+      "sustainable_rps": 6250.0,
+      "peak_rps": 6485.0,
+      "p50_ms": 0.793375,
+      "p99_ms": 18.776833,
+      "error_rate": 0.0,
+      "app_cpu": 88.87781818181821,
+      "app_mem_mb": 306.049090909091,
+      "bytes_in": 285.66112533333336,
+      "bytes_out": 257.0
+     },
+     "no_db": {
+      "sustainable_rps": 21000.0,
+      "peak_rps": 21178.5,
+      "p50_ms": 0.219166,
+      "p99_ms": 12.602708,
+      "error_rate": 0.0,
+      "app_cpu": 106.16818181818185,
+      "app_mem_mb": 86.13800000000002,
+      "bytes_in": 219.0,
+      "bytes_out": 192.0
+     }
+    },
+    "go-mux": {
+     "db_mixed": {
+      "sustainable_rps": 24000.0,
+      "peak_rps": 25393.9,
+      "p50_ms": 2.530292,
+      "p99_ms": 45.873583,
+      "error_rate": 0.0,
+      "app_cpu": 124.85145454545453,
+      "app_mem_mb": 405.2981818181819,
+      "bytes_in": 704.0055749148277,
+      "bytes_out": 158.81661807944602
+     },
+     "db_read": {
+      "sustainable_rps": 23000.0,
+      "peak_rps": 30862.033333333333,
+      "p50_ms": 0.811209,
+      "p99_ms": 7.623167,
+      "error_rate": 0.0,
+      "app_cpu": 119.38345454545458,
+      "app_mem_mb": 328.58000000000004,
+      "bytes_in": 828.638168764239,
+      "bytes_out": 138.59999999896021
+     },
+     "db_write": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 20642.533333333333,
+      "p50_ms": 0.727125,
+      "p99_ms": 9.900542,
+      "error_rate": 0.0,
+      "app_cpu": 112.40600000000005,
+      "app_mem_mb": 59.67327272727274,
+      "bytes_in": 185.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 76000.0,
+      "peak_rps": 80000.0,
+      "p50_ms": 0.357917,
+      "p99_ms": 14.911791,
+      "error_rate": 0.0,
+      "app_cpu": 125.43090909090911,
+      "app_mem_mb": 202.59999999999997,
+      "bytes_in": 137.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    },
+    "java-foam3-embedded": {
+     "db_mixed": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.161958,
+      "p99_ms": 7.604375,
+      "error_rate": 0.0,
+      "app_cpu": 138.29727272727274,
+      "app_mem_mb": 1888.0884363636342,
+      "bytes_in": 1194.6473083333333,
+      "bytes_out": 537.96284375
+     },
+     "db_read": {
+      "sustainable_rps": 23000.0,
+      "peak_rps": 23000.133333333335,
+      "p50_ms": 0.622709,
+      "p99_ms": 10.276375,
+      "error_rate": 0.0,
+      "app_cpu": 155.5565454545454,
+      "app_mem_mb": 1896.466618181816,
+      "bytes_in": 1369.9814783682414,
+      "bytes_out": 521.1640033970817
+     },
+     "db_write": {
+      "sustainable_rps": 9500.0,
+      "peak_rps": 10000.0,
+      "p50_ms": 0.154917,
+      "p99_ms": 64.748375,
+      "error_rate": 0.0,
+      "app_cpu": 115.18925925925925,
+      "app_mem_mb": 2038.954666666666,
+      "bytes_in": 467.018350877193,
+      "bytes_out": 605.0
+     },
+     "no_db": {
+      "sustainable_rps": 15500.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.142875,
+      "p99_ms": 1.508083,
+      "error_rate": 0.0,
+      "app_cpu": 135.4816363636363,
+      "app_mem_mb": 1912.943709090908,
+      "bytes_in": 384.0,
+      "bytes_out": 512.0
+     }
+    },
+    "java-foam3-embedded-gzip": {
+     "db_mixed": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.2415,
+      "p99_ms": 7.299,
+      "error_rate": 0.0,
+      "app_cpu": 141.37490909090906,
+      "app_mem_mb": 1887.8463999999992,
+      "bytes_in": 497.9121583333333,
+      "bytes_out": 533.96284375
+     },
+     "db_read": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.244875,
+      "p99_ms": 4.075375,
+      "error_rate": 0.0,
+      "app_cpu": 141.2710909090909,
+      "app_mem_mb": 1868.855854545456,
+      "bytes_in": 504.0633833333333,
+      "bytes_out": 517.1639875
+     },
+     "db_write": {
+      "sustainable_rps": 8500.0,
+      "peak_rps": 10000.0,
+      "p50_ms": 0.160833,
+      "p99_ms": 8.447708,
+      "error_rate": 0.0,
+      "app_cpu": 109.18963636363637,
+      "app_mem_mb": 1938.3947636363641,
+      "bytes_in": 473.3229333333333,
+      "bytes_out": 601.0
+     },
+     "no_db": {
+      "sustainable_rps": 19000.0,
+      "peak_rps": 19000.233333333334,
+      "p50_ms": 0.313667,
+      "p99_ms": 17.988167,
+      "error_rate": 0.0,
+      "app_cpu": 144.98709090909094,
+      "app_mem_mb": 2013.9845818181811,
+      "bytes_in": 425.0000017543644,
+      "bytes_out": 508.0
+     }
+    },
+    "java-foam3-postgres": {
+     "db_mixed": {
+      "sustainable_rps": 11500.0,
+      "peak_rps": 11500.033333333333,
+      "p50_ms": 0.294083,
+      "p99_ms": 15.388125,
+      "error_rate": 0.0,
+      "app_cpu": 151.56818181818184,
+      "app_mem_mb": 1976.6737454545457,
+      "bytes_in": 1194.8159338668584,
+      "bytes_out": 537.9720464578363
+     },
+     "db_read": {
+      "sustainable_rps": 11000.0,
+      "peak_rps": 11500.066666666668,
+      "p50_ms": 0.269875,
+      "p99_ms": 4.479209,
+      "error_rate": 0.0,
+      "app_cpu": 149.1798181818182,
+      "app_mem_mb": 1936.8680727272724,
+      "bytes_in": 1370.0478272727273,
+      "bytes_out": 521.1640454545454
+     },
+     "db_write": {
+      "sustainable_rps": 9500.0,
+      "peak_rps": 9999.966666666667,
+      "p50_ms": 0.631542,
+      "p99_ms": 4.715708,
+      "error_rate": 0.0,
+      "app_cpu": 136.09309090909088,
+      "app_mem_mb": 2040.4596363636344,
+      "bytes_in": 467.00385964912283,
+      "bytes_out": 605.0
+     },
+     "no_db": {
+      "sustainable_rps": 23000.0,
+      "peak_rps": 23000.133333333335,
+      "p50_ms": 0.562542,
+      "p99_ms": 10.332166,
+      "error_rate": 0.0,
+      "app_cpu": 152.48163636363637,
+      "app_mem_mb": 1970.3249454545476,
+      "bytes_in": 384.0000043478009,
+      "bytes_out": 512.0
+     }
+    },
+    "java-spring-boot": {
+     "db_mixed": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 18000.166666666668,
+      "p50_ms": 0.344584,
+      "p99_ms": 10.420292,
+      "error_rate": 0.0,
+      "app_cpu": 163.62454545454537,
+      "app_mem_mb": 527.3054545454546,
+      "bytes_in": 690.8701872295567,
+      "bytes_out": 158.8173558694914
+     },
+     "db_read": {
+      "sustainable_rps": 19000.0,
+      "peak_rps": 21755.633333333335,
+      "p50_ms": 0.397583,
+      "p99_ms": 5.041584,
+      "error_rate": 0.0,
+      "app_cpu": 172.88709090909092,
+      "app_mem_mb": 579.3199999999999,
+      "bytes_in": 817.5458794221104,
+      "bytes_out": 138.59999999999613
+     },
+     "db_write": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 17397.166666666668,
+      "p50_ms": 0.901333,
+      "p99_ms": 36.770917,
+      "error_rate": 0.0,
+      "app_cpu": 170.8512727272727,
+      "app_mem_mb": 634.3527272727271,
+      "bytes_in": 164.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 66000.0,
+      "peak_rps": 71603.13333333333,
+      "p50_ms": 2.134,
+      "p99_ms": 13.298875,
+      "error_rate": 0.0,
+      "app_cpu": 159.6567272727272,
+      "app_mem_mb": 1027.034763636364,
+      "bytes_in": 136.0,
+      "bytes_out": 136.0
+     }
+    },
+    "javascript-express-bun": {
+     "db_mixed": {
+      "sustainable_rps": 22000.0,
+      "peak_rps": 32000.0,
+      "p50_ms": 0.273625,
+      "p99_ms": 22.582792,
+      "error_rate": 0.0,
+      "app_cpu": 129.85037037037034,
+      "app_mem_mb": 106.56851851851852,
+      "bytes_in": 765.003790863141,
+      "bytes_out": 158.81773554259948
+     },
+     "db_read": {
+      "sustainable_rps": 40000.0,
+      "peak_rps": 40000.0,
+      "p50_ms": 1.1665,
+      "p99_ms": 14.98625,
+      "error_rate": 0.0,
+      "app_cpu": 181.38509090909085,
+      "app_mem_mb": 249.38545454545465,
+      "bytes_in": 889.58902,
+      "bytes_out": 138.59999999686895
+     },
+     "db_write": {
+      "sustainable_rps": 20000.0,
+      "peak_rps": 25251.566666666666,
+      "p50_ms": 2.019042,
+      "p99_ms": 22.190042,
+      "error_rate": 0.0,
+      "app_cpu": 120.65345454545457,
+      "app_mem_mb": 134.62727272727275,
+      "bytes_in": 247.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 80000.0,
+      "p50_ms": 4.6085,
+      "p99_ms": 67.212917,
+      "error_rate": 0.0,
+      "app_cpu": 134.4421818181818,
+      "app_mem_mb": 171.06909090909082,
+      "bytes_in": 198.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    },
+    "javascript-express-node": {
+     "db_mixed": {
+      "sustainable_rps": 25000.0,
+      "peak_rps": 25000.0,
+      "p50_ms": 1.445625,
+      "p99_ms": 21.257208,
+      "error_rate": 0.0,
+      "app_cpu": 177.9378181818182,
+      "app_mem_mb": 508.6727272727273,
+      "bytes_in": 765.0347,
+      "bytes_out": 158.8177
+     },
+     "db_read": {
+      "sustainable_rps": 27000.0,
+      "peak_rps": 27000.033333333333,
+      "p50_ms": 0.272375,
+      "p99_ms": 5.404917,
+      "error_rate": 0.0,
+      "app_cpu": 174.24254545454545,
+      "app_mem_mb": 490.8309090909092,
+      "bytes_in": 889.605263450292,
+      "bytes_out": 138.59999999823125
+     },
+     "db_write": {
+      "sustainable_rps": 15500.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.658625,
+      "p99_ms": 19.191333,
+      "error_rate": 0.0,
+      "app_cpu": 117.13781818181819,
+      "app_mem_mb": 299.24363636363626,
+      "bytes_in": 247.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 80000.0,
+      "p50_ms": 2.208542,
+      "p99_ms": 42.827084,
+      "error_rate": 0.0,
+      "app_cpu": 172.2472727272728,
+      "app_mem_mb": 251.17454545454538,
+      "bytes_in": 198.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    },
+    "python-django-async": {
+     "db_mixed": {
+      "sustainable_rps": 350.0,
+      "peak_rps": 500.0,
+      "p50_ms": 4.236792,
+      "p99_ms": 9.823417,
+      "error_rate": 0.0,
+      "app_cpu": 125.8363636363636,
+      "app_mem_mb": 188.53454545454545,
+      "bytes_in": 768.0689523809524,
+      "bytes_out": 158.8842857142857
+     },
+     "db_read": {
+      "sustainable_rps": 350.0,
+      "peak_rps": 500.0,
+      "p50_ms": 4.293333,
+      "p99_ms": 12.291375,
+      "error_rate": 0.0,
+      "app_cpu": 129.06555555555562,
+      "app_mem_mb": 193.59629629629632,
+      "bytes_in": 906.3165714285715,
+      "bytes_out": 138.6000000000142
+     },
+     "db_write": {
+      "sustainable_rps": 500.0,
+      "peak_rps": 814.9666666666667,
+      "p50_ms": 10.360375,
+      "p99_ms": 87.735875,
+      "error_rate": 0.0,
+      "app_cpu": 178.27363636363637,
+      "app_mem_mb": 157.54727272727277,
+      "bytes_in": 205.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 3250.0,
+      "peak_rps": 3400.0,
+      "p50_ms": 5.277916,
+      "p99_ms": 19.054,
+      "error_rate": 0.0,
+      "app_cpu": 158.41851851851854,
+      "app_mem_mb": 228.76666666666668,
+      "bytes_in": 154.0,
+      "bytes_out": 136.0
+     }
+    },
+    "python-django-sync": {
+     "db_mixed": {
+      "sustainable_rps": 4500.0,
+      "peak_rps": 5813.966666666666,
+      "p50_ms": 3.5925,
+      "p99_ms": 30.176875,
+      "error_rate": 0.0,
+      "app_cpu": 189.67181818181822,
+      "app_mem_mb": 268.50909090909096,
+      "bytes_in": 795.0048889251032,
+      "bytes_out": 158.81669493848102
+     },
+     "db_read": {
+      "sustainable_rps": 4000.0,
+      "peak_rps": 6023.833333333333,
+      "p50_ms": 2.02925,
+      "p99_ms": 9.150875,
+      "error_rate": 0.0,
+      "app_cpu": 185.15333333333325,
+      "app_mem_mb": 237.22222222222229,
+      "bytes_in": 931.3477333333333,
+      "bytes_out": 138.599999999738
+     },
+     "db_write": {
+      "sustainable_rps": 4250.0,
+      "peak_rps": 5984.066666666667,
+      "p50_ms": 1.598834,
+      "p99_ms": 6.754625,
+      "error_rate": 0.0,
+      "app_cpu": 177.25962962962956,
+      "app_mem_mb": 266.8222222222222,
+      "bytes_in": 231.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 11.537833,
+      "p99_ms": 63.313,
+      "error_rate": 0.0,
+      "app_cpu": 203.97145454545455,
+      "app_mem_mb": 197.02181818181808,
+      "bytes_in": 179.0,
+      "bytes_out": 136.0
+     }
+    },
+    "python-fast-api": {
+     "db_mixed": {
+      "sustainable_rps": 2900.0,
+      "peak_rps": 3121.233333333333,
+      "p50_ms": 0.955208,
+      "p99_ms": 24.438167,
+      "error_rate": 2.2988505747126437e-05,
+      "app_cpu": 155.38799999999998,
+      "app_mem_mb": 519.4745454545455,
+      "bytes_in": 718.8287586206897,
+      "bytes_out": 158.81424137931035
+     },
+     "db_read": {
+      "sustainable_rps": 2600.0,
+      "peak_rps": 3103.633333333333,
+      "p50_ms": 0.700708,
+      "p99_ms": 8.458417,
+      "error_rate": 0.0,
+      "app_cpu": 145.0192727272727,
+      "app_mem_mb": 522.0509090909093,
+      "bytes_in": 844.4108205128205,
+      "bytes_out": 138.59999999979752
+     },
+     "db_write": {
+      "sustainable_rps": 3500.0,
+      "peak_rps": 3773.6666666666665,
+      "p50_ms": 1.587208,
+      "p99_ms": 23.226959,
+      "error_rate": 0.0,
+      "app_cpu": 173.01072727272728,
+      "app_mem_mb": 686.0618181818181,
+      "bytes_in": 201.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 21000.0,
+      "peak_rps": 30113.266666666666,
+      "p50_ms": 0.180042,
+      "p99_ms": 29.137958,
+      "error_rate": 0.0,
+      "app_cpu": 161.56436363636362,
+      "app_mem_mb": 252.53818181818178,
+      "bytes_in": 153.0,
+      "bytes_out": 136.0
+     }
+    },
+    "rust-actix-web": {
+     "db_mixed": {
+      "sustainable_rps": 42000.0,
+      "peak_rps": 46264.0,
+      "p50_ms": 1.07325,
+      "p99_ms": 33.001542,
+      "error_rate": 0.0,
+      "app_cpu": 159.6223636363636,
+      "app_mem_mb": 297.64363636363623,
+      "bytes_in": 703.2177626211482,
+      "bytes_out": 158.81781198513048
+     },
+     "db_read": {
+      "sustainable_rps": 50000.0,
+      "peak_rps": 55053.96666666667,
+      "p50_ms": 0.840833,
+      "p99_ms": 20.612208,
+      "error_rate": 0.0,
+      "app_cpu": 163.29236363636358,
+      "app_mem_mb": 292.2309090909092,
+      "bytes_in": 827.58902,
+      "bytes_out": 138.59999999630307
+     },
+     "db_write": {
+      "sustainable_rps": 18000.0,
+      "peak_rps": 28170.266666666666,
+      "p50_ms": 0.587,
+      "p99_ms": 22.6675,
+      "error_rate": 0.0,
+      "app_cpu": 86.9065454545455,
+      "app_mem_mb": 285.3199999999999,
+      "bytes_in": 185.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 79999.93333333333,
+      "p50_ms": 0.1105,
+      "p99_ms": 14.043333,
+      "error_rate": 0.0,
+      "app_cpu": 92.5910909090909,
+      "app_mem_mb": 39.090363636363634,
+      "bytes_in": 136.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    }
+   },
+   "file": "runs/latest_m2pro-10c-32g_v3.json"
+  },
+  {
    "id": "latest_m2pro-10c-32g_v2.1",
    "kind": "latest",
    "date": "2026-11-18",
@@ -1580,6 +2628,210 @@
    "file": "runs/latest_m2pro-10c-32g_v2.json"
   },
   {
+   "id": "2026-11-19_m2pro-10c-32g_e8e0c48_f1x5",
+   "kind": "run",
+   "date": "2026-11-20",
+   "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.2.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+   },
+   "methodology": "v3",
+   "dirty": false,
+   "contributor": null,
+   "backends": [
+    "c_sharp-dot-net",
+    "dart-relic-io-v1.2.0",
+    "dart-relic-native-fixed",
+    "go-mux",
+    "java-foam3-embedded",
+    "java-foam3-embedded-gzip",
+    "java-foam3-postgres",
+    "java-spring-boot"
+   ],
+   "names": {
+    "c_sharp-dot-net": "asp.net core",
+    "dart-relic-io-v1.2.0": "relic 1.2.0 (io)",
+    "dart-relic-native-fixed": "relic (native-fixed)",
+    "go-mux": "go mux",
+    "java-foam3-embedded": "foam3 (embedded)",
+    "java-foam3-embedded-gzip": "foam3 (embedded-gzip)",
+    "java-foam3-postgres": "foam3 (postgres)",
+    "java-spring-boot": "spring boot"
+   },
+   "scenarios": [
+    "db_mixed",
+    "db_read",
+    "db_write",
+    "no_db"
+   ],
+   "runs": null,
+   "headline": {
+    "c_sharp-dot-net": {
+     "db_read": {
+      "sustainable_rps": 15500.0,
+      "peak_rps": 15999.866666666667,
+      "p50_ms": 0.2895,
+      "p99_ms": 2.036625,
+      "error_rate": 0.0,
+      "app_cpu": 147.7730909090909,
+      "app_mem_mb": 615.8672727272728,
+      "bytes_in": 838.5494193548387,
+      "bytes_out": 138.60000000103375
+     }
+    },
+    "dart-relic-io-v1.2.0": {
+     "db_mixed": {
+      "sustainable_rps": 12000.0,
+      "peak_rps": 12709.966666666667,
+      "p50_ms": 5.23225,
+      "p99_ms": 20.167916,
+      "error_rate": 0.0,
+      "app_cpu": 149.80399999999995,
+      "app_mem_mb": 82.23563636363635,
+      "bytes_in": 717.9773111741356,
+      "bytes_out": 158.81799495001403
+     }
+    },
+    "dart-relic-native-fixed": {
+     "db_mixed": {
+      "sustainable_rps": 21000.0,
+      "peak_rps": 20999.966666666667,
+      "p50_ms": 0.724042,
+      "p99_ms": 12.427208,
+      "error_rate": 0.0,
+      "app_cpu": 185.13781818181815,
+      "app_mem_mb": 265.0200000000001,
+      "bytes_in": 717.9050411191129,
+      "bytes_out": 158.81743780545685
+     }
+    },
+    "go-mux": {
+     "db_read": {
+      "sustainable_rps": 23000.0,
+      "peak_rps": 30862.033333333333,
+      "p50_ms": 0.811209,
+      "p99_ms": 7.623167,
+      "error_rate": 0.0,
+      "app_cpu": 119.38345454545458,
+      "app_mem_mb": 328.58000000000004,
+      "bytes_in": 828.638168764239,
+      "bytes_out": 138.59999999896021
+     }
+    },
+    "java-foam3-embedded": {
+     "db_mixed": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.161958,
+      "p99_ms": 7.604375,
+      "error_rate": 0.0,
+      "app_cpu": 138.29727272727274,
+      "app_mem_mb": 1888.0884363636342,
+      "bytes_in": 1194.6473083333333,
+      "bytes_out": 537.96284375
+     },
+     "db_read": {
+      "sustainable_rps": 23000.0,
+      "peak_rps": 23000.133333333335,
+      "p50_ms": 0.622709,
+      "p99_ms": 10.276375,
+      "error_rate": 0.0,
+      "app_cpu": 155.5565454545454,
+      "app_mem_mb": 1896.466618181816,
+      "bytes_in": 1369.9814783682414,
+      "bytes_out": 521.1640033970817
+     },
+     "db_write": {
+      "sustainable_rps": 9500.0,
+      "peak_rps": 10000.0,
+      "p50_ms": 0.154917,
+      "p99_ms": 64.748375,
+      "error_rate": 0.0,
+      "app_cpu": 115.18925925925925,
+      "app_mem_mb": 2038.954666666666,
+      "bytes_in": 467.018350877193,
+      "bytes_out": 605.0
+     }
+    },
+    "java-foam3-embedded-gzip": {
+     "db_mixed": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.2415,
+      "p99_ms": 7.299,
+      "error_rate": 0.0,
+      "app_cpu": 141.37490909090906,
+      "app_mem_mb": 1887.8463999999992,
+      "bytes_in": 497.9121583333333,
+      "bytes_out": 533.96284375
+     },
+     "db_read": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.244875,
+      "p99_ms": 4.075375,
+      "error_rate": 0.0,
+      "app_cpu": 141.2710909090909,
+      "app_mem_mb": 1868.855854545456,
+      "bytes_in": 504.0633833333333,
+      "bytes_out": 517.1639875
+     },
+     "db_write": {
+      "sustainable_rps": 8500.0,
+      "peak_rps": 10000.0,
+      "p50_ms": 0.160833,
+      "p99_ms": 8.447708,
+      "error_rate": 0.0,
+      "app_cpu": 109.18963636363637,
+      "app_mem_mb": 1938.3947636363641,
+      "bytes_in": 473.3229333333333,
+      "bytes_out": 601.0
+     },
+     "no_db": {
+      "sustainable_rps": 19000.0,
+      "peak_rps": 19000.233333333334,
+      "p50_ms": 0.313667,
+      "p99_ms": 17.988167,
+      "error_rate": 0.0,
+      "app_cpu": 144.98709090909094,
+      "app_mem_mb": 2013.9845818181811,
+      "bytes_in": 425.0000017543644,
+      "bytes_out": 508.0
+     }
+    },
+    "java-foam3-postgres": {
+     "no_db": {
+      "sustainable_rps": 23000.0,
+      "peak_rps": 23000.133333333335,
+      "p50_ms": 0.562542,
+      "p99_ms": 10.332166,
+      "error_rate": 0.0,
+      "app_cpu": 152.48163636363637,
+      "app_mem_mb": 1970.3249454545476,
+      "bytes_in": 384.0000043478009,
+      "bytes_out": 512.0
+     }
+    },
+    "java-spring-boot": {
+     "db_write": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 17397.166666666668,
+      "p50_ms": 0.901333,
+      "p99_ms": 36.770917,
+      "error_rate": 0.0,
+      "app_cpu": 170.8512727272727,
+      "app_mem_mb": 634.3527272727271,
+      "bytes_in": 164.0,
+      "bytes_out": 239.0
+     }
+    }
+   },
+   "file": "runs/2026-11-19_m2pro-10c-32g_e8e0c48_f1x5.json"
+  },
+  {
    "id": "2026-11-18_m2pro-10c-32g_efcd4fa_0bb0",
    "kind": "run",
    "date": "2026-11-18",
@@ -1801,6 +3053,1128 @@
     }
    },
    "file": "runs/2026-11-18_m2pro-10c-32g_efcd4fa_0bb0.json"
+  },
+  {
+   "id": "2026-11-18_m2pro-10c-32g_82ec170_566a",
+   "kind": "run",
+   "date": "2026-11-18",
+   "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.2.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+   },
+   "methodology": "v3",
+   "dirty": false,
+   "contributor": null,
+   "backends": [
+    "rust-actix-web"
+   ],
+   "names": {
+    "rust-actix-web": "rust actix-web"
+   },
+   "scenarios": [
+    "db_mixed",
+    "db_read",
+    "db_write",
+    "no_db"
+   ],
+   "runs": null,
+   "headline": {
+    "rust-actix-web": {
+     "db_mixed": {
+      "sustainable_rps": 42000.0,
+      "peak_rps": 46264.0,
+      "p50_ms": 1.07325,
+      "p99_ms": 33.001542,
+      "error_rate": 0.0,
+      "app_cpu": 159.6223636363636,
+      "app_mem_mb": 297.64363636363623,
+      "bytes_in": 703.2177626211482,
+      "bytes_out": 158.81781198513048
+     },
+     "db_read": {
+      "sustainable_rps": 50000.0,
+      "peak_rps": 55053.96666666667,
+      "p50_ms": 0.840833,
+      "p99_ms": 20.612208,
+      "error_rate": 0.0,
+      "app_cpu": 163.29236363636358,
+      "app_mem_mb": 292.2309090909092,
+      "bytes_in": 827.58902,
+      "bytes_out": 138.59999999630307
+     },
+     "db_write": {
+      "sustainable_rps": 18000.0,
+      "peak_rps": 28170.266666666666,
+      "p50_ms": 0.587,
+      "p99_ms": 22.6675,
+      "error_rate": 0.0,
+      "app_cpu": 86.9065454545455,
+      "app_mem_mb": 285.3199999999999,
+      "bytes_in": 185.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 79999.93333333333,
+      "p50_ms": 0.1105,
+      "p99_ms": 14.043333,
+      "error_rate": 0.0,
+      "app_cpu": 92.5910909090909,
+      "app_mem_mb": 39.090363636363634,
+      "bytes_in": 136.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    }
+   },
+   "file": "runs/2026-11-18_m2pro-10c-32g_82ec170_566a.json"
+  },
+  {
+   "id": "2026-11-18_m2pro-10c-32g_2ab8fd2_2d5e",
+   "kind": "run",
+   "date": "2026-11-18",
+   "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.2.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+   },
+   "methodology": "v3",
+   "dirty": false,
+   "contributor": null,
+   "backends": [
+    "c_sharp-dot-net",
+    "dart-relic-io",
+    "dart-relic-io-v1.2.0",
+    "dart-relic-native",
+    "dart-relic-native-fixed",
+    "dart-server-pod",
+    "dart-server-pod-relic-2.0.0",
+    "dart-server-pod-relic-native-2.0.0",
+    "dart-server-pod-relic-native-fixed-2.0.0",
+    "dart-server-pod-v4.0.3",
+    "go-mux",
+    "java-foam3-embedded",
+    "java-foam3-embedded-gzip",
+    "java-foam3-postgres",
+    "java-spring-boot",
+    "javascript-express-bun",
+    "javascript-express-node",
+    "python-django-async",
+    "python-django-sync",
+    "python-fast-api",
+    "rust-actix-web"
+   ],
+   "names": {
+    "c_sharp-dot-net": "asp.net core",
+    "dart-relic-io": "relic (io)",
+    "dart-relic-io-v1.2.0": "relic 1.2.0 (io)",
+    "dart-relic-native": "relic (native)",
+    "dart-relic-native-fixed": "relic (native-fixed)",
+    "dart-server-pod": "serverpod",
+    "dart-server-pod-relic-2.0.0": "serverpod (relic-2.0.0)",
+    "dart-server-pod-relic-native-2.0.0": "serverpod (relic-native-2.0.0)",
+    "dart-server-pod-relic-native-fixed-2.0.0": "serverpod (relic-native-fixed-2.0.0)",
+    "dart-server-pod-v4.0.3": "serverpod 4.0.3",
+    "go-mux": "go mux",
+    "java-foam3-embedded": "foam3 (embedded)",
+    "java-foam3-embedded-gzip": "foam3 (embedded-gzip)",
+    "java-foam3-postgres": "foam3 (postgres)",
+    "java-spring-boot": "spring boot",
+    "javascript-express-bun": "express (bun)",
+    "javascript-express-node": "express (node)",
+    "python-django-async": "django (async)",
+    "python-django-sync": "django (sync)",
+    "python-fast-api": "fastapi",
+    "rust-actix-web": "rust actix-web"
+   },
+   "scenarios": [
+    "db_mixed",
+    "db_read",
+    "db_write",
+    "no_db"
+   ],
+   "runs": null,
+   "headline": {
+    "c_sharp-dot-net": {
+     "db_mixed": {
+      "sustainable_rps": 17000.0,
+      "peak_rps": 20728.5,
+      "p50_ms": 0.424292,
+      "p99_ms": 10.606208,
+      "error_rate": 0.0,
+      "app_cpu": 168.0176363636363,
+      "app_mem_mb": 693.8545454545456,
+      "bytes_in": 719.1985862883697,
+      "bytes_out": 158.81781551161262
+     },
+     "db_read": {
+      "sustainable_rps": 13500.0,
+      "peak_rps": 15999.966666666667,
+      "p50_ms": 0.251333,
+      "p99_ms": 2.056,
+      "error_rate": 0.0,
+      "app_cpu": 146.72518518518524,
+      "app_mem_mb": 477.7074074074074,
+      "bytes_in": 838.5261925925926,
+      "bytes_out": 138.60000000096613
+     },
+     "db_write": {
+      "sustainable_rps": 13500.0,
+      "peak_rps": 15309.766666666666,
+      "p50_ms": 0.765791,
+      "p99_ms": 14.453458,
+      "error_rate": 0.0,
+      "app_cpu": 129.20636363636362,
+      "app_mem_mb": 564.64,
+      "bytes_in": 223.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 80000.0,
+      "p50_ms": 0.38325,
+      "p99_ms": 23.337083,
+      "error_rate": 0.0,
+      "app_cpu": 158.994,
+      "app_mem_mb": 121.68727272727274,
+      "bytes_in": 148.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    },
+    "dart-relic-io": {
+     "db_mixed": {
+      "sustainable_rps": 13000.0,
+      "peak_rps": 14029.433333333332,
+      "p50_ms": 0.492,
+      "p99_ms": 5.88025,
+      "error_rate": 0.0,
+      "app_cpu": 153.5261818181819,
+      "app_mem_mb": 206.55999999999997,
+      "bytes_in": 717.7804256410257,
+      "bytes_out": 158.82133076923077
+     },
+     "db_read": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.574792,
+      "p99_ms": 7.010542,
+      "error_rate": 0.0,
+      "app_cpu": 178.9570909090909,
+      "app_mem_mb": 54.14199999999999,
+      "bytes_in": 842.655325,
+      "bytes_out": 138.60000000104802
+     },
+     "db_write": {
+      "sustainable_rps": 11000.0,
+      "peak_rps": 13093.133333333333,
+      "p50_ms": 0.947083,
+      "p99_ms": 10.562958,
+      "error_rate": 0.0,
+      "app_cpu": 124.00781818181821,
+      "app_mem_mb": 51.83090909090909,
+      "bytes_in": 200.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 54000.0,
+      "peak_rps": 60071.53333333333,
+      "p50_ms": 1.138708,
+      "p99_ms": 51.371792,
+      "error_rate": 0.0,
+      "app_cpu": 164.31839285714278,
+      "app_mem_mb": 89.24428571428568,
+      "bytes_in": 151.0,
+      "bytes_out": 136.0
+     }
+    },
+    "dart-relic-io-v1.2.0": {
+     "db_mixed": {
+      "sustainable_rps": 7500.0,
+      "peak_rps": 7999.966666666666,
+      "p50_ms": 0.47075,
+      "p99_ms": 27.853458,
+      "error_rate": 0.0,
+      "app_cpu": 101.57890909090901,
+      "app_mem_mb": 54.205636363636344,
+      "bytes_in": 717.928555873085,
+      "bytes_out": 158.81646748236673
+     },
+     "db_read": {
+      "sustainable_rps": 12000.0,
+      "peak_rps": 12959.8,
+      "p50_ms": 0.955958,
+      "p99_ms": 30.209208,
+      "error_rate": 0.0,
+      "app_cpu": 156.62629629629626,
+      "app_mem_mb": 63.31000000000001,
+      "bytes_in": 842.6274104032756,
+      "bytes_out": 138.60000000090065
+     },
+     "db_write": {
+      "sustainable_rps": 7750.0,
+      "peak_rps": 8000.0,
+      "p50_ms": 0.705417,
+      "p99_ms": 46.871333,
+      "error_rate": 0.0,
+      "app_cpu": 101.22200000000002,
+      "app_mem_mb": 50.58018181818181,
+      "bytes_in": 200.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 48000.0,
+      "peak_rps": 48546.46666666667,
+      "p50_ms": 1.609167,
+      "p99_ms": 13.835833,
+      "error_rate": 0.0,
+      "app_cpu": 182.0649090909091,
+      "app_mem_mb": 58.56672727272728,
+      "bytes_in": 151.0,
+      "bytes_out": 136.0
+     }
+    },
+    "dart-relic-native": {
+     "db_mixed": {
+      "sustainable_rps": 1700.0,
+      "peak_rps": 1999.9333333333334,
+      "p50_ms": 4.154208,
+      "p99_ms": 30.026917,
+      "error_rate": 0.0,
+      "app_cpu": 23.360000000000003,
+      "app_mem_mb": 231.1745454545455,
+      "bytes_in": 718.0158630561383,
+      "bytes_out": 158.80485891880232
+     },
+     "db_read": {
+      "sustainable_rps": 1600.0,
+      "peak_rps": 1999.9666666666667,
+      "p50_ms": 3.855709,
+      "p99_ms": 12.559583,
+      "error_rate": 0.0,
+      "app_cpu": 23.669818181818176,
+      "app_mem_mb": 232.42727272727274,
+      "bytes_in": 842.3364861767953,
+      "bytes_out": 138.5999999999038
+     },
+     "db_write": {
+      "sustainable_rps": 2250.0,
+      "peak_rps": 3999.9333333333334,
+      "p50_ms": 4.341167,
+      "p99_ms": 22.218875,
+      "error_rate": 0.0,
+      "app_cpu": 23.92518518518519,
+      "app_mem_mb": 234.1962962962962,
+      "bytes_in": 199.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 80000.0,
+      "p50_ms": 0.128791,
+      "p99_ms": 25.153625,
+      "error_rate": 0.0,
+      "app_cpu": 108.82472727272724,
+      "app_mem_mb": 135.21781818181816,
+      "bytes_in": 151.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    },
+    "dart-relic-native-fixed": {
+     "db_mixed": {
+      "sustainable_rps": 15500.0,
+      "peak_rps": 15999.966666666667,
+      "p50_ms": 0.477792,
+      "p99_ms": 2.92625,
+      "error_rate": 0.0,
+      "app_cpu": 155.094909090909,
+      "app_mem_mb": 77.22690909090909,
+      "bytes_in": 718.0185010752688,
+      "bytes_out": 158.81865161290324
+     },
+     "db_read": {
+      "sustainable_rps": 22000.0,
+      "peak_rps": 22000.266666666666,
+      "p50_ms": 0.779041,
+      "p99_ms": 9.007958,
+      "error_rate": 0.0,
+      "app_cpu": 187.31654545454538,
+      "app_mem_mb": 239.6527272727273,
+      "bytes_in": 842.6099577580878,
+      "bytes_out": 138.59999999918384
+     },
+     "db_write": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16730.6,
+      "p50_ms": 1.085292,
+      "p99_ms": 22.636625,
+      "error_rate": 0.0,
+      "app_cpu": 135.33037037037036,
+      "app_mem_mb": 67.67870370370369,
+      "bytes_in": 199.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 80000.0,
+      "p50_ms": 0.839834,
+      "p99_ms": 67.220333,
+      "error_rate": 0.0,
+      "app_cpu": 114.33909090909087,
+      "app_mem_mb": 346.27636363636367,
+      "bytes_in": 151.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    },
+    "dart-server-pod": {
+     "db_mixed": {
+      "sustainable_rps": 6000.0,
+      "peak_rps": 6500.0,
+      "p50_ms": 0.462417,
+      "p99_ms": 8.976042,
+      "error_rate": 0.0,
+      "app_cpu": 90.23909090909092,
+      "app_mem_mb": 306.121818181818,
+      "bytes_in": 983.0651274159588,
+      "bytes_out": 214.77271792934485
+     },
+     "db_read": {
+      "sustainable_rps": 6000.0,
+      "peak_rps": 6000.033333333334,
+      "p50_ms": 0.509334,
+      "p99_ms": 20.804125,
+      "error_rate": 0.0,
+      "app_cpu": 96.51599999999999,
+      "app_mem_mb": 322.0163636363637,
+      "bytes_in": 1151.7438736451463,
+      "bytes_out": 204.151129715946
+     },
+     "db_write": {
+      "sustainable_rps": 6000.0,
+      "peak_rps": 6206.7,
+      "p50_ms": 0.817542,
+      "p99_ms": 11.152917,
+      "error_rate": 0.0,
+      "app_cpu": 92.67709090909088,
+      "app_mem_mb": 315.54,
+      "bytes_in": 285.0,
+      "bytes_out": 257.0
+     },
+     "no_db": {
+      "sustainable_rps": 21000.0,
+      "peak_rps": 21000.033333333333,
+      "p50_ms": 0.213166,
+      "p99_ms": 9.464333,
+      "error_rate": 0.0,
+      "app_cpu": 107.2003703703704,
+      "app_mem_mb": 95.01481481481484,
+      "bytes_in": 219.0,
+      "bytes_out": 192.0
+     }
+    },
+    "dart-server-pod-relic-2.0.0": {
+     "db_mixed": {
+      "sustainable_rps": 5500.0,
+      "peak_rps": 5827.566666666667,
+      "p50_ms": 0.426417,
+      "p99_ms": 3.814375,
+      "error_rate": 0.0,
+      "app_cpu": 85.15240740740738,
+      "app_mem_mb": 284.17777777777775,
+      "bytes_in": 983.7046442142774,
+      "bytes_out": 214.7808255707541
+     },
+     "db_read": {
+      "sustainable_rps": 6000.0,
+      "peak_rps": 6000.0,
+      "p50_ms": 0.479083,
+      "p99_ms": 9.292875,
+      "error_rate": 0.0,
+      "app_cpu": 93.89309090909099,
+      "app_mem_mb": 318.32000000000005,
+      "bytes_in": 1151.7487166666667,
+      "bytes_out": 204.15118333333334
+     },
+     "db_write": {
+      "sustainable_rps": 5750.0,
+      "peak_rps": 6000.033333333334,
+      "p50_ms": 0.760917,
+      "p99_ms": 8.2235,
+      "error_rate": 0.0,
+      "app_cpu": 87.18436363636363,
+      "app_mem_mb": 296.71272727272725,
+      "bytes_in": 285.11273623188407,
+      "bytes_out": 257.0
+     },
+     "no_db": {
+      "sustainable_rps": 19000.0,
+      "peak_rps": 20405.666666666668,
+      "p50_ms": 0.177583,
+      "p99_ms": 29.130458,
+      "error_rate": 0.0,
+      "app_cpu": 101.92290909090907,
+      "app_mem_mb": 80.8429090909091,
+      "bytes_in": 219.0,
+      "bytes_out": 192.0
+     }
+    },
+    "dart-server-pod-relic-native-2.0.0": {
+     "db_mixed": {
+      "sustainable_rps": 650.0,
+      "peak_rps": 1000.0,
+      "p50_ms": 3.367167,
+      "p99_ms": 13.199417,
+      "error_rate": 0.0,
+      "app_cpu": 13.430185185185193,
+      "app_mem_mb": 147.78333333333327,
+      "bytes_in": 982.1849743589744,
+      "bytes_out": 214.72502564102564
+     },
+     "db_read": {
+      "sustainable_rps": 650.0,
+      "peak_rps": 989.1666666666666,
+      "p50_ms": 3.826792,
+      "p99_ms": 34.278125,
+      "error_rate": 0.0,
+      "app_cpu": 14.845272727272725,
+      "app_mem_mb": 177.08363636363643,
+      "bytes_in": 1150.3453333333334,
+      "bytes_out": 204.1422564102564
+     },
+     "db_write": {
+      "sustainable_rps": 800.0,
+      "peak_rps": 1000.0,
+      "p50_ms": 4.273958,
+      "p99_ms": 26.073625,
+      "error_rate": 0.0,
+      "app_cpu": 11.245272727272726,
+      "app_mem_mb": 238.77272727272725,
+      "bytes_in": 285.0,
+      "bytes_out": 257.0
+     },
+     "no_db": {
+      "sustainable_rps": 44000.0,
+      "peak_rps": 47683.63333333333,
+      "p50_ms": 0.334292,
+      "p99_ms": 26.611958,
+      "error_rate": 0.0,
+      "app_cpu": 93.60272727272726,
+      "app_mem_mb": 239.85090909090914,
+      "bytes_in": 219.0,
+      "bytes_out": 192.0
+     }
+    },
+    "dart-server-pod-relic-native-fixed-2.0.0": {
+     "db_mixed": {
+      "sustainable_rps": 7250.0,
+      "peak_rps": 7500.0,
+      "p50_ms": 0.580167,
+      "p99_ms": 14.652791,
+      "error_rate": 0.0,
+      "app_cpu": 95.54400000000004,
+      "app_mem_mb": 228.29454545454556,
+      "bytes_in": 983.564612088387,
+      "bytes_out": 214.78115660833663
+     },
+     "db_read": {
+      "sustainable_rps": 7250.0,
+      "peak_rps": 7250.0,
+      "p50_ms": 0.611042,
+      "p99_ms": 10.620208,
+      "error_rate": 0.0,
+      "app_cpu": 90.64618181818182,
+      "app_mem_mb": 235.69818181818195,
+      "bytes_in": 1151.4118344827586,
+      "bytes_out": 204.1488
+     },
+     "db_write": {
+      "sustainable_rps": 5750.0,
+      "peak_rps": 7108.166666666667,
+      "p50_ms": 0.661958,
+      "p99_ms": 3.011125,
+      "error_rate": 0.0,
+      "app_cpu": 79.67545454545456,
+      "app_mem_mb": 153.51454545454547,
+      "bytes_in": 285.10577971014493,
+      "bytes_out": 257.0
+     },
+     "no_db": {
+      "sustainable_rps": 40000.0,
+      "peak_rps": 48035.1,
+      "p50_ms": 0.200958,
+      "p99_ms": 15.60425,
+      "error_rate": 0.0,
+      "app_cpu": 89.5592727272727,
+      "app_mem_mb": 251.95090909090908,
+      "bytes_in": 219.0,
+      "bytes_out": 192.0
+     }
+    },
+    "dart-server-pod-v4.0.3": {
+     "db_mixed": {
+      "sustainable_rps": 5250.0,
+      "peak_rps": 6000.033333333334,
+      "p50_ms": 0.40375,
+      "p99_ms": 2.12175,
+      "error_rate": 0.0,
+      "app_cpu": 80.98581818181819,
+      "app_mem_mb": 86.9543636363636,
+      "bytes_in": 983.5831174603175,
+      "bytes_out": 214.77350476190477
+     },
+     "db_read": {
+      "sustainable_rps": 5750.0,
+      "peak_rps": 5750.033333333334,
+      "p50_ms": 0.483042,
+      "p99_ms": 10.575167,
+      "error_rate": 0.0,
+      "app_cpu": 93.34781818181817,
+      "app_mem_mb": 52.08818181818182,
+      "bytes_in": 1151.7253291285267,
+      "bytes_out": 204.15092955982863
+     },
+     "db_write": {
+      "sustainable_rps": 6250.0,
+      "peak_rps": 6485.0,
+      "p50_ms": 0.793375,
+      "p99_ms": 18.776833,
+      "error_rate": 0.0,
+      "app_cpu": 88.87781818181821,
+      "app_mem_mb": 306.049090909091,
+      "bytes_in": 285.66112533333336,
+      "bytes_out": 257.0
+     },
+     "no_db": {
+      "sustainable_rps": 21000.0,
+      "peak_rps": 21178.5,
+      "p50_ms": 0.219166,
+      "p99_ms": 12.602708,
+      "error_rate": 0.0,
+      "app_cpu": 106.16818181818185,
+      "app_mem_mb": 86.13800000000002,
+      "bytes_in": 219.0,
+      "bytes_out": 192.0
+     }
+    },
+    "go-mux": {
+     "db_mixed": {
+      "sustainable_rps": 24000.0,
+      "peak_rps": 25393.9,
+      "p50_ms": 2.530292,
+      "p99_ms": 45.873583,
+      "error_rate": 0.0,
+      "app_cpu": 124.85145454545453,
+      "app_mem_mb": 405.2981818181819,
+      "bytes_in": 704.0055749148277,
+      "bytes_out": 158.81661807944602
+     },
+     "db_read": {
+      "sustainable_rps": 15500.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.272625,
+      "p99_ms": 1.925166,
+      "error_rate": 0.0,
+      "app_cpu": 119.09981818181825,
+      "app_mem_mb": 151.0745454545455,
+      "bytes_in": 828.5467139784946,
+      "bytes_out": 138.60000000103375
+     },
+     "db_write": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 20642.533333333333,
+      "p50_ms": 0.727125,
+      "p99_ms": 9.900542,
+      "error_rate": 0.0,
+      "app_cpu": 112.40600000000005,
+      "app_mem_mb": 59.67327272727274,
+      "bytes_in": 185.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 76000.0,
+      "peak_rps": 80000.0,
+      "p50_ms": 0.357917,
+      "p99_ms": 14.911791,
+      "error_rate": 0.0,
+      "app_cpu": 125.43090909090911,
+      "app_mem_mb": 202.59999999999997,
+      "bytes_in": 137.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    },
+    "java-foam3-embedded": {
+     "db_mixed": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.203333,
+      "p99_ms": 50.628875,
+      "error_rate": 0.0,
+      "app_cpu": 140.6503636363637,
+      "app_mem_mb": 1952.3211636363635,
+      "bytes_in": 1194.6805395833333,
+      "bytes_out": 537.96284375
+     },
+     "db_read": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.158625,
+      "p99_ms": 2.871542,
+      "error_rate": 0.0,
+      "app_cpu": 136.73685185185184,
+      "app_mem_mb": 1844.2998518518536,
+      "bytes_in": 1370.0057291666667,
+      "bytes_out": 521.1639875
+     },
+     "db_write": {
+      "sustainable_rps": 8000.0,
+      "peak_rps": 8000.0,
+      "p50_ms": 0.146208,
+      "p99_ms": 1.0285,
+      "error_rate": 0.0,
+      "app_cpu": 89.99236363636365,
+      "app_mem_mb": 1880.7901090909086,
+      "bytes_in": 466.0006666666667,
+      "bytes_out": 605.0
+     },
+     "no_db": {
+      "sustainable_rps": 15500.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.142875,
+      "p99_ms": 1.508083,
+      "error_rate": 0.0,
+      "app_cpu": 135.4816363636363,
+      "app_mem_mb": 1912.943709090908,
+      "bytes_in": 384.0,
+      "bytes_out": 512.0
+     }
+    },
+    "java-foam3-embedded-gzip": {
+     "db_mixed": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.228333,
+      "p99_ms": 4.269833,
+      "error_rate": 0.0,
+      "app_cpu": 142.9856363636364,
+      "app_mem_mb": 1917.672727272726,
+      "bytes_in": 497.95511875,
+      "bytes_out": 533.96284375
+     },
+     "db_read": {
+      "sustainable_rps": 17000.0,
+      "peak_rps": 18000.2,
+      "p50_ms": 0.294916,
+      "p99_ms": 5.011875,
+      "error_rate": 0.0,
+      "app_cpu": 144.6227272727273,
+      "app_mem_mb": 2018.3412363636369,
+      "bytes_in": 504.0607739139812,
+      "bytes_out": 517.1638905500927
+     },
+     "db_write": {
+      "sustainable_rps": 8000.0,
+      "peak_rps": 8000.0,
+      "p50_ms": 0.1525,
+      "p99_ms": 0.940833,
+      "error_rate": 0.0,
+      "app_cpu": 94.95290909090909,
+      "app_mem_mb": 1968.1652363636374,
+      "bytes_in": 472.6099458333333,
+      "bytes_out": 601.0
+     },
+     "no_db": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.151291,
+      "p99_ms": 2.519042,
+      "error_rate": 0.0,
+      "app_cpu": 138.95090909090905,
+      "app_mem_mb": 1954.0154181818184,
+      "bytes_in": 425.00000208333336,
+      "bytes_out": 508.0
+     }
+    },
+    "java-foam3-postgres": {
+     "db_mixed": {
+      "sustainable_rps": 11500.0,
+      "peak_rps": 11500.033333333333,
+      "p50_ms": 0.294083,
+      "p99_ms": 15.388125,
+      "error_rate": 0.0,
+      "app_cpu": 151.56818181818184,
+      "app_mem_mb": 1976.6737454545457,
+      "bytes_in": 1194.8159338668584,
+      "bytes_out": 537.9720464578363
+     },
+     "db_read": {
+      "sustainable_rps": 11000.0,
+      "peak_rps": 11500.066666666668,
+      "p50_ms": 0.269875,
+      "p99_ms": 4.479209,
+      "error_rate": 0.0,
+      "app_cpu": 149.1798181818182,
+      "app_mem_mb": 1936.8680727272724,
+      "bytes_in": 1370.0478272727273,
+      "bytes_out": 521.1640454545454
+     },
+     "db_write": {
+      "sustainable_rps": 9500.0,
+      "peak_rps": 9999.966666666667,
+      "p50_ms": 0.631542,
+      "p99_ms": 4.715708,
+      "error_rate": 0.0,
+      "app_cpu": 136.09309090909088,
+      "app_mem_mb": 2040.4596363636344,
+      "bytes_in": 467.00385964912283,
+      "bytes_out": 605.0
+     },
+     "no_db": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 17000.133333333335,
+      "p50_ms": 0.151292,
+      "p99_ms": 7.791459,
+      "error_rate": 0.0,
+      "app_cpu": 140.9849090909091,
+      "app_mem_mb": 1886.4872727272718,
+      "bytes_in": 384.0,
+      "bytes_out": 512.0
+     }
+    },
+    "java-spring-boot": {
+     "db_mixed": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 18000.166666666668,
+      "p50_ms": 0.344584,
+      "p99_ms": 10.420292,
+      "error_rate": 0.0,
+      "app_cpu": 163.62454545454537,
+      "app_mem_mb": 527.3054545454546,
+      "bytes_in": 690.8701872295567,
+      "bytes_out": 158.8173558694914
+     },
+     "db_read": {
+      "sustainable_rps": 19000.0,
+      "peak_rps": 21755.633333333335,
+      "p50_ms": 0.397583,
+      "p99_ms": 5.041584,
+      "error_rate": 0.0,
+      "app_cpu": 172.88709090909092,
+      "app_mem_mb": 579.3199999999999,
+      "bytes_in": 817.5458794221104,
+      "bytes_out": 138.59999999999613
+     },
+     "db_write": {
+      "sustainable_rps": 7750.0,
+      "peak_rps": 7999.966666666666,
+      "p50_ms": 0.660375,
+      "p99_ms": 2.22075,
+      "error_rate": 0.0,
+      "app_cpu": 101.2596363636363,
+      "app_mem_mb": 536.9836363636363,
+      "bytes_in": 164.96774623655915,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 66000.0,
+      "peak_rps": 71603.13333333333,
+      "p50_ms": 2.134,
+      "p99_ms": 13.298875,
+      "error_rate": 0.0,
+      "app_cpu": 159.6567272727272,
+      "app_mem_mb": 1027.034763636364,
+      "bytes_in": 136.0,
+      "bytes_out": 136.0
+     }
+    },
+    "javascript-express-bun": {
+     "db_mixed": {
+      "sustainable_rps": 22000.0,
+      "peak_rps": 32000.0,
+      "p50_ms": 0.273625,
+      "p99_ms": 22.582792,
+      "error_rate": 0.0,
+      "app_cpu": 129.85037037037034,
+      "app_mem_mb": 106.56851851851852,
+      "bytes_in": 765.003790863141,
+      "bytes_out": 158.81773554259948
+     },
+     "db_read": {
+      "sustainable_rps": 40000.0,
+      "peak_rps": 40000.0,
+      "p50_ms": 1.1665,
+      "p99_ms": 14.98625,
+      "error_rate": 0.0,
+      "app_cpu": 181.38509090909085,
+      "app_mem_mb": 249.38545454545465,
+      "bytes_in": 889.58902,
+      "bytes_out": 138.59999999686895
+     },
+     "db_write": {
+      "sustainable_rps": 20000.0,
+      "peak_rps": 25251.566666666666,
+      "p50_ms": 2.019042,
+      "p99_ms": 22.190042,
+      "error_rate": 0.0,
+      "app_cpu": 120.65345454545457,
+      "app_mem_mb": 134.62727272727275,
+      "bytes_in": 247.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 80000.0,
+      "p50_ms": 4.6085,
+      "p99_ms": 67.212917,
+      "error_rate": 0.0,
+      "app_cpu": 134.4421818181818,
+      "app_mem_mb": 171.06909090909082,
+      "bytes_in": 198.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    },
+    "javascript-express-node": {
+     "db_mixed": {
+      "sustainable_rps": 25000.0,
+      "peak_rps": 25000.0,
+      "p50_ms": 1.445625,
+      "p99_ms": 21.257208,
+      "error_rate": 0.0,
+      "app_cpu": 177.9378181818182,
+      "app_mem_mb": 508.6727272727273,
+      "bytes_in": 765.0347,
+      "bytes_out": 158.8177
+     },
+     "db_read": {
+      "sustainable_rps": 27000.0,
+      "peak_rps": 27000.033333333333,
+      "p50_ms": 0.272375,
+      "p99_ms": 5.404917,
+      "error_rate": 0.0,
+      "app_cpu": 174.24254545454545,
+      "app_mem_mb": 490.8309090909092,
+      "bytes_in": 889.605263450292,
+      "bytes_out": 138.59999999823125
+     },
+     "db_write": {
+      "sustainable_rps": 15500.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 0.658625,
+      "p99_ms": 19.191333,
+      "error_rate": 0.0,
+      "app_cpu": 117.13781818181819,
+      "app_mem_mb": 299.24363636363626,
+      "bytes_in": 247.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 80000.0,
+      "p50_ms": 2.208542,
+      "p99_ms": 42.827084,
+      "error_rate": 0.0,
+      "app_cpu": 172.2472727272728,
+      "app_mem_mb": 251.17454545454538,
+      "bytes_in": 198.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    },
+    "python-django-async": {
+     "db_mixed": {
+      "sustainable_rps": 350.0,
+      "peak_rps": 500.0,
+      "p50_ms": 4.236792,
+      "p99_ms": 9.823417,
+      "error_rate": 0.0,
+      "app_cpu": 125.8363636363636,
+      "app_mem_mb": 188.53454545454545,
+      "bytes_in": 768.0689523809524,
+      "bytes_out": 158.8842857142857
+     },
+     "db_read": {
+      "sustainable_rps": 350.0,
+      "peak_rps": 500.0,
+      "p50_ms": 4.293333,
+      "p99_ms": 12.291375,
+      "error_rate": 0.0,
+      "app_cpu": 129.06555555555562,
+      "app_mem_mb": 193.59629629629632,
+      "bytes_in": 906.3165714285715,
+      "bytes_out": 138.6000000000142
+     },
+     "db_write": {
+      "sustainable_rps": 500.0,
+      "peak_rps": 814.9666666666667,
+      "p50_ms": 10.360375,
+      "p99_ms": 87.735875,
+      "error_rate": 0.0,
+      "app_cpu": 178.27363636363637,
+      "app_mem_mb": 157.54727272727277,
+      "bytes_in": 205.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 3250.0,
+      "peak_rps": 3400.0,
+      "p50_ms": 5.277916,
+      "p99_ms": 19.054,
+      "error_rate": 0.0,
+      "app_cpu": 158.41851851851854,
+      "app_mem_mb": 228.76666666666668,
+      "bytes_in": 154.0,
+      "bytes_out": 136.0
+     }
+    },
+    "python-django-sync": {
+     "db_mixed": {
+      "sustainable_rps": 4500.0,
+      "peak_rps": 5813.966666666666,
+      "p50_ms": 3.5925,
+      "p99_ms": 30.176875,
+      "error_rate": 0.0,
+      "app_cpu": 189.67181818181822,
+      "app_mem_mb": 268.50909090909096,
+      "bytes_in": 795.0048889251032,
+      "bytes_out": 158.81669493848102
+     },
+     "db_read": {
+      "sustainable_rps": 4000.0,
+      "peak_rps": 6023.833333333333,
+      "p50_ms": 2.02925,
+      "p99_ms": 9.150875,
+      "error_rate": 0.0,
+      "app_cpu": 185.15333333333325,
+      "app_mem_mb": 237.22222222222229,
+      "bytes_in": 931.3477333333333,
+      "bytes_out": 138.599999999738
+     },
+     "db_write": {
+      "sustainable_rps": 4250.0,
+      "peak_rps": 5984.066666666667,
+      "p50_ms": 1.598834,
+      "p99_ms": 6.754625,
+      "error_rate": 0.0,
+      "app_cpu": 177.25962962962956,
+      "app_mem_mb": 266.8222222222222,
+      "bytes_in": 231.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 16000.0,
+      "peak_rps": 16000.0,
+      "p50_ms": 11.537833,
+      "p99_ms": 63.313,
+      "error_rate": 0.0,
+      "app_cpu": 203.97145454545455,
+      "app_mem_mb": 197.02181818181808,
+      "bytes_in": 179.0,
+      "bytes_out": 136.0
+     }
+    },
+    "python-fast-api": {
+     "db_mixed": {
+      "sustainable_rps": 2900.0,
+      "peak_rps": 3121.233333333333,
+      "p50_ms": 0.955208,
+      "p99_ms": 24.438167,
+      "error_rate": 2.2988505747126437e-05,
+      "app_cpu": 155.38799999999998,
+      "app_mem_mb": 519.4745454545455,
+      "bytes_in": 718.8287586206897,
+      "bytes_out": 158.81424137931035
+     },
+     "db_read": {
+      "sustainable_rps": 2600.0,
+      "peak_rps": 3103.633333333333,
+      "p50_ms": 0.700708,
+      "p99_ms": 8.458417,
+      "error_rate": 0.0,
+      "app_cpu": 145.0192727272727,
+      "app_mem_mb": 522.0509090909093,
+      "bytes_in": 844.4108205128205,
+      "bytes_out": 138.59999999979752
+     },
+     "db_write": {
+      "sustainable_rps": 3500.0,
+      "peak_rps": 3773.6666666666665,
+      "p50_ms": 1.587208,
+      "p99_ms": 23.226959,
+      "error_rate": 0.0,
+      "app_cpu": 173.01072727272728,
+      "app_mem_mb": 686.0618181818181,
+      "bytes_in": 201.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 21000.0,
+      "peak_rps": 30113.266666666666,
+      "p50_ms": 0.180042,
+      "p99_ms": 29.137958,
+      "error_rate": 0.0,
+      "app_cpu": 161.56436363636362,
+      "app_mem_mb": 252.53818181818178,
+      "bytes_in": 153.0,
+      "bytes_out": 136.0
+     }
+    },
+    "rust-actix-web": {
+     "db_mixed": {
+      "sustainable_rps": 42000.0,
+      "peak_rps": 46264.0,
+      "p50_ms": 1.07325,
+      "p99_ms": 33.001542,
+      "error_rate": 0.0,
+      "app_cpu": 159.6223636363636,
+      "app_mem_mb": 297.64363636363623,
+      "bytes_in": 703.2177626211482,
+      "bytes_out": 158.81781198513048
+     },
+     "db_read": {
+      "sustainable_rps": 50000.0,
+      "peak_rps": 55053.96666666667,
+      "p50_ms": 0.840833,
+      "p99_ms": 20.612208,
+      "error_rate": 0.0,
+      "app_cpu": 163.29236363636358,
+      "app_mem_mb": 292.2309090909092,
+      "bytes_in": 827.58902,
+      "bytes_out": 138.59999999630307
+     },
+     "db_write": {
+      "sustainable_rps": 18000.0,
+      "peak_rps": 28170.266666666666,
+      "p50_ms": 0.587,
+      "p99_ms": 22.6675,
+      "error_rate": 0.0,
+      "app_cpu": 86.9065454545455,
+      "app_mem_mb": 285.3199999999999,
+      "bytes_in": 185.0,
+      "bytes_out": 239.0
+     },
+     "no_db": {
+      "sustainable_rps": 80000.0,
+      "peak_rps": 79999.93333333333,
+      "p50_ms": 0.1105,
+      "p99_ms": 14.043333,
+      "error_rate": 0.0,
+      "app_cpu": 92.5910909090909,
+      "app_mem_mb": 39.090363636363634,
+      "bytes_in": 136.0,
+      "bytes_out": 136.0,
+      "loadgen_bound": 1.0
+     }
+    }
+   },
+   "file": "runs/2026-11-18_m2pro-10c-32g_2ab8fd2_2d5e.json"
   },
   {
    "id": "2026-11-17_m2pro-10c-32g_e331769_febb",
