@@ -1,0 +1,109 @@
+# Work in other projects that came out of this benchmark: problems it found
+# and the fixes it led to. The dashboard's Contributions page lists them,
+# newest first. bench/report/contributions.py turns this file into
+# benchmark-app/assets/results/contributions.json; with --live (the deploy
+# job) it also reads each link's state and each repository's stars from
+# GitHub and Gerrit, so the states and stars below are only the fallback.
+#
+# Each entry:
+#   title     what was found or fixed, in plain words
+#   repo      GitHub owner/name, for the project name and its stars
+#   date      when it was raised (YYYY-MM-DD); the page sorts by this
+#   summary   one or two sentences: what was wrong and what changed
+#   links     issues, pull requests and Gerrit changes, each with
+#             kind (issue | pr | change), url, state (open | merged | closed)
+#             and by (only when someone else wrote it, e.g. a maintainer's
+#             fix that a closed PR led to)
+#   numbers   optional measured effect: label, before, after, and unit
+#   note      optional line under the numbers: where they come from
+
+repos:
+  serverpod/relic: {name: Relic, stars: 146}
+  serverpod/serverpod: {name: Serverpod, stars: 3335}
+  isoos/postgresql-dart: {name: postgresql-dart, stars: 161}
+  dart-lang/sdk: {name: Dart SDK, stars: 11360}
+
+contributions:
+  - title: Relic's native server stalled whenever a handler waited
+    repo: serverpod/relic
+    date: 2026-11-18
+    summary: >-
+      On relic_native, any handler that waits on the database stalled: after
+      each write the server held the event loop for 1 ms. The fix yields to
+      the event loop first, so waiting handlers finish.
+    links:
+      - {kind: issue, url: "https://github.com/serverpod/relic/issues/445", state: closed}
+      - {kind: pr, url: "https://github.com/serverpod/relic/pull/446", state: merged}
+    numbers:
+      - {label: "Relic 2.0.0 native, read only", before: 1600, after: 22000, unit: replies a second}
+      - {label: "Serverpod on Relic native, read only", before: 650, after: 7250, unit: replies a second}
+    note: This benchmark, methodology v3, before and with the fix.
+
+  - title: Two flaky Serverpod database tests
+    repo: serverpod/serverpod
+    date: 2026-11-14
+    summary: >-
+      Found while testing the Serverpod speedups below: a serializable
+      transaction test raced its own write, and a parallel-calls test left an
+      unhandled error in setUpAll. Both reproduced with injected delays.
+    links:
+      - {kind: issue, url: "https://github.com/serverpod/serverpod/issues/6012", state: open}
+      - {kind: pr, url: "https://github.com/serverpod/serverpod/pull/6013", state: open}
+
+  - title: A faster Content-Type parser in Relic
+    repo: serverpod/relic
+    date: 2026-11-13
+    summary: >-
+      Every request parsed its Content-Type with a regular expression. The
+      first fix, a cache, was turned down; the maintainer wrote a byte-level
+      parser instead, which was merged.
+    links:
+      - {kind: pr, url: "https://github.com/serverpod/relic/pull/437", state: closed}
+      - {kind: pr, url: "https://github.com/serverpod/relic/pull/438", state: merged, by: nielsenko}
+      - {kind: pr, url: "https://github.com/serverpod/relic/pull/439", state: merged, by: nielsenko}
+
+  - title: Less work for every Serverpod request
+    repo: serverpod/serverpod
+    date: 2026-11-13
+    summary: >-
+      A CPU profile showed Serverpod capturing a stack trace for every
+      database query, rebuilding the same SQL strings, and doing session work
+      only logged sessions need. Three pull requests remove that work.
+    links:
+      - {kind: issue, url: "https://github.com/serverpod/serverpod/issues/6002", state: open}
+      - {kind: pr, url: "https://github.com/serverpod/serverpod/pull/6003", state: open}
+      - {kind: pr, url: "https://github.com/serverpod/serverpod/pull/6004", state: open}
+      - {kind: pr, url: "https://github.com/serverpod/serverpod/pull/6005", state: open}
+    numbers:
+      - {label: "Serverpod 4.1.1, read only", before: 5500, after: 7000, unit: replies a second}
+      - {label: "Serverpod 4.1.1, save only", before: 6250, after: 7250, unit: replies a second}
+      - {label: "Serverpod 4.1.1, read + save", before: 6000, after: 6750, unit: replies a second}
+    note: >-
+      This benchmark, methodology v2.1, median of 3 rounds, with these and
+      the postgresql-dart changes together.
+
+  - title: Pooled Postgres connections reset too often
+    repo: isoos/postgresql-dart
+    date: 2026-11-13
+    summary: >-
+      The driver reset a pooled session after any UPDATE ... SET, and captured
+      a stack trace on every pool checkout. Now it resets only when a query
+      really changes session state, and records the trace only on failure. Each saves 3 to 5% of the CPU
+      instructions of a Serverpod request that reads one row.
+    links:
+      - {kind: pr, url: "https://github.com/isoos/postgresql-dart/pull/498", state: open}
+      - {kind: pr, url: "https://github.com/isoos/postgresql-dart/pull/499", state: open}
+
+  - title: Dart's HTTP server and async stack traces
+    repo: dart-lang/sdk
+    date: 2026-11-13
+    summary: >-
+      Each small HTTP response sets up two stream controllers, about 11% of
+      a Serverpod request's CPU. Separately, StackTrace.current looked up the
+      same dart:async members on every call; the change caches them.
+    links:
+      - {kind: issue, url: "https://github.com/dart-lang/sdk/issues/64925", state: open}
+      - {kind: change, url: "https://dart-review.googlesource.com/c/sdk/+/577480", state: open}
+    numbers:
+      - {label: "StackTrace.current, 8 async frames", before: 1.57, after: 1.21, unit: µs a call}
+    note: AOT build on macOS arm64.

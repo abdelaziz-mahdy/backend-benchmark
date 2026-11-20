@@ -1,12 +1,13 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/contributions.dart';
 import '../models/metrics.dart';
 import '../models/plain.dart';
 import '../models/results.dart';
 import '../services/results_service.dart';
 
 /// The home page, and the two pages opened from its footer.
-enum DashboardPage { home, history, method }
+enum DashboardPage { home, history, method, contributions }
 
 /// The view switch on the home page; each label names what the view shows.
 enum HomeView {
@@ -29,6 +30,30 @@ class DashboardState extends ChangeNotifier {
   DashboardState(this._service);
 
   static const maxCompare = 4;
+
+  Future<List<Contribution>>? _contributions;
+
+  /// The Contributions page's list, loaded the first time it is opened. A
+  /// failed load is not kept, so opening the page again tries again.
+  Future<List<Contribution>> get contributions {
+    final cached = _contributions;
+    if (cached != null) return cached;
+    final load = _service.loadContributions();
+    _contributions = load;
+    load.then<void>(
+      (_) {},
+      onError: (Object _) {
+        if (identical(_contributions, load)) _contributions = null;
+      },
+    );
+    return load;
+  }
+
+  /// Forgets a failed load and asks again (the page's Try again).
+  void retryContributions() {
+    _contributions = null;
+    notifyListeners();
+  }
 
   List<RunIndexEntry> index = const [];
   RunIndexEntry? entry;

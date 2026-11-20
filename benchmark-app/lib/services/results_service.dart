@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
+import '../models/contributions.dart';
 import '../models/results.dart';
 
 /// Loads the generated dashboard data from assets/results/.
@@ -43,5 +44,14 @@ class ResultsService {
       ),
     );
     return load;
+  }
+
+  /// The Contributions page's list, newest first.
+  Future<List<Contribution>> loadContributions() async {
+    final raw = await bundle.loadString(
+      '$_base/contributions.json',
+      cache: false,
+    );
+    return Contribution.listFromJson(jsonDecode(raw) as Map<String, dynamic>);
   }
 }

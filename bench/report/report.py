@@ -6,6 +6,7 @@ default into benchmark-app/assets/results/:
 
   index.json          every run: id, date, machine, methodology, file
   runs/<run_id>.json  per-run summary consumed by the dashboard
+  contributions.json  the Contributions page, from docs/contributions.yaml
 
 These files are generated (CI does it before deploying) and are not committed,
 so result PRs only ever add a new results/runs/<run_id>/ folder.
@@ -25,6 +26,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "bench"))
 
 from benchlib import slo  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import contributions  # noqa: E402
 
 RESULTS = ROOT / "results"
 BACKENDS = ROOT / "backends"
@@ -570,6 +574,9 @@ def main():
 
     problems = Problems()
     summaries = build_all(args.results, problems, args.backends)
+    contrib = contributions.load()
+    for p in contributions.problems(contrib):
+        problems.append(f"docs/contributions.yaml: {p}")
     if args.check:
         for p in problems:
             print("problem:", p)
@@ -588,6 +595,8 @@ def main():
     index.sort(key=lambda e: (e["date"] or "", e["id"]), reverse=True)
     index.sort(key=lambda e: kind_order.get(e["kind"], 9))
     (args.out / "index.json").write_text(json.dumps({"runs": index}, indent=1))
+    if not contributions.problems(contrib):
+        contributions.write(args.out, contrib)
     for p in problems:
         print("warning:", p)
     print(f"wrote {len(index)} runs to {args.out}")

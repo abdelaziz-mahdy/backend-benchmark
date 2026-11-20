@@ -5,6 +5,7 @@ on:
     paths:
       - 'benchmark-app/**'
       - 'bench/report/**'
+      - 'docs/contributions.yaml'
 
 jobs:
   check:

@@ -16,6 +16,7 @@ import 'state/dashboard_state.dart';
 ///     /compare/KEY1,KEY2?s=TEST  Compare
 ///     /history?s=TEST            history
 ///     /method                    how it's measured
+///     /contributions             what the benchmark changed elsewhere
 ///
 /// Any of these takes ?run=ID when the run shown is not the newest, so a
 /// copied link opens the same numbers; no run means the newest.
@@ -49,6 +50,7 @@ Uri _place(DashboardState s) {
       final test => Uri(path: '/history', queryParameters: {'s': test}),
     },
     DashboardPage.method => at('/method', withScenario: false),
+    DashboardPage.contributions => Uri(path: '/contributions'),
     DashboardPage.home => switch (s.view) {
       HomeView.short => Uri(path: '/'),
       HomeView.one =>
@@ -96,6 +98,8 @@ void applyLocation(DashboardState state, Uri uri) {
       );
     case 'method':
       state.applyRoute(page: DashboardPage.method, view: state.view);
+    case 'contributions':
+      state.applyRoute(page: DashboardPage.contributions, view: state.view);
     default:
       state.applyRoute(page: DashboardPage.home, scenario: scenario);
   }
@@ -365,6 +369,7 @@ class DashRouterDelegate extends RouterDelegate<RouteInformation>
               const {
                 'history',
                 'method',
+                'contributions',
               }.contains(uri.pathSegments.firstOrNull),
         );
         // Picks Back put on screen are the visitor's from now on, so a

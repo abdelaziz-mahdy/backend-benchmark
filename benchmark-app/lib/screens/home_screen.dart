@@ -9,11 +9,12 @@ import '../widgets/common.dart';
 import '../widgets/loading_widget.dart';
 import '../widgets/run_switcher.dart';
 import '../widgets/site_frame.dart';
+import 'contributions_screen.dart';
 import 'history_screen.dart';
 import 'home_page.dart';
 import 'method_screen.dart';
 
-/// Shell: the home page, or History or Method. "/" opens One framework and
+/// Shell: the home page, or History, Method or Contributions. "/" opens One framework and
 /// focuses its picker from anywhere on the home page.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -147,6 +148,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   DashboardPage.home => HomePage(picker: _picker),
                   DashboardPage.history => const _Page(child: HistoryScreen()),
                   DashboardPage.method => const _Page(child: MethodScreen()),
+                  DashboardPage.contributions => const _Page(
+                    child: ContributionsScreen(),
+                  ),
                 },
               ),
             ],
