@@ -1,0 +1,11 @@
+{
+  "finished_at": "2026-11-19T02:59:01+00:00",
+  "framework_version": "5.2.1",
+  "image_digest": "sha256:dd05eb9853c70641d220eed49bc3bb94e874fe4debac1bf5c0d5ddaf4c4bb836",
+  "ladder_from": {
+    "rate": 48000,
+    "source": "2026-10-04_m2pro-10c-32g_bff6922_0461"
+  },
+  "runtime": "bun 1.4",
+  "status": "ok"
+}

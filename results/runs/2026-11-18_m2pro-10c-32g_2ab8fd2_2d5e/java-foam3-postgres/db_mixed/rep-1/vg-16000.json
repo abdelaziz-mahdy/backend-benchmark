@@ -1,0 +1,1 @@
+{"requests":115520,"success":114564,"rpc_failed":2381,"status_codes":{"0":956,"200":114564},"errors":{"Post \"http://benchmark:8000/service/noteService\": EOF":956},"latency_ms":{"max":35568.674892,"mean":3349.8699743697803,"p50":1529.570376,"p90":8991.911212,"p99":31584.630306,"p999":34622.467682},"bytes_in":134027230,"bytes_out":61912187,"span_s":60.88241282}

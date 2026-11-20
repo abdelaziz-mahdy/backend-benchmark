@@ -1,0 +1,117 @@
+{
+  "contributor": null,
+  "dirty": false,
+  "docker": {
+    "cpus": 10,
+    "mem_gb": 11.7,
+    "version": "29.9.3"
+  },
+  "finished_at": "2026-11-18T15:57:45+00:00",
+  "git_sha": "82ec170",
+  "id": "2026-11-18_m2pro-10c-32g_82ec170_566a",
+  "items": {
+    "rust-actix-web": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "actix-web",
+      "history": false,
+      "image_digest": "sha256:822cd87e80471b74844d01169c7b0f70583f27319038c86c8e14f27c331fcc03",
+      "implementation": {
+        "concurrency": "one actix worker thread per core (2), tokio runtime",
+        "db_access": "tokio-postgres, hand-written SQL",
+        "pool": "20 (deadpool-postgres)",
+        "server": "actix-web 4 HttpServer (release build, LTO)"
+      },
+      "language": "rust",
+      "name": "rust actix-web",
+      "notes": null,
+      "path": "rust/actix-web",
+      "pgbouncer": false,
+      "runtime": "rust 1.99",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "4.15.0"
+    }
+  },
+  "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.2.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+  },
+  "methodology": "v3",
+  "params": {
+    "cpusets": {
+      "app": "0-1",
+      "db": "2-4",
+      "k6": "5-8",
+      "k6_cores": 4
+    },
+    "images": {
+      "db": "postgres:18.6",
+      "k6": "grafana/k6:2.3.0",
+      "pgbouncer": "edoburu/pgbouncer:v1.26.0-p0",
+      "vegeta": "bench-vegeta:12.12.0"
+    },
+    "memory": {
+      "app": "2g",
+      "db": "2g"
+    },
+    "recovery_timeout_s": 30.0,
+    "refine_steps": 4,
+    "refine_tolerance": 0.06,
+    "reps": 1,
+    "seed_rows": 10000,
+    "slo": {
+      "achieved_ratio": 0.95,
+      "error_rate": 0.01,
+      "p99_ms": 100.0
+    },
+    "start_fraction": 4,
+    "step_seconds": 30,
+    "steps": [
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000,
+      16000,
+      32000,
+      64000,
+      80000
+    ],
+    "warmup_seconds": 30
+  },
+  "plan": [
+    {
+      "key": "rust-actix-web",
+      "scenarios": [
+        "no_db",
+        "db_read",
+        "db_write",
+        "db_mixed"
+      ]
+    }
+  ],
+  "started_at": "2026-11-18T15:29:33+00:00"
+}

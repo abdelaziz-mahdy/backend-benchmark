@@ -18,8 +18,13 @@ CONSECUTIVE = 3
 TIMEOUT_S = 30.0
 SETTLE_S = 5.0
 POLL_S = 1.0
-# Warmup after a restart, at the last passing rate.
-REWARM_S = 15.0
+# After a restart the app is cold (JIT, pools). Hitting it straight away at
+# its last passing rate stalled FOAM3 for good (p99 4.4 s at 16,000 a second
+# on 2026-11-19), and every later probe failed. So the runner climbs back
+# gently, REWARM_STEP_S at each rate, multiplying by REWARM_FACTOR, ending at
+# the last passing rate, then waits for recovery before the next probe.
+REWARM_STEP_S = 10.0
+REWARM_FACTOR = 4
 
 
 def wait_recovered(probe, clock=time.monotonic, sleep=time.sleep,
@@ -37,3 +42,15 @@ def wait_recovered(probe, clock=time.monotonic, sleep=time.sleep,
             return True, clock() - start
         sleep(poll_s)
     return False, clock() - start
+
+
+def rewarm_rates(first, top, factor=REWARM_FACTOR):
+    """The rates of the gentle climb after a restart: first, then times
+    factor while below top, then top itself."""
+    rates = []
+    rate = first
+    while rate < top:
+        rates.append(rate)
+        rate *= factor
+    rates.append(max(top, first))
+    return rates

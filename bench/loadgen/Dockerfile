@@ -6,7 +6,7 @@ FROM golang:1.24-alpine AS build
 WORKDIR /src
 RUN CGO_ENABLED=0 go install github.com/tsenart/vegeta/v12@v12.12.0
 COPY summary/ ./
-RUN CGO_ENABLED=0 go build -o /go/bin/summary .
+RUN CGO_ENABLED=0 go test ./... && CGO_ENABLED=0 go build -o /go/bin/summary .
 
 FROM alpine:3.22
 COPY --from=build /go/bin/vegeta /go/bin/summary /usr/local/bin/
