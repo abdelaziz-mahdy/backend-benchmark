@@ -38,3 +38,14 @@ def test_slow_or_failing_answers_reset_the_streak():
 def test_never_recovering_backend_times_out():
     ok, waited = run([(False, 0.0)] * 1000, timeout_s=30)
     assert not ok and waited >= 30
+
+
+def test_rewarm_climbs_gently_to_the_last_passing_rate():
+    assert recovery.rewarm_rates(250, 16000) == [250, 1000, 4000, 16000]
+    assert recovery.rewarm_rates(250, 8000) == [250, 1000, 4000, 8000]
+    assert recovery.rewarm_rates(250, 1000) == [250, 1000]
+
+
+def test_rewarm_without_a_passing_step_stays_at_the_first_rate():
+    assert recovery.rewarm_rates(250, 250) == [250]
+    assert recovery.rewarm_rates(250, 0) == [250]

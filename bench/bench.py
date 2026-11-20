@@ -307,6 +307,16 @@ def earlier_best(run_meta, item_key, scenario):
     return 0, None
 
 
+def vacuum_db(stack):
+    """VACUUM ANALYZE after seeding. Otherwise autovacuum and autoanalyze
+    start on the fresh rows about a minute later, in the middle of a step,
+    and add rare slow replies (p999 5 ms to 88 ms in Go db_read on
+    2026-11-19). Returns None for a backend without Postgres."""
+    if "postgres" not in stack.item.profiles:
+        return None
+    return stack.run("exec", "-T", "db", "psql", "-U", "postgres", "-c", "VACUUM ANALYZE")
+
+
 def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0, best_from="rep 1"):
     rep_dir.mkdir(parents=True, exist_ok=True)
     stack.env["OUT_DIR"] = str(rep_dir)
@@ -324,6 +334,10 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0, bes
             logs = stack.logs()
             stack.down()
             return {"status": "error", "error": "seeding failed: " + (seed.stdout + seed.stderr)[-2000:] + logs[-1000:]}
+        vac = vacuum_db(stack)
+        if vac is not None and vac.returncode != 0:
+            stack.down()
+            return {"status": "error", "error": "VACUUM ANALYZE failed: " + (vac.stdout + vac.stderr)[-2000:]}
 
     stack.write_targets(scenario)
     sampler = Sampler(PROJECT)
@@ -373,7 +387,12 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0, bes
                 stack.run("restart", "benchmark")
                 if wait_healthy(stack):
                     passing = [r["target_rps"] for r in rows if r["pass"]]
-                    stack.load(scenario, max(passing) if passing else steps[0], round(recovery.REWARM_S))
+                    rates = recovery.rewarm_rates(steps[0], max(passing) if passing else steps[0])
+                    for r in rates:
+                        stack.load(scenario, r, round(recovery.REWARM_STEP_S))
+                    rewarmed, waited = recovery.wait_recovered(lambda: health_probe(stack))
+                    log(f"    rewarmed at {', '.join(map(str, rates))} rps, "
+                        f"{'recovered' if rewarmed else 'still slow'} after {waited:.0f} s")
                 else:
                     log("    backend did not come back after a restart")
                     stopped[0] = True
