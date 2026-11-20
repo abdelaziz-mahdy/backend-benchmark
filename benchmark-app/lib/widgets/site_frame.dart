@@ -32,7 +32,7 @@ class SiteWidth extends StatelessWidget {
   );
 }
 
-/// The bar at the top of every page: the wordmark (home), the three pages
+/// The bar at the top of every page: the wordmark (home), the four pages
 /// and a link to the code.
 class SiteHeader extends StatelessWidget {
   const SiteHeader({super.key});
@@ -50,7 +50,16 @@ class SiteHeader extends StatelessWidget {
       child: SiteWidth(
         child: LayoutBuilder(
           builder: (context, c) {
-            final narrow = c.maxWidth < 560;
+            // Words beside the icons only when the four page links, GitHub
+            // and the wordmark fit at the text size in use; otherwise each
+            // label goes under its icon.
+            final narrow =
+                c.maxWidth <
+                _kWordmarkRoom +
+                    _wideLinksWidth(
+                      t.body.copyWith(fontSize: 15),
+                      MediaQuery.textScalerOf(context),
+                    );
             // Phones show the mark alone, so the three links keep words.
             final tiny = c.maxWidth < 420;
             return SizedBox(
@@ -111,6 +120,13 @@ class SiteHeader extends StatelessWidget {
                     iconOnly: narrow,
                     onTap: () => state.setPage(DashboardPage.method),
                   ),
+                  _NavLink(
+                    label: 'Contributions',
+                    icon: Icons.handshake_outlined,
+                    on: state.page == DashboardPage.contributions,
+                    iconOnly: narrow,
+                    onTap: () => state.setPage(DashboardPage.contributions),
+                  ),
                   const SizedBox(width: 4),
                   _ExternalIcon(
                     url: kRepoUrl,
@@ -126,6 +142,32 @@ class SiteHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Room the mark and a few letters of the wordmark keep beside the links.
+const _kWordmarkRoom = 180.0;
+
+const _kPageLabels = ['Results', 'History', 'Method', 'Contributions'];
+
+/// Width of the header's links with words beside their icons: each page
+/// link (12 px padding, 19 px icon, 6 px gap) and the GitHub button.
+double _wideLinksWidth(TextStyle style, TextScaler scaler) {
+  double text(String s) {
+    final tp = TextPainter(
+      text: TextSpan(text: s, style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+    )..layout();
+    final w = tp.width;
+    tp.dispose();
+    return w;
+  }
+
+  var w = 0.0;
+  for (final label in _kPageLabels) {
+    w += 12 + 19 + 6 + text(label) + 12;
+  }
+  return w + 4 + 10 + 19 + 6 + text('GitHub') + 10 + 2;
 }
 
 /// The site mark: a speedometer on the accent colour.
@@ -366,6 +408,10 @@ class SiteFooter extends StatelessWidget {
                 TextLink(
                   label: 'Method',
                   onTap: () => state.setPage(DashboardPage.method),
+                ),
+                TextLink(
+                  label: 'Contributions',
+                  onTap: () => state.setPage(DashboardPage.contributions),
                 ),
               ]),
               col('PROJECT', [

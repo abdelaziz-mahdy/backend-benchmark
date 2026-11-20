@@ -24,6 +24,11 @@ jobs:
     - name: Generate dashboard data from results/
       run: python bench/report/report.py
 
+    - name: Refresh contribution states and stars
+      run: python bench/report/contributions.py --live
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
       with:
