@@ -1,0 +1,11 @@
+{
+  "finished_at": "2026-11-19T04:28:11+00:00",
+  "framework_version": "0.142.2",
+  "image_digest": "sha256:f28444be9701f9a2c801980ae4a3316e0bae60e651f4d7376efdacae3be3c9b8",
+  "ladder_from": {
+    "rate": 24000,
+    "source": "2026-10-04_m2pro-10c-32g_bff6922_0461"
+  },
+  "runtime": "python 3.14",
+  "status": "ok"
+}

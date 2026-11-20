@@ -1,0 +1,318 @@
+{
+  "contributor": null,
+  "dirty": false,
+  "docker": {
+    "cpus": 10,
+    "mem_gb": 11.7,
+    "version": "29.9.3"
+  },
+  "finished_at": "2026-11-20T05:10:41+00:00",
+  "git_sha": "e8e0c48",
+  "id": "2026-11-19_m2pro-10c-32g_e8e0c48_f1x5",
+  "items": {
+    "c_sharp-dot-net": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "aspnetcore",
+      "history": false,
+      "image_digest": "sha256:eba6cac4b99720c65532eb518139a7f321510733ac7a746f5ed7c6e3cf6cf62c",
+      "implementation": {
+        "concurrency": ".NET thread pool with async handlers on both cores",
+        "db_access": "EF Core 10 with Npgsql; reads use AsNoTracking",
+        "pool": "20 (Npgsql Maximum Pool Size), pooled DbContext",
+        "server": "Kestrel, ASP.NET Core minimal API (Production, server GC)"
+      },
+      "language": "c_sharp",
+      "name": "asp.net core",
+      "notes": null,
+      "path": "c_sharp/dot-net",
+      "pgbouncer": false,
+      "runtime": ".NET 10",
+      "scenarios": {
+        "db_read": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "10.0 (EF Core 10.0.12)"
+    },
+    "dart-relic-io-v1.2.0": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "relic",
+      "history": true,
+      "image_digest": "sha256:af79004a71eb630872c23d299ef03935195f4fa2af1f8c063e248c0a10f94c07",
+      "implementation": {
+        "concurrency": "one Dart isolate per core (2, noOfIsolates)",
+        "db_access": "package:postgres, hand-written SQL",
+        "pool": "10 per isolate, 20 in total",
+        "server": "Relic router; relic_io (app.serve) or relic_native (app.serveNative)"
+      },
+      "language": "dart",
+      "name": "relic",
+      "notes": "Serves through relic_io, Relic's dart:io adapter (app.serve).",
+      "path": "dart/relic",
+      "pgbouncer": false,
+      "runtime": "dart 3.14",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "io",
+      "version": "1.2.0"
+    },
+    "dart-relic-native-fixed": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "relic",
+      "history": false,
+      "image_digest": "sha256:e96ef564255eada6f7291ac7b1a14c5bc9f9d0720bd82c48e0f61ea6d57188fd",
+      "implementation": {
+        "concurrency": "one Dart isolate per core (2, noOfIsolates)",
+        "db_access": "package:postgres, hand-written SQL",
+        "pool": "10 per isolate, 20 in total",
+        "server": "Relic router; relic_io (app.serve) or relic_native (app.serveNative)"
+      },
+      "language": "dart",
+      "name": "relic",
+      "notes": "relic_native with a fix: while handlers wait on their own I/O, its drain gives the event loop a few turns and then parks, instead of lingering 1 ms in the kernel, which held database replies (app/patches/).",
+      "path": "dart/relic",
+      "pgbouncer": false,
+      "runtime": "dart 3.14",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "native-fixed",
+      "version": "2.0.0"
+    },
+    "go-mux": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "gorilla/mux",
+      "history": false,
+      "image_digest": "sha256:367c8af362e37ff1461450ffaccdd559af7c45353849c513b47d679688e195a2",
+      "implementation": {
+        "concurrency": "goroutine per request, Go scheduler on both cores",
+        "db_access": "database/sql with lib/pq, hand-written SQL",
+        "pool": "20 (SetMaxOpenConns / SetMaxIdleConns)",
+        "server": "net/http with gorilla/mux"
+      },
+      "language": "go",
+      "name": "go mux",
+      "notes": null,
+      "path": "go/mux",
+      "pgbouncer": false,
+      "runtime": "go 1.27",
+      "scenarios": {
+        "db_read": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "1.8.1"
+    },
+    "java-foam3-embedded": {
+      "api_style": "foam_rpc",
+      "db": "none",
+      "framework": "foam3",
+      "history": false,
+      "image_digest": "sha256:6b65ac3359a12347ee0fb9940d2d08a6642e8e2d5274a096595f126712013662",
+      "implementation": {
+        "concurrency": "Jetty thread pool (FOAM defaults), ZGC, heap 75% of container",
+        "db_access": "embedded: in-memory MDAO + journal file; postgres: FOAM PostgresDAO (JDBC)",
+        "pool": "20 (commons-dbcp2, postgres variant only)",
+        "server": "FOAM3 Jetty HttpServer with NanoRouter at /service/*"
+      },
+      "language": "java",
+      "name": "foam3",
+      "notes": "Keeps its notes in memory and writes every change to a file on disk; it uses no database.",
+      "path": "java/foam3",
+      "pgbouncer": false,
+      "runtime": "java 25",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "embedded",
+      "version": "a0e878e"
+    },
+    "java-foam3-embedded-gzip": {
+      "api_style": "foam_rpc",
+      "db": "none",
+      "framework": "foam3",
+      "history": false,
+      "image_digest": "sha256:0f3a1f654affc9f60f37da87f20ce7d226918a955136e72c0aaa7c279fadaabe",
+      "implementation": {
+        "concurrency": "Jetty thread pool (FOAM defaults), ZGC, heap 75% of container",
+        "db_access": "embedded: in-memory MDAO + journal file; postgres: FOAM PostgresDAO (JDBC)",
+        "pool": "20 (commons-dbcp2, postgres variant only)",
+        "server": "FOAM3 Jetty HttpServer with NanoRouter at /service/*"
+      },
+      "language": "java",
+      "name": "foam3",
+      "notes": "Like embedded, with FOAM's default gzip left on: replies are compressed when the client asks for it.",
+      "path": "java/foam3",
+      "pgbouncer": false,
+      "runtime": "java 25",
+      "scenarios": {
+        "db_mixed": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_read": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "db_write": {
+          "reps": 1,
+          "status": "ok"
+        },
+        "no_db": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "embedded-gzip",
+      "version": "a0e878e"
+    },
+    "java-foam3-postgres": {
+      "api_style": "foam_rpc",
+      "db": "postgres",
+      "framework": "foam3",
+      "history": false,
+      "image_digest": "sha256:1823b1710e5b358ea5b13f8ccc8f4ef98032276b1bd13f3bca2053179f4a647a",
+      "implementation": {
+        "concurrency": "Jetty thread pool (FOAM defaults), ZGC, heap 75% of container",
+        "db_access": "embedded: in-memory MDAO + journal file; postgres: FOAM PostgresDAO (JDBC)",
+        "pool": "20 (commons-dbcp2, postgres variant only)",
+        "server": "FOAM3 Jetty HttpServer with NanoRouter at /service/*"
+      },
+      "language": "java",
+      "name": "foam3",
+      "notes": "Keeps its notes in PostgreSQL, through FOAM's own database layer.",
+      "path": "java/foam3",
+      "pgbouncer": false,
+      "runtime": "java 25",
+      "scenarios": {
+        "no_db": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "a0e878e"
+    },
+    "java-spring-boot": {
+      "api_style": "rest",
+      "db": "postgres",
+      "framework": "spring-boot",
+      "history": false,
+      "image_digest": "sha256:e22f210ea4603e5bb449c458a13790d0dc18987334b529736d437e87c867a0eb",
+      "implementation": {
+        "concurrency": "Tomcat thread pool (default 200 threads)",
+        "db_access": "Spring Data JPA / Hibernate; native SQL for the paged list",
+        "pool": "20 (HikariCP maximum-pool-size)",
+        "server": "embedded Tomcat, Spring MVC (blocking)"
+      },
+      "language": "java",
+      "name": "spring boot",
+      "notes": null,
+      "path": "java/spring-boot",
+      "pgbouncer": false,
+      "runtime": "java 25",
+      "scenarios": {
+        "db_write": {
+          "reps": 1,
+          "status": "ok"
+        }
+      },
+      "status": "ok",
+      "variant": "postgres",
+      "version": "4.1.1"
+    }
+  },
+  "machine": {
+    "cores": 10,
+    "cpu": "Apple M2 Pro",
+    "os": "Darwin 27.2.0",
+    "ram_gb": 32,
+    "slug": "m2pro-10c-32g"
+  },
+  "methodology": "v3",
+  "params": {
+    "cpusets": {
+      "app": "0-1",
+      "db": "2-4",
+      "k6": "5-8",
+      "k6_cores": 4
+    },
+    "images": {
+      "db": "postgres:18.6",
+      "k6": "grafana/k6:2.3.0",
+      "pgbouncer": "edoburu/pgbouncer:v1.26.0-p0",
+      "vegeta": "bench-vegeta:12.12.0"
+    },
+    "memory": {
+      "app": "2g",
+      "db": "2g"
+    },
+    "recovery_timeout_s": 30.0,
+    "refine_steps": 4,
+    "refine_tolerance": 0.06,
+    "reps": 1,
+    "seed_rows": 10000,
+    "slo": {
+      "achieved_ratio": 0.95,
+      "error_rate": 0.01,
+      "p99_ms": 100.0
+    },
+    "start_fraction": 4,
+    "step_seconds": 30,
+    "steps": [
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000,
+      16000,
+      32000,
+      64000,
+      80000
+    ],
+    "warmup_seconds": 30
+  },
+  "plan": [
+    {
+      "key": "java-foam3-postgres",
+      "scenarios": [
+        "no_db"
+      ]
+    }
+  ],
+  "started_at": "2026-11-20T03:22:04+00:00"
+}

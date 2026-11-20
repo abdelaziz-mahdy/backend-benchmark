@@ -1,0 +1,1 @@
+{"requests":1250980,"success":1250973,"rpc_failed":0,"status_codes":{"0":7,"200":1250973},"errors":{"Post \"http://benchmark:8000/note/noDbEndpoint\": EOF":7},"latency_ms":{"max":5710.553169,"mean":73.48341695135413,"p50":1.398917,"p90":7.11175,"p99":1759.4935,"p999":3144.172251},"bytes_in":273963087,"bytes_out":240188146,"span_s":30.251237763}
