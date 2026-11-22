@@ -1,0 +1,11 @@
+{
+  "finished_at": "2026-11-21T15:24:12+00:00",
+  "framework_version": "a0e878e",
+  "image_digest": "sha256:a8847f2b113887e9651e199dc43a36e3b0d78b7153bd09720ae8b79f04c0df79",
+  "ladder_from": {
+    "rate": 19000,
+    "source": "2026-11-19_m2pro-10c-32g_e8e0c48_f1x5"
+  },
+  "runtime": "java 25",
+  "status": "ok"
+}

@@ -1,0 +1,11 @@
+{
+  "finished_at": "2026-11-21T22:16:54+00:00",
+  "framework_version": "6.1.1",
+  "image_digest": "sha256:b10ac10c7facb22b51ae8114e934578bef6ef13125b72986e82c44ae783874ff",
+  "ladder_from": {
+    "rate": 4250,
+    "source": "rep 1"
+  },
+  "runtime": "python 3.14",
+  "status": "ok"
+}

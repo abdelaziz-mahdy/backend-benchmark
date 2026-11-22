@@ -35,9 +35,9 @@ contributions:
       - {kind: issue, url: "https://github.com/serverpod/relic/issues/445", state: closed}
       - {kind: pr, url: "https://github.com/serverpod/relic/pull/446", state: merged}
     numbers:
-      - {label: "Relic 2.0.0 native, read only", before: 1600, after: 22000, unit: replies a second}
-      - {label: "Serverpod on Relic native, read only", before: 650, after: 7250, unit: replies a second}
-    note: This benchmark, methodology v3, before and with the fix.
+      - {label: "Relic 2.0.0 native, read only", before: 1750, after: 19000, unit: replies a second}
+      - {label: "Serverpod on Relic native, read only", before: 650, after: 7750, unit: replies a second}
+    note: This benchmark, methodology v3, median of 3 rounds, before and with the fix.
 
   - title: Two flaky Serverpod database tests
     repo: serverpod/serverpod

@@ -1,0 +1,1 @@
+{"requests":480000,"success":479997,"rpc_failed":0,"status_codes":{"0":3,"201":479997},"errors":{"Post \"http://benchmark:8000/notes/\": EOF":3},"latency_ms":{"max":39.347666,"mean":0.7360058529104166,"p50":0.528417,"p90":0.715542,"p99":6.424833,"p999":26.134792},"bytes_in":88319448,"bytes_out":114719823,"span_s":30.000575514}

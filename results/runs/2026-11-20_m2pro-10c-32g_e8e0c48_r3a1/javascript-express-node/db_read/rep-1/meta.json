@@ -1,0 +1,11 @@
+{
+  "finished_at": "2026-11-21T19:29:03+00:00",
+  "framework_version": "5.2.1",
+  "image_digest": "sha256:cc30bef054d395dbba92d9a0a1fc81d1fbc768bc8c628382e165d7fc149b7a26",
+  "ladder_from": {
+    "rate": 27000,
+    "source": "2026-11-18_m2pro-10c-32g_2ab8fd2_2d5e"
+  },
+  "runtime": "node 24.21 (LTS)",
+  "status": "ok"
+}

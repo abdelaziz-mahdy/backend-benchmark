@@ -1,0 +1,1 @@
+{"requests":239999,"success":239995,"rpc_failed":0,"status_codes":{"0":4,"201":239995},"errors":{"Post \"http://benchmark:8000/notes/\": EOF":4},"latency_ms":{"max":60.323542,"mean":0.6013153245555191,"p50":0.415666,"p90":0.591083,"p99":1.943209,"p999":38.23975},"bytes_in":44159080,"bytes_out":57359525,"span_s":30.000233806}

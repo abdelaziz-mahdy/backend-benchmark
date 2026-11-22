@@ -1,0 +1,11 @@
+{
+  "finished_at": "2026-11-21T07:46:21+00:00",
+  "framework_version": "1.8.1",
+  "image_digest": "sha256:367c8af362e37ff1461450ffaccdd559af7c45353849c513b47d679688e195a2",
+  "ladder_from": {
+    "rate": 23000,
+    "source": "2026-11-19_m2pro-10c-32g_e8e0c48_f1x5"
+  },
+  "runtime": "go 1.27",
+  "status": "ok"
+}

@@ -1,0 +1,11 @@
+{
+  "finished_at": "2026-11-21T18:35:34+00:00",
+  "framework_version": "5.2.1",
+  "image_digest": "sha256:aa403351e23c4ee2190284fdae41320511757a08bbb597d8a0e7986bb8d70d16",
+  "ladder_from": {
+    "rate": 80000,
+    "source": "rep 1"
+  },
+  "runtime": "bun 1.4",
+  "status": "ok"
+}

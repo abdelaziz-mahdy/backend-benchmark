@@ -1,0 +1,18 @@
+{
+  "finished_at": "2026-11-21T17:13:30+00:00",
+  "first_step_retry": {
+    "achieved_rps": 31999.933333333334,
+    "app_cpu": 64.76113821138209,
+    "error_rate": 0.0014968781184960802,
+    "p99_ms": 584.233501,
+    "target_rps": 32000
+  },
+  "framework_version": "4.1.1",
+  "image_digest": "sha256:c98618b020f008ba351298bb392bc6bdd1832e00d9a550c59fe1747afa100f57",
+  "ladder_from": {
+    "rate": 66000,
+    "source": "2026-11-18_m2pro-10c-32g_2ab8fd2_2d5e"
+  },
+  "runtime": "java 25",
+  "status": "ok"
+}

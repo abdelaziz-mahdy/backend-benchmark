@@ -1,0 +1,11 @@
+{
+  "finished_at": "2026-11-20T22:26:10+00:00",
+  "framework_version": "4.0.3",
+  "image_digest": "sha256:43e0fe0e57de0254fc7a69ab402ea7222cfb8e5a8b13555e1cdecfd3dd3d75b8",
+  "ladder_from": {
+    "rate": 5500,
+    "source": "rep 1"
+  },
+  "runtime": "dart 3.14",
+  "status": "ok"
+}
