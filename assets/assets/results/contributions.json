@@ -4,7 +4,7 @@
    "title": "Relic's native server stalled whenever a handler waited",
    "repo": "serverpod/relic",
    "project": "Relic",
-   "stars": 146,
+   "stars": 147,
    "date": "2026-11-18",
    "summary": "On relic_native, any handler that waits on the database stalled: after each write the server held the event loop for 1 ms. The fix yields to the event loop first, so waiting handlers finish.",
    "links": [
@@ -24,24 +24,24 @@
    "numbers": [
     {
      "label": "Relic 2.0.0 native, read only",
-     "before": 1600,
-     "after": 22000,
+     "before": 1750,
+     "after": 19000,
      "unit": "replies a second"
     },
     {
      "label": "Serverpod on Relic native, read only",
      "before": 650,
-     "after": 7250,
+     "after": 7750,
      "unit": "replies a second"
     }
    ],
-   "note": "This benchmark, methodology v3, before and with the fix."
+   "note": "This benchmark, methodology v3, median of 3 rounds, before and with the fix."
   },
   {
    "title": "Two flaky Serverpod database tests",
    "repo": "serverpod/serverpod",
    "project": "Serverpod",
-   "stars": 3335,
+   "stars": 3334,
    "date": "2026-11-14",
    "summary": "Found while testing the Serverpod speedups below: a serializable transaction test raced its own write, and a parallel-calls test left an unhandled error in setUpAll. Both reproduced with injected delays.",
    "links": [
@@ -64,7 +64,7 @@
    "title": "A faster Content-Type parser in Relic",
    "repo": "serverpod/relic",
    "project": "Relic",
-   "stars": 146,
+   "stars": 147,
    "date": "2026-11-13",
    "summary": "Every request parsed its Content-Type with a regular expression. The first fix, a cache, was turned down; the maintainer wrote a byte-level parser instead, which was merged.",
    "links": [
@@ -95,7 +95,7 @@
    "title": "Less work for every Serverpod request",
    "repo": "serverpod/serverpod",
    "project": "Serverpod",
-   "stars": 3335,
+   "stars": 3334,
    "date": "2026-11-13",
    "summary": "A CPU profile showed Serverpod capturing a stack trace for every database query, rebuilding the same SQL strings, and doing session work only logged sessions need. Three pull requests remove that work.",
    "links": [
@@ -164,7 +164,7 @@
      "kind": "pr",
      "number": 499,
      "url": "https://github.com/isoos/postgresql-dart/pull/499",
-     "state": "open"
+     "state": "merged"
     }
    ],
    "numbers": []
@@ -173,7 +173,7 @@
    "title": "Dart's HTTP server and async stack traces",
    "repo": "dart-lang/sdk",
    "project": "Dart SDK",
-   "stars": 11360,
+   "stars": 11364,
    "date": "2026-11-13",
    "summary": "Each small HTTP response sets up two stream controllers, about 11% of a Serverpod request's CPU. Separately, StackTrace.current looked up the same dart:async members on every call; the change caches them.",
    "links": [
