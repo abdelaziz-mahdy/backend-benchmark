@@ -32,7 +32,11 @@ For each backend × variant × scenario × rep:
 4. Stop at the first step that misses the SLO (p99 < 100 ms, errors < 1%,
    achieved ≥ 95% of target), then halve the gap between the last passing and
    first failing rate up to 4 times, stopping once it is under 6% (methodology
-   v2.1; v2 tested a single midpoint). After every failing step the runner
+   v2.1; v2 tested a single midpoint). A failing step that missed only p99
+   while its p90 stayed under 50 ms (half the limit) is run once more: the app
+   kept up and a short pause, not the load, made its slowest 1%. The first
+   try is kept in the rep's `meta.json` (`retried_steps`) and as
+   `vg-<rate>-try1.json`. After every failing step the runner
    waits until the health path answers in < 100 ms three times in a row (max
    30 s, then 5 s more) so a backlog left by the overload does not poison the
    next probe; the wait is stored per step as `recovery_s`. If the app is still

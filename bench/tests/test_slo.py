@@ -174,3 +174,35 @@ def test_later_reps_skip_steps_far_below_the_first_result():
 
 def test_low_results_keep_the_whole_ladder():
     assert slo.start_steps(slo.STEPS, 1000) == slo.STEPS
+
+
+def rerun_row(target, p90, p99, err=0.0, achieved=None):
+    s = step(target, p99=p99, err=err, achieved=achieved)
+    s["p90_ms"] = p90
+    return s
+
+
+def test_a_short_pause_is_a_near_miss():
+    # .NET db_write, 2026-11-20 rep 2: 7,750 passed at p99 2.7 ms, then 8,000
+    # failed at p99 577 ms with p90 0.9 ms; rep 3 sustained 17,000.
+    assert slo.near_miss(rerun_row(8000, p90=0.9, p99=576.9))
+    # Go db_write rep 1: p99 100.5 ms, a hair over the limit.
+    assert slo.near_miss(rerun_row(12000, p90=0.9, p99=100.5))
+
+
+def test_real_overload_is_not_a_near_miss():
+    # Django sync db_mixed at 4,000: most replies slow, not a pause.
+    assert not slo.near_miss(rerun_row(4000, p90=1283.3, p99=6779.4))
+    # p90 at exactly half the limit counts as slow.
+    assert not slo.near_miss(rerun_row(4000, p90=slo.SLO_P99_MS * slo.NEAR_MISS_P90_RATIO, p99=150.0))
+
+
+def test_errors_or_a_short_rate_are_never_a_near_miss():
+    assert not slo.near_miss(rerun_row(4000, p90=1.0, p99=500.0, err=0.02))
+    # FastAPI db_write at 4,000: only 93% of the rate went out.
+    assert not slo.near_miss(rerun_row(4000, p90=1.0, p99=500.0, achieved=3720))
+    assert not slo.near_miss({**rerun_row(4000, p90=1.0, p99=500.0), "requests": 0})
+
+
+def test_a_passing_step_is_not_a_near_miss():
+    assert not slo.near_miss(rerun_row(4000, p90=1.0, p99=20.0))

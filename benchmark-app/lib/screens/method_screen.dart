@@ -399,6 +399,8 @@ class _MethodScreenState extends State<MethodScreen> {
             'halving the gap up to $refine times, until the two are within '
             '$tolerance% of each other.',
     };
+    final nearMiss = run.params['near_miss_p90_ratio'] as num?;
+    final p99 = (run.params['slo'] as Map?)?['p99_ms'] as num? ?? 100;
     final seconds = run.params['step_seconds'] ?? 30;
     final warmup = run.params['warmup_seconds'] ?? 30;
     return Column(
@@ -425,6 +427,14 @@ class _MethodScreenState extends State<MethodScreen> {
             'Stop rule:',
             'the test stops at the first step that fails a limit.',
           ),
+          if (nearMiss != null)
+            Point(
+              'Second try:',
+              'a step that fails only because its slowest 1% of replies were '
+                  'late, while 9 in 10 came back within '
+                  '${(nearMiss * p99).round()} ms, is run once more. The app '
+                  'kept up; a short pause, not the load, made it late.',
+            ),
           Point('Extra steps:', 'after that, $refineText'),
           const Point(
             'Cool-down:',
