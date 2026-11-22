@@ -97,6 +97,29 @@ void main() {
     expect(starCount(11360), '11.4k');
   });
 
+  test('a closed card says its first number and its fixes in one line', () {
+    final relic = _real().firstWhere((c) => c.title.startsWith("Relic's"));
+    expect(
+      contributionHeadline(relic),
+      '1,750 to 19,000 replies a second, 11× as many · Fix: 1 merged',
+    );
+    final parser = _real().firstWhere((c) => c.title.contains('Content-Type'));
+    expect(contributionHeadline(parser), 'Fixes: 2 merged, 1 closed');
+    ContributionLink issue(LinkState s) =>
+        ContributionLink(kind: 'issue', number: 1, url: 'u', state: s);
+    final onlyIssue = Contribution(
+      title: 't',
+      repo: 'a/b',
+      project: 'b',
+      stars: 1,
+      date: DateTime(2026),
+      summary: 's',
+      links: [issue(LinkState.open)],
+      numbers: const [],
+    );
+    expect(contributionHeadline(onlyIssue), 'Issue: 1 open');
+  });
+
   for (final size in const [
     Size(360, 1600),
     Size(400, 1600),
@@ -118,12 +141,27 @@ void main() {
 
       final list = _real();
       expect(find.text(list.first.title), findsOneWidget);
+      expect(find.text(starCount(list.first.stars)), findsWidgets);
+      expect(find.textContaining('fixes merged ·'), findsOneWidget);
+
+      // Closed: one line each, no summary, bars or links yet.
+      expect(find.text(contributionHeadline(list.first)), findsOneWidget);
+      expect(find.text(list.first.summary), findsNothing);
+      expect(find.text('Before'), findsNothing);
+      expect(find.text('Pull request #446'), findsNothing);
+
+      // The title opens the card in place, and closes it again.
+      await t.tap(find.text(list.first.title));
+      await _settle(t);
+      expect(find.text(list.first.summary), findsOneWidget);
+      expect(find.text(contributionHeadline(list.first)), findsNothing);
+      expect(find.text('Before'), findsWidgets);
       expect(find.text('Merged'), findsWidgets);
       expect(find.text('Pull request #446'), findsOneWidget);
-      expect(find.text('Pull request #438 by nielsenko'), findsOneWidget);
-      expect(find.text(starCount(list.first.stars)), findsWidgets);
-      expect(find.text('Before'), findsWidgets);
       expect(t.takeException(), isNull);
+      await t.tap(find.text(list.first.title));
+      await _settle(t);
+      expect(find.text('Pull request #446'), findsNothing);
 
       // Every card is on the page, in the file's order.
       final ys = <double>[];
@@ -174,6 +212,9 @@ void main() {
         addTearDown(t.platformDispatcher.clearPlatformBrightnessTestValue);
         final state = await _pump(t, size);
         state.setPage(DashboardPage.contributions);
+        await _settle(t);
+        // The first card open, the rest closed, as a reader finds them.
+        await t.tap(find.text(_real().first.title));
         await _settle(t);
         await expectLater(
           find.byType(MaterialApp),
