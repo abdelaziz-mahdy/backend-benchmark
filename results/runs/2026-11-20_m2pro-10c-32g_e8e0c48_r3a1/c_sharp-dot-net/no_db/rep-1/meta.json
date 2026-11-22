@@ -1,0 +1,11 @@
+{
+  "finished_at": "2026-11-20T14:36:26+00:00",
+  "framework_version": "10.0 (EF Core 10.0.12)",
+  "image_digest": "sha256:eba6cac4b99720c65532eb518139a7f321510733ac7a746f5ed7c6e3cf6cf62c",
+  "ladder_from": {
+    "rate": 80000,
+    "source": "2026-11-18_m2pro-10c-32g_2ab8fd2_2d5e"
+  },
+  "runtime": ".NET 10",
+  "status": "ok"
+}

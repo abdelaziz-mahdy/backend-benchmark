@@ -1,0 +1,11 @@
+{
+  "finished_at": "2026-11-21T14:39:33+00:00",
+  "framework_version": "a0e878e",
+  "image_digest": "sha256:3bc5f766a6cd22c9a10df9f7e00fd007896192c9058de1198fad553764c06471",
+  "ladder_from": {
+    "rate": 11500,
+    "source": "rep 1"
+  },
+  "runtime": "java 25",
+  "status": "ok"
+}

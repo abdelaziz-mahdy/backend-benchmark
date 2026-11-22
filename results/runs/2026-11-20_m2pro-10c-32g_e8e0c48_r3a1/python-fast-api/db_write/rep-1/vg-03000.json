@@ -1,0 +1,1 @@
+{"requests":90000,"success":89999,"rpc_failed":0,"status_codes":{"0":1,"201":89999},"errors":{"Post \"http://benchmark:8000/notes/\": http: server closed idle connection":1},"latency_ms":{"max":80.308167,"mean":1.6444475827777778,"p50":1.356875,"p90":1.9935,"p99":5.955958,"p999":38.576125},"bytes_in":18089799,"bytes_out":21509941,"span_s":29.999317139}

@@ -1,0 +1,11 @@
+{
+  "finished_at": "2026-11-20T16:55:20+00:00",
+  "framework_version": "1.2.0",
+  "image_digest": "sha256:af79004a71eb630872c23d299ef03935195f4fa2af1f8c063e248c0a10f94c07",
+  "ladder_from": {
+    "rate": 7750,
+    "source": "2026-11-18_m2pro-10c-32g_2ab8fd2_2d5e"
+  },
+  "runtime": "dart 3.14",
+  "status": "ok"
+}
