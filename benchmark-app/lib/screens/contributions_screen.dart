@@ -6,7 +6,7 @@ import '../models/contributions.dart';
 import '../state/dashboard_state.dart';
 import '../utils/theme_constants.dart';
 import '../widgets/calm.dart';
-import '../widgets/common.dart' show EmptyState, TileGrid;
+import '../widgets/common.dart' show EmptyState;
 import '../widgets/prose.dart';
 import '../widgets/site_frame.dart' show SiteFooter, SiteWidth;
 
@@ -105,6 +105,7 @@ class _List extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Txt(context.palette);
     final links = [for (final c in items) ...c.links];
     final fixes = links.where((l) => l.kind != 'issue').toList();
     final merged = fixes.where((l) => l.state == LinkState.merged).length;
@@ -114,54 +115,93 @@ class _List extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TileGrid(
-          minTileWidth: 200,
-          children: [
-            FactCard(
-              icon: Icons.merge,
-              label: 'Fixes merged',
-              value: '$merged of ${fixes.length}',
-              detail: 'pull requests and changes so far',
-            ),
-            FactCard(
-              icon: Icons.schedule,
-              label: 'Still open',
-              value: '$open',
-              detail: 'issues and fixes waiting on review',
-            ),
-            FactCard(
-              icon: Icons.star_outline,
-              label: 'Projects',
-              value: '${repos.length}',
-              detail: '${starCount(stars)} GitHub stars between them',
-            ),
-          ],
+        Text(
+          '$merged of ${fixes.length} fixes merged · $open still open · '
+          '${repos.length} projects, ${starCount(stars)} GitHub stars',
+          style: t.muted,
         ),
-        const SizedBox(height: kSectionGap),
-        for (final c in items) ...[_Card(c), const SizedBox(height: 16)],
+        const SizedBox(height: 20),
+        for (final c in items) ...[_Card(c), const SizedBox(height: 12)],
       ],
     );
   }
 }
 
-class _Card extends StatelessWidget {
+/// "2 merged, 1 closed": the fixes' states, or the issue's when there is
+/// no fix yet.
+String linkStates(Contribution c) {
+  final fixes = c.links.where((l) => l.kind != 'issue').toList();
+  final shown = fixes.isEmpty ? c.links : fixes;
+  final parts = [
+    for (final s in LinkState.values)
+      if (shown.where((l) => l.state == s).length case final n when n > 0)
+        '$n ${s.label.toLowerCase()}',
+  ];
+  final what = fixes.isEmpty
+      ? (shown.length == 1 ? 'Issue' : 'Issues')
+      : (fixes.length == 1 ? 'Fix' : 'Fixes');
+  return '$what: ${parts.join(', ')}';
+}
+
+/// The closed card's one line: the first measured number, when there is
+/// one, then the state of the fixes.
+String contributionHeadline(Contribution c) => [
+  if (c.numbers.isNotEmpty)
+    '${_amount(c.numbers.first.before)} to ${_amount(c.numbers.first.after)} '
+        '${c.numbers.first.unit}, ${c.numbers.first.change}',
+  linkStates(c),
+].join(' · ');
+
+/// One contribution: its project, date and title, with one line of what it
+/// changed. Opening it shows the summary, every number and every link.
+class _Card extends StatefulWidget {
   final Contribution c;
 
   const _Card(this.c);
 
   @override
+  State<_Card> createState() => _CardState();
+}
+
+class _CardState extends State<_Card> {
+  bool _open = false;
+  final _whole = GlobalKey(debugLabel: 'contribution');
+
+  String get _memory => 'contribution-${widget.c.title}';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final saved = PageStorage.maybeOf(
+      context,
+    )?.readState(context, identifier: _memory);
+    if (saved is bool) _open = saved;
+  }
+
+  void _toggle() {
+    setState(() => _open = !_open);
+    PageStorage.maybeOf(
+      context,
+    )?.writeState(context, _open, identifier: _memory);
+    if (_open) revealWhole(_whole);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final c = widget.c;
     final p = context.palette;
     final t = Txt(p);
+    final headline = contributionHeadline(c);
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      key: _whole,
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(kRadius),
         border: Border.all(color: p.line),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Wrap(
             spacing: 12,
@@ -172,25 +212,68 @@ class _Card extends StatelessWidget {
               Text(contributionDate(c.date), style: t.small),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(c.title, style: t.h3.copyWith(fontSize: 19)),
-          const SizedBox(height: 6),
-          Text(c.summary, style: t.smallText.copyWith(height: 1.5)),
-          if (c.numbers.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            for (final n in c.numbers) ...[
-              _Numbers(n),
-              const SizedBox(height: 10),
-            ],
-            if (c.note != null)
-              Text(c.note!, style: t.small.copyWith(fontSize: 13.5)),
-          ],
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [for (final l in c.links) _LinkChip(l)],
+          Pressable(
+            onTap: _toggle,
+            radius: 6,
+            expanded: _open,
+            semanticLabel: _open ? c.title : '${c.title}. $headline',
+            builder: (context, hovered) => ExcludeSemantics(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            c.title,
+                            style: t.h3.copyWith(
+                              fontSize: 19,
+                              decoration: hovered
+                                  ? TextDecoration.underline
+                                  : null,
+                            ),
+                          ),
+                          if (!_open) ...[
+                            const SizedBox(height: 4),
+                            Text(headline, style: t.small),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedRotation(
+                      turns: _open ? 0.5 : 0,
+                      duration: motion(context, 150),
+                      child: Icon(Icons.expand_more, color: p.muted),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
+          if (_open) ...[
+            const SizedBox(height: 4),
+            Text(c.summary, style: t.smallText.copyWith(height: 1.5)),
+            if (c.numbers.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              for (final n in c.numbers) ...[
+                _Numbers(n),
+                const SizedBox(height: 10),
+              ],
+              if (c.note != null)
+                Text(c.note!, style: t.small.copyWith(fontSize: 13.5)),
+            ],
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [for (final l in c.links) _LinkChip(l)],
+            ),
+            const SizedBox(height: 4),
+          ],
         ],
       ),
     );
