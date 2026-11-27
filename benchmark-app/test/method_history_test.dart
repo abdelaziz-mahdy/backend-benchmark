@@ -100,6 +100,14 @@ MapBundle _twoGroups() {
   });
 }
 
+/// _twoGroups with the newest run's params replaced.
+MapBundle _withParams(Map<String, dynamic> params) {
+  final files = Map<String, String>.of(_twoGroups().files);
+  final run = jsonDecode(files['assets/results/runs/a2.json']!) as Map;
+  files['assets/results/runs/a2.json'] = jsonEncode({...run, 'params': params});
+  return MapBundle(files);
+}
+
 Future<DashboardState> _pump(
   WidgetTester t,
   Size size, {
@@ -224,6 +232,28 @@ void main() {
           _expectPlain(t, 'History ($test, $name)');
         }
       }
+      expect(t.takeException(), isNull);
+    });
+  }
+
+  for (final (ratio, shown) in [(0.5, true), (null, false)]) {
+    testWidgets('Method names the second try: ${shown ? 'shown' : 'hidden'} '
+        'for a run with near_miss_p90_ratio $ratio', (t) async {
+      final state = await _pump(
+        t,
+        const Size(1440, 1400),
+        bundle: _withParams({
+          'reps': 3,
+          'slo': {'p99_ms': 100},
+          'near_miss_p90_ratio': ?ratio,
+        }),
+      );
+      state.setPage(DashboardPage.method);
+      await _settle(t);
+      await _openAll(t);
+      final text = _allText(t);
+      expect(text.contains('Second try:'), shown);
+      if (shown) expect(text, contains('9 in 10 came back within 50 ms'));
       expect(t.takeException(), isNull);
     });
   }

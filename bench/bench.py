@@ -231,6 +231,7 @@ def new_run(run_id, steps, reps, cpus, contributor):
             "warmup_seconds": slo.WARMUP_SECONDS,
             "refine_steps": slo.REFINE_STEPS,
             "refine_tolerance": slo.REFINE_TOLERANCE,
+            "near_miss_p90_ratio": slo.NEAR_MISS_P90_RATIO,
             "start_fraction": slo.START_FRACTION,
             "recovery_timeout_s": recovery.TIMEOUT_S,
             "reps": reps,
@@ -405,25 +406,38 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0, bes
         return row["pass"]
 
     ladder = slo.start_steps(steps, best)
-    first_try = []
+    retries = []
     if ladder != steps:
         log(f"    starting at {ladder[0]} rps ({best_from} sustained {best})")
 
-    def set_aside():
-        first_try.append(rows.pop())
-        log(f"    first step failed right after warmup, trying {ladder[0]} rps once more")
+    def near_miss():
+        return "near miss" if rows and slo.near_miss(rows[-1]) else None
 
-    climb(ladder, do_step, retry_first=ladder != steps, on_retry=set_aside, stopped=lambda: stopped[0])
+    def set_aside(reason):
+        # Keep the failed try out of the steps (refine_rate needs one row per
+        # rate) but record it in the rep's meta, and keep its summary file.
+        r = rows.pop()
+        rate = r["target_rps"]
+        tried = rep_dir / f"vg-{rate:05d}.json"
+        if tried.exists():
+            tried.replace(rep_dir / f"vg-{rate:05d}-try1.json")
+        retries.append({"reason": reason, **{k: r[k] for k in RETRY_KEYS}})
+        why = ("missed p99 on a short pause" if reason == "near miss"
+               else "failed right after warmup")
+        log(f"    {rate} rps {why}, trying it once more")
+
+    stop = lambda: stopped[0]  # noqa: E731
+    climb(ladder, do_step, retry_first=ladder != steps, on_retry=set_aside, stopped=stop, near_miss=near_miss)
     if not any(r["pass"] for r in rows):
         # The shortened ladder started too high for this rep: walk back down.
         for rate in reversed([s for s in steps if s < ladder[0]]):
-            if stopped[0] or do_step(rate):
+            if stopped[0] or try_twice(rate, do_step, near_miss, set_aside, stop):
                 break
     for _ in range(slo.REFINE_STEPS):
         mid = None if stopped[0] else slo.refine_rate(rows)
         if not mid:
             break
-        do_step(mid, refine=True)
+        try_twice(mid, lambda r: do_step(r, refine=True), near_miss, set_aside, stop)
     sampler.stop()
     stack.down()
 
@@ -431,29 +445,44 @@ def run_rep(stack, item, scenario, steps, rep_dir, digest, k6_cores, best=0, bes
     write_csv(rep_dir / "steps.csv", rows)
     write_timeseries(rep_dir / "timeseries.csv", sampler.samples, t0)
     result = {"status": "ok", "image_digest": digest}
-    if first_try:
-        r = first_try[0]
-        result["first_step_retry"] = {
-            k: r[k] for k in ("target_rps", "achieved_rps", "p99_ms", "error_rate", "app_cpu")
-        }
+    if retries:
+        result["retried_steps"] = retries
     return result
 
 
-def climb(ladder, do_step, retry_first=False, on_retry=None, stopped=lambda: False):
-    """Run the ladder's steps upward until one fails. With retry_first, a
-    failure on the first step is run once more before giving up: a shortened
-    ladder jumps from the warmup rate straight to a high step, and a cold app
-    (connection pools still filling) can stall there though it keeps up a
-    moment later. on_retry runs before the second try."""
+# What a rep's meta keeps of a step that was set aside and run again.
+RETRY_KEYS = ("target_rps", "achieved_rps", "p50_ms", "p90_ms", "p99_ms", "error_rate", "app_cpu", "refine")
+
+
+def try_twice(rate, do_step, retry_reason, on_retry=None, stopped=lambda: False):
+    """Run one step. When it fails, retry_reason() names why it deserves a
+    second try (or None), and unless the app is stopped the step runs once
+    more, after on_retry(reason). Returns whether the last try passed."""
+    if do_step(rate):
+        return True
+    reason = retry_reason()
+    if not reason or stopped():
+        return False
+    if on_retry:
+        on_retry(reason)
+    return do_step(rate)
+
+
+def climb(ladder, do_step, retry_first=False, on_retry=None, stopped=lambda: False, near_miss=lambda: None):
+    """Run the ladder's steps upward until one fails. A step that fails is
+    run once more when near_miss() says it only missed p99 on a short pause,
+    or, with retry_first, when it is the first step: a shortened ladder jumps
+    from the warmup rate straight to a high step, and a cold app (connection
+    pools still filling) can stall there though it keeps up a moment later.
+    on_retry(reason) runs before the second try."""
     for i, rate in enumerate(ladder):
-        if do_step(rate):
-            continue
-        if i == 0 and retry_first and not stopped():
-            if on_retry:
-                on_retry()
-            if do_step(rate):
-                continue
-        break
+        first = i == 0 and retry_first
+
+        def reason(first=first):
+            return near_miss() or ("first step" if first else None)
+
+        if not try_twice(rate, do_step, reason, on_retry, stopped):
+            break
 
 
 def write_csv(path, rows):

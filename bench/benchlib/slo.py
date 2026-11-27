@@ -26,6 +26,12 @@ REFINE_TOLERANCE = 0.06
 # first rep's result: they always pass and only cost time. The two or three
 # steps kept below the result still warm the app up.
 START_FRACTION = 4
+# A step that fails only on p99 while nine in ten replies stayed under this
+# share of the limit is run once more: the app kept up and a short pause
+# (garbage collection, a checkpoint) made the slowest 1%, not the load. In
+# the 2026-11-20 run such one-off pauses ended 49 of 252 reps far below the
+# other two (e.g. .NET db_write: 7,750 vs 13,500 and 17,000).
+NEAR_MISS_P90_RATIO = 0.5
 # Above this share of its cores, k6 may be the bottleneck rather than the app.
 LOADGEN_BOUND_SHARE = 0.75
 
@@ -88,6 +94,19 @@ def passes(step):
         and step["p99_ms"] < SLO_P99_MS
         and step["error_rate"] < SLO_ERROR_RATE
         and step["achieved_rps"] >= SLO_ACHIEVED_RATIO * step["target_rps"]
+    )
+
+
+def near_miss(step):
+    """True when a failed step met every limit except p99 and its p90 stayed
+    under NEAR_MISS_P90_RATIO of the p99 limit: a pause, worth one more try.
+    Real overload slows most replies, so its p90 is high too."""
+    return (
+        not passes(step)
+        and step["requests"] > 0
+        and step["error_rate"] < SLO_ERROR_RATE
+        and step["achieved_rps"] >= SLO_ACHIEVED_RATIO * step["target_rps"]
+        and step.get("p90_ms", 0.0) < NEAR_MISS_P90_RATIO * SLO_P99_MS
     )
 
 
