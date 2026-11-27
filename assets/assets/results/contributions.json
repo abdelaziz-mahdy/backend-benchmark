@@ -49,13 +49,13 @@
      "kind": "issue",
      "number": 6012,
      "url": "https://github.com/serverpod/serverpod/issues/6012",
-     "state": "open"
+     "state": "closed"
     },
     {
      "kind": "pr",
      "number": 6013,
      "url": "https://github.com/serverpod/serverpod/pull/6013",
-     "state": "open"
+     "state": "merged"
     }
    ],
    "numbers": []
@@ -173,7 +173,7 @@
    "title": "Dart's HTTP server and async stack traces",
    "repo": "dart-lang/sdk",
    "project": "Dart SDK",
-   "stars": 11364,
+   "stars": 11368,
    "date": "2026-11-13",
    "summary": "Each small HTTP response sets up two stream controllers, about 11% of a Serverpod request's CPU. Separately, StackTrace.current looked up the same dart:async members on every call; the change caches them.",
    "links": [
